@@ -34,12 +34,12 @@ Open `index.html` gewoon in je browser (of gebruik een simpele lokale server, bi
 4. Na een minuut is je site live op `https://jouwgebruikersnaam.github.io/repositorynaam/`.
 
 ## Hoe het nu werkt
-- **Quiz maken:** je vult titel, 1 vraag en 4 antwoorden in, en kiest het goede antwoord. Er wordt een unieke 6-tekens code gegenereerd en de quiz wordt opgeslagen onder `quizzen/<code>` in de Realtime Database.
-- **Meedoen aan quiz:** iemand voert de code in, de app haalt de quiz op uit Firebase en toont de vraag met 4 klikbare antwoorden.
-- **Mijn quizzen:** de codes van quizzes die je zelf hebt gemaakt, worden lokaal in je browser onthouden (localStorage), zodat je ze terug kunt vinden.
+- **Quiz maken:** je vult een titel in en per vraag: de vraagtekst, 4 antwoorden en welk antwoord goed is. Met "+ Vraag toevoegen" voeg je extra vragen toe aan dezelfde quiz. Na opslaan wordt een unieke 6-tekens code gegenereerd en de hele quiz (titel + alle vragen) wordt opgeslagen onder `quizzen/<code>` in de Realtime Database.
+- **Mijn quizzen:** na het opslaan kom je terug op het overzicht en staat je quiz daar in de lijst, met een "Spelen"-knop. Klik daarop om de code te zien die je met spelers kunt delen.
+- **Meedoen aan quiz:** iemand voert de code in, de app haalt de quiz op uit Firebase en speelt de vragen één voor één af: kiezen, direct zien of het goed/fout is, dan "Volgende vraag" tot de quiz klaar is.
+- De lijst met eigen quizzen (titel + code) wordt lokaal in je browser onthouden (localStorage), zodat je ze terugvindt zolang je dezelfde browser gebruikt.
 
 ## Mogelijke volgende stappen
-- Meerdere vragen per quiz (nu is het er 1).
 - Score bijhouden per speler.
 - Live meespelen (iedereen ziet dezelfde vraag tegelijk) via Firebase realtime listeners.
 - Quiz verwijderen/bewerken.
