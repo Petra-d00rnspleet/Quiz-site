@@ -168,3 +168,69 @@ label {
   background: #fbdada;
   border-color: #d63447;
 }
+
+.vraag-blok {
+  border: 1px solid #ddd8ec;
+  border-radius: 10px;
+  padding: 14px;
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vraag-blok-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.btn-verwijder-vraag {
+  background: none;
+  border: none;
+  color: #d63447;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.voortgang {
+  margin: 0;
+  font-size: 13px;
+  color: #6b6580;
+}
+
+.quiz-item {
+  border: 1px solid #ddd8ec;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.quiz-item-info strong {
+  display: block;
+}
+
+.quiz-item-info span {
+  font-size: 13px;
+  color: #6b6580;
+}
+
+.btn-spelen {
+  background: #34c77b;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-spelen:hover {
+  background: #2bab68;
+}
