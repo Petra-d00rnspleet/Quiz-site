@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Maker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- SCHERM: ALGEMEEN (startscherm) -->
+    <section id="scherm-algemeen" class="scherm actief">
+      <h1>Quiz App</h1>
+      <p class="subtitel">Maak een quiz of doe mee met een quiz</p>
+      <div class="knoppen-rij">
+        <button class="btn btn-primary" id="btn-naar-quizmaken">Quiz maken</button>
+        <button class="btn btn-secondary" id="btn-naar-meedoen">Meedoen aan quiz</button>
+      </div>
+    </section>
+
+    <!-- SCHERM: MEEDOEN AAN QUIZ -->
+    <section id="scherm-meedoen" class="scherm">
+      <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
+      <h2>Meedoen aan quiz</h2>
+      <p>Voer de code in die je hebt gekregen.</p>
+      <input type="text" id="input-code" placeholder="Bijv. AB12CD" maxlength="6">
+      <button class="btn btn-primary" id="btn-ga-naar-quiz">Ga naar quiz</button>
+      <p id="meedoen-foutmelding" class="foutmelding"></p>
+    </section>
+
+    <!-- SCHERM: QUIZ SPELEN (na code invoer) -->
+    <section id="scherm-quiz-spelen" class="scherm">
+      <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
+      <h2 id="quiz-titel-weergave"></h2>
+      <div id="quiz-vraag-weergave"></div>
+      <div id="quiz-antwoorden-weergave" class="antwoorden-lijst"></div>
+    </section>
+
+    <!-- SCHERM: QUIZ MAKEN (overzicht) -->
+    <section id="scherm-quizmaken" class="scherm">
+      <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
+      <h2>Mijn quizzen</h2>
+      <button class="btn btn-primary" id="btn-toevoegen-quiz">+ Quiz</button>
+      <div id="lijst-eigen-quizzen"></div>
+    </section>
+
+    <!-- SCHERM: NIEUWE QUIZ INVULLEN -->
+    <section id="scherm-nieuwe-quiz" class="scherm">
+      <button class="btn-terug" data-terug-naar="scherm-quizmaken">&larr; Terug</button>
+      <h2>Nieuwe quiz</h2>
+
+      <label for="input-titel">Titel van de quiz</label>
+      <input type="text" id="input-titel" placeholder="Bijv. Algemene kennis">
+
+      <label for="input-vraag">Vraag</label>
+      <input type="text" id="input-vraag" placeholder="Typ hier de vraag">
+
+      <label>Antwoorden</label>
+      <input type="text" id="input-antwoord-1" placeholder="Antwoord 1">
+      <input type="text" id="input-antwoord-2" placeholder="Antwoord 2">
+      <input type="text" id="input-antwoord-3" placeholder="Antwoord 3">
+      <input type="text" id="input-antwoord-4" placeholder="Antwoord 4">
+
+      <label for="select-goed-antwoord">Welk antwoord is goed?</label>
+      <select id="select-goed-antwoord">
+        <option value="1">Antwoord 1</option>
+        <option value="2">Antwoord 2</option>
+        <option value="3">Antwoord 3</option>
+        <option value="4">Antwoord 4</option>
+      </select>
+
+      <button class="btn btn-primary" id="btn-quiz-opslaan">Quiz opslaan</button>
+      <p id="quizmaken-foutmelding" class="foutmelding"></p>
+    </section>
+
+    <!-- SCHERM: QUIZ OPGESLAGEN (code weergeven) -->
+    <section id="scherm-quiz-klaar" class="scherm">
+      <h2>Quiz opgeslagen! 🎉</h2>
+      <p>Deel deze code met anderen zodat zij kunnen meedoen:</p>
+      <div class="code-weergave" id="code-weergave"></div>
+      <button class="btn btn-primary" data-terug-naar="scherm-algemeen">Naar startscherm</button>
+    </section>
+
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+  <script src="firebase-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
