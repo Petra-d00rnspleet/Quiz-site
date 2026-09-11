@@ -14,21 +14,56 @@ document.getElementById('btn-naar-meedoen').addEventListener('click', () => {
   toonScherm('scherm-meedoen');
 });
 
-document.getElementById('btn-toevoegen-quiz').addEventListener('click', () => {
-  document.getElementById('input-titel').value = '';
-  document.getElementById('input-vraag').value = '';
-  document.getElementById('input-antwoord-1').value = '';
-  document.getElementById('input-antwoord-2').value = '';
-  document.getElementById('input-antwoord-3').value = '';
-  document.getElementById('input-antwoord-4').value = '';
-  document.getElementById('quizmaken-foutmelding').textContent = '';
-  toonScherm('scherm-nieuwe-quiz');
-});
-
 document.querySelectorAll('[data-terug-naar]').forEach(knop => {
   knop.addEventListener('click', () => {
-    toonScherm(knop.getAttribute('data-terug-naar'));
+    const doel = knop.getAttribute('data-terug-naar');
+    toonScherm(doel);
+    if (doel === 'scherm-quizmaken') {
+      laadEigenQuizzen();
+    }
   });
+});
+
+// ---------- Vraagblokken opbouwen (nieuwe quiz) ----------
+
+const vragenContainer = document.getElementById('vragen-container');
+const sjabloonVraagBlok = document.getElementById('sjabloon-vraag-blok');
+
+function vernummerVraagBlokken() {
+  const blokken = vragenContainer.querySelectorAll('.vraag-blok');
+  blokken.forEach((blok, index) => {
+    blok.querySelector('.vraag-blok-titel').textContent = 'Vraag ' + (index + 1);
+  });
+}
+
+function voegVraagBlokToe() {
+  const kloon = sjabloonVraagBlok.content.cloneNode(true);
+  const blokEl = kloon.querySelector('.vraag-blok');
+
+  blokEl.querySelector('.btn-verwijder-vraag').addEventListener('click', () => {
+    const aantalBlokken = vragenContainer.querySelectorAll('.vraag-blok').length;
+    if (aantalBlokken <= 1) {
+      document.getElementById('quizmaken-foutmelding').textContent = 'Een quiz heeft minstens 1 vraag nodig.';
+      return;
+    }
+    blokEl.remove();
+    vernummerVraagBlokken();
+  });
+
+  vragenContainer.appendChild(blokEl);
+  vernummerVraagBlokken();
+}
+
+document.getElementById('btn-vraag-toevoegen').addEventListener('click', () => {
+  voegVraagBlokToe();
+});
+
+document.getElementById('btn-toevoegen-quiz').addEventListener('click', () => {
+  document.getElementById('input-titel').value = '';
+  vragenContainer.innerHTML = '';
+  document.getElementById('quizmaken-foutmelding').textContent = '';
+  voegVraagBlokToe();
+  toonScherm('scherm-nieuwe-quiz');
 });
 
 // ---------- Quiz opslaan ----------
@@ -44,67 +79,95 @@ function genereerCode() {
 
 document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
   const titel = document.getElementById('input-titel').value.trim();
-  const vraag = document.getElementById('input-vraag').value.trim();
-  const antwoord1 = document.getElementById('input-antwoord-1').value.trim();
-  const antwoord2 = document.getElementById('input-antwoord-2').value.trim();
-  const antwoord3 = document.getElementById('input-antwoord-3').value.trim();
-  const antwoord4 = document.getElementById('input-antwoord-4').value.trim();
-  const goedAntwoord = document.getElementById('select-goed-antwoord').value;
-
   const foutmelding = document.getElementById('quizmaken-foutmelding');
+  foutmelding.textContent = '';
 
-  if (!titel || !vraag || !antwoord1 || !antwoord2 || !antwoord3 || !antwoord4) {
-    foutmelding.textContent = 'Vul alle velden in.';
+  if (!titel) {
+    foutmelding.textContent = 'Vul een titel in.';
     return;
+  }
+
+  const blokken = vragenContainer.querySelectorAll('.vraag-blok');
+  if (blokken.length === 0) {
+    foutmelding.textContent = 'Voeg minstens 1 vraag toe.';
+    return;
+  }
+
+  const vragen = [];
+
+  for (const blok of blokken) {
+    const vraagTekst = blok.querySelector('.veld-vraag').value.trim();
+    const antwoordVelden = blok.querySelectorAll('.veld-antwoord');
+    const antwoorden = Array.from(antwoordVelden).map(veld => veld.value.trim());
+    const goedAntwoord = parseInt(blok.querySelector('.veld-goed').value, 10);
+
+    if (!vraagTekst || antwoorden.some(a => !a)) {
+      foutmelding.textContent = 'Vul bij elke vraag de vraagtekst en alle 4 antwoorden in.';
+      return;
+    }
+
+    vragen.push({
+      vraag: vraagTekst,
+      antwoorden: antwoorden,
+      goedAntwoord: goedAntwoord
+    });
   }
 
   const code = genereerCode();
 
   const quizData = {
     titel: titel,
-    vraag: vraag,
-    antwoorden: [antwoord1, antwoord2, antwoord3, antwoord4],
-    goedAntwoord: parseInt(goedAntwoord, 10),
+    vragen: vragen,
     aangemaaktOp: Date.now()
   };
 
   db.ref('quizzen/' + code).set(quizData)
     .then(() => {
-      // Code lokaal onthouden zodat "Mijn quizzen" ze kan tonen
-      const eigenCodes = JSON.parse(localStorage.getItem('eigenQuizCodes') || '[]');
-      eigenCodes.push(code);
-      localStorage.setItem('eigenQuizCodes', JSON.stringify(eigenCodes));
+      // Titel + code lokaal onthouden zodat "Mijn quizzen" ze kan tonen
+      const eigenQuizzen = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]');
+      eigenQuizzen.push({ code: code, titel: titel, aantalVragen: vragen.length });
+      localStorage.setItem('eigenQuizzen', JSON.stringify(eigenQuizzen));
 
-      document.getElementById('code-weergave').textContent = code;
-      toonScherm('scherm-quiz-klaar');
+      toonScherm('scherm-quizmaken');
+      laadEigenQuizzen();
     })
     .catch(err => {
       foutmelding.textContent = 'Opslaan mislukt: ' + err.message;
     });
 });
 
-// ---------- Eigen quizzen tonen ----------
+// ---------- Eigen quizzen tonen (overzicht) ----------
 
 function laadEigenQuizzen() {
   const lijstEl = document.getElementById('lijst-eigen-quizzen');
   lijstEl.innerHTML = '';
 
-  const eigenCodes = JSON.parse(localStorage.getItem('eigenQuizCodes') || '[]');
+  const eigenQuizzen = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]');
 
-  if (eigenCodes.length === 0) {
+  if (eigenQuizzen.length === 0) {
     lijstEl.innerHTML = '<p>Je hebt nog geen quiz gemaakt.</p>';
     return;
   }
 
-  eigenCodes.forEach(code => {
-    db.ref('quizzen/' + code).once('value').then(snapshot => {
-      const data = snapshot.val();
-      if (!data) return;
-      const item = document.createElement('div');
-      item.className = 'quiz-item';
-      item.innerHTML = `<strong>${data.titel}</strong><span>Code: ${code}</span>`;
-      lijstEl.appendChild(item);
+  eigenQuizzen.forEach(quiz => {
+    const item = document.createElement('div');
+    item.className = 'quiz-item';
+
+    const info = document.createElement('div');
+    info.className = 'quiz-item-info';
+    info.innerHTML = `<strong>${quiz.titel}</strong><span>${quiz.aantalVragen} vraag/vragen</span>`;
+
+    const speelKnop = document.createElement('button');
+    speelKnop.className = 'btn-spelen';
+    speelKnop.textContent = 'Spelen';
+    speelKnop.addEventListener('click', () => {
+      document.getElementById('code-weergave').textContent = quiz.code;
+      toonScherm('scherm-quiz-klaar');
     });
+
+    item.appendChild(info);
+    item.appendChild(speelKnop);
+    lijstEl.appendChild(item);
   });
 }
 
@@ -127,43 +190,75 @@ document.getElementById('btn-ga-naar-quiz').addEventListener('click', () => {
         foutmelding.textContent = 'Geen quiz gevonden met deze code.';
         return;
       }
-      toonQuiz(code, data);
+      document.getElementById('input-code').value = '';
+      startQuiz(data);
     })
     .catch(err => {
       foutmelding.textContent = 'Er ging iets mis: ' + err.message;
     });
 });
 
-function toonQuiz(code, data) {
+// ---------- Quiz spelen (meerdere vragen na elkaar) ----------
+
+let huidigeQuizData = null;
+let huidigeVraagIndex = 0;
+
+function startQuiz(data) {
+  huidigeQuizData = data;
+  huidigeVraagIndex = 0;
   document.getElementById('quiz-titel-weergave').textContent = data.titel;
-  document.getElementById('quiz-vraag-weergave').textContent = data.vraag;
+  toonScherm('scherm-quiz-spelen');
+  toonVraag();
+}
+
+function toonVraag() {
+  const vraag = huidigeQuizData.vragen[huidigeVraagIndex];
+  const totaalVragen = huidigeQuizData.vragen.length;
+
+  document.getElementById('quiz-voortgang-weergave').textContent =
+    'Vraag ' + (huidigeVraagIndex + 1) + ' van ' + totaalVragen;
+  document.getElementById('quiz-vraag-weergave').textContent = vraag.vraag;
 
   const antwoordenEl = document.getElementById('quiz-antwoorden-weergave');
   antwoordenEl.innerHTML = '';
+  antwoordenEl.dataset.beantwoord = 'false';
 
-  data.antwoorden.forEach((antwoordTekst, index) => {
+  const volgendeKnop = document.getElementById('btn-volgende-vraag');
+  volgendeKnop.style.display = 'none';
+  volgendeKnop.textContent = (huidigeVraagIndex + 1 < totaalVragen) ? 'Volgende vraag' : 'Klaar';
+
+  vraag.antwoorden.forEach((antwoordTekst, index) => {
     const optie = document.createElement('div');
     optie.className = 'antwoord-optie';
     optie.textContent = antwoordTekst;
 
     optie.addEventListener('click', () => {
-      // Voorkom dubbel klikken
       if (antwoordenEl.dataset.beantwoord === 'true') return;
       antwoordenEl.dataset.beantwoord = 'true';
 
       const gekozenNummer = index + 1;
-      if (gekozenNummer === data.goedAntwoord) {
+      if (gekozenNummer === vraag.goedAntwoord) {
         optie.classList.add('goed');
       } else {
         optie.classList.add('fout');
-        // Toon ook welk antwoord wel goed was
-        const goedeOptie = antwoordenEl.children[data.goedAntwoord - 1];
+        const goedeOptie = antwoordenEl.children[vraag.goedAntwoord - 1];
         goedeOptie.classList.add('goed');
       }
+
+      volgendeKnop.style.display = 'block';
     });
 
     antwoordenEl.appendChild(optie);
   });
-
-  toonScherm('scherm-quiz-spelen');
 }
+
+document.getElementById('btn-volgende-vraag').addEventListener('click', () => {
+  const totaalVragen = huidigeQuizData.vragen.length;
+  if (huidigeVraagIndex + 1 < totaalVragen) {
+    huidigeVraagIndex++;
+    toonVraag();
+  } else {
+    // Klaar met de quiz
+    toonScherm('scherm-algemeen');
+  }
+});
