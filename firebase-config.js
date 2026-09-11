@@ -3,13 +3,13 @@
 // Project instellingen -> Algemeen -> "Jouw apps" -> Web app -> SDK setup and configuration
 
 const firebaseConfig = {
-  apiKey: "VUL_HIER_IN",
-  authDomain: "VUL_HIER_IN.firebaseapp.com",
-  databaseURL: "https://VUL_HIER_IN-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "VUL_HIER_IN",
-  storageBucket: "VUL_HIER_IN.appspot.com",
-  messagingSenderId: "VUL_HIER_IN",
-  appId: "VUL_HIER_IN"
+  apiKey: "AIzaSyD9tLFsO8SXHgoqs2_n7wl8FPlcB_w-yz0",
+  authDomain: "quizwebsite-f7951.firebaseapp.com",
+  databaseURL: "https://console.firebase.google.com/project/quizwebsite-f7951/database/quizwebsite-f7951-default-rtdb/data",
+  projectId: "quizwebsite-f7951",
+  storageBucket: "quizwebsite-f7951.firebasestorage.app",
+  messagingSenderId: "560493888721",
+  appId: "1:560493888721:web:2726e9d4a86bbf3df231f0"
 };
 
 firebase.initializeApp(firebaseConfig);
