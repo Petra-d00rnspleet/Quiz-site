@@ -8,22 +8,24 @@
 </head>
 <body>
 
+  <div id="firebase-fout-balk"></div>
+
   <div class="container">
 
     <!-- SCHERM: ALGEMEEN (startscherm) -->
     <section id="scherm-algemeen" class="scherm actief">
-      <h1>Quiz App</h1>
+      <h1 class="titel-regenboog">Quizzzzz</h1>
       <p class="subtitel">Maak een quiz of doe mee met een quiz</p>
-      <div class="knoppen-rij">
-        <button class="btn btn-primary" id="btn-naar-quizmaken">Quiz maken</button>
-        <button class="btn btn-secondary" id="btn-naar-meedoen">Meedoen aan quiz</button>
+      <div class="vakken-rij">
+        <button class="vak vak-maken" id="btn-naar-quizmaken">Quiz maken</button>
+        <button class="vak vak-meedoen" id="btn-naar-meedoen">Meedoen aan quiz</button>
       </div>
     </section>
 
     <!-- SCHERM: MEEDOEN AAN QUIZ -->
     <section id="scherm-meedoen" class="scherm">
       <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
-      <h2>Meedoen aan quiz</h2>
+      <h2 class="titel-regenboog">Meedoen aan quiz</h2>
       <p>Voer de code in die je hebt gekregen.</p>
       <input type="text" id="input-code" placeholder="Bijv. AB12CD" maxlength="6">
       <button class="btn btn-primary" id="btn-ga-naar-quiz">Ga naar quiz</button>
@@ -33,7 +35,7 @@
     <!-- SCHERM: QUIZ SPELEN (na code invoer) -->
     <section id="scherm-quiz-spelen" class="scherm">
       <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
-      <h2 id="quiz-titel-weergave"></h2>
+      <h2 id="quiz-titel-weergave" class="titel-regenboog"></h2>
       <p id="quiz-voortgang-weergave" class="voortgang"></p>
       <div id="quiz-vraag-weergave"></div>
       <div id="quiz-antwoorden-weergave" class="antwoorden-lijst"></div>
@@ -43,7 +45,7 @@
     <!-- SCHERM: QUIZ MAKEN (overzicht) -->
     <section id="scherm-quizmaken" class="scherm">
       <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
-      <h2>Mijn quizzen</h2>
+      <h2 class="titel-regenboog">Mijn quizzen</h2>
       <button class="btn btn-primary" id="btn-toevoegen-quiz">+ Quiz</button>
       <div id="lijst-eigen-quizzen"></div>
     </section>
@@ -51,7 +53,7 @@
     <!-- SCHERM: NIEUWE QUIZ INVULLEN -->
     <section id="scherm-nieuwe-quiz" class="scherm">
       <button class="btn-terug" data-terug-naar="scherm-quizmaken">&larr; Terug</button>
-      <h2>Nieuwe quiz</h2>
+      <h2 class="titel-regenboog">Nieuwe quiz</h2>
 
       <label for="input-titel">Titel van de quiz</label>
       <input type="text" id="input-titel" placeholder="Bijv. Algemene kennis">
@@ -66,7 +68,7 @@
     <!-- SCHERM: QUIZ OPGESLAGEN (code weergeven) -->
     <section id="scherm-quiz-klaar" class="scherm">
       <button class="btn-terug" data-terug-naar="scherm-quizmaken">&larr; Terug</button>
-      <h2>Quiz klaar om te spelen! 🎉</h2>
+      <h2 class="titel-regenboog">Quiz klaar om te spelen! 🎉</h2>
       <p>Deel deze code met anderen zodat zij kunnen meedoen:</p>
       <div class="code-weergave" id="code-weergave"></div>
       <button class="btn btn-primary" data-terug-naar="scherm-algemeen">Naar startscherm</button>
