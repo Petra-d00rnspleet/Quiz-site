@@ -34,8 +34,10 @@
     <section id="scherm-quiz-spelen" class="scherm">
       <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
       <h2 id="quiz-titel-weergave"></h2>
+      <p id="quiz-voortgang-weergave" class="voortgang"></p>
       <div id="quiz-vraag-weergave"></div>
       <div id="quiz-antwoorden-weergave" class="antwoorden-lijst"></div>
+      <button class="btn btn-primary" id="btn-volgende-vraag" style="display:none;">Volgende vraag</button>
     </section>
 
     <!-- SCHERM: QUIZ MAKEN (overzicht) -->
@@ -54,36 +56,50 @@
       <label for="input-titel">Titel van de quiz</label>
       <input type="text" id="input-titel" placeholder="Bijv. Algemene kennis">
 
-      <label for="input-vraag">Vraag</label>
-      <input type="text" id="input-vraag" placeholder="Typ hier de vraag">
+      <div id="vragen-container"></div>
 
-      <label>Antwoorden</label>
-      <input type="text" id="input-antwoord-1" placeholder="Antwoord 1">
-      <input type="text" id="input-antwoord-2" placeholder="Antwoord 2">
-      <input type="text" id="input-antwoord-3" placeholder="Antwoord 3">
-      <input type="text" id="input-antwoord-4" placeholder="Antwoord 4">
-
-      <label for="select-goed-antwoord">Welk antwoord is goed?</label>
-      <select id="select-goed-antwoord">
-        <option value="1">Antwoord 1</option>
-        <option value="2">Antwoord 2</option>
-        <option value="3">Antwoord 3</option>
-        <option value="4">Antwoord 4</option>
-      </select>
-
+      <button class="btn btn-secondary" id="btn-vraag-toevoegen" type="button">+ Vraag toevoegen</button>
       <button class="btn btn-primary" id="btn-quiz-opslaan">Quiz opslaan</button>
       <p id="quizmaken-foutmelding" class="foutmelding"></p>
     </section>
 
     <!-- SCHERM: QUIZ OPGESLAGEN (code weergeven) -->
     <section id="scherm-quiz-klaar" class="scherm">
-      <h2>Quiz opgeslagen! 🎉</h2>
+      <button class="btn-terug" data-terug-naar="scherm-quizmaken">&larr; Terug</button>
+      <h2>Quiz klaar om te spelen! 🎉</h2>
       <p>Deel deze code met anderen zodat zij kunnen meedoen:</p>
       <div class="code-weergave" id="code-weergave"></div>
       <button class="btn btn-primary" data-terug-naar="scherm-algemeen">Naar startscherm</button>
     </section>
 
   </div>
+
+  <!-- Sjabloon voor één vraagblok (wordt door JS gekloond) -->
+  <template id="sjabloon-vraag-blok">
+    <div class="vraag-blok">
+      <div class="vraag-blok-header">
+        <strong class="vraag-blok-titel">Vraag</strong>
+        <button class="btn-verwijder-vraag" type="button">Verwijderen</button>
+      </div>
+
+      <label>Vraag</label>
+      <input type="text" class="veld-vraag" placeholder="Typ hier de vraag">
+
+      <label>Antwoorden</label>
+      <input type="text" class="veld-antwoord" data-antwoord-index="1" placeholder="Antwoord 1">
+      <input type="text" class="veld-antwoord" data-antwoord-index="2" placeholder="Antwoord 2">
+      <input type="text" class="veld-antwoord" data-antwoord-index="3" placeholder="Antwoord 3">
+      <input type="text" class="veld-antwoord" data-antwoord-index="4" placeholder="Antwoord 4">
+
+      <label>Welk antwoord is goed?</label>
+      <select class="veld-goed">
+        <option value="1">Antwoord 1</option>
+        <option value="2">Antwoord 2</option>
+        <option value="3">Antwoord 3</option>
+        <option value="4">Antwoord 4</option>
+      </select>
+    </div>
+  </template>
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
