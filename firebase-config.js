@@ -5,7 +5,7 @@
 const firebaseConfig = {
   apiKey: "AIzaSyD9tLFsO8SXHgoqs2_n7wl8FPlcB_w-yz0",
   authDomain: "quizwebsite-f7951.firebaseapp.com",
-  databaseURL: "https://console.firebase.google.com/project/quizwebsite-f7951/database/quizwebsite-f7951-default-rtdb/data",
+  databaseURL: "https://quizwebsite-f7951-default-rtdb.europe-west1.firebasedatabase.app/",
   projectId: "quizwebsite-f7951",
   storageBucket: "quizwebsite-f7951.firebasestorage.app",
   messagingSenderId: "560493888721",
