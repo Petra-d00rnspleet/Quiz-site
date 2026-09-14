@@ -391,10 +391,22 @@ function renderSessieVoorHost(sessie) {
 
     const lijstEl = document.getElementById('host-wachtkamer-spelerslijst');
     lijstEl.innerHTML = '';
-    Object.values(spelers).forEach(speler => {
+    Object.entries(spelers).forEach(([spelerId, speler]) => {
       const chip = document.createElement('div');
       chip.className = 'speler-chip';
-      chip.textContent = speler.naam;
+      chip.title = 'Klik om ' + speler.naam + ' te verwijderen';
+      chip.innerHTML = '<span class="speler-chip-naam">' + speler.naam + '</span><span class="speler-chip-kruis">&times;</span>';
+      chip.addEventListener('click', () => {
+        db.ref('sessies/' + huidigeSessieCode + '/spelers/' + spelerId).remove();
+        db.ref('sessies/' + huidigeSessieCode + '/antwoorden').once('value').then(antwoordenSnapshot => {
+          const antwoorden = antwoordenSnapshot.val() || {};
+          Object.keys(antwoorden).forEach(vraagIndex => {
+            if (antwoorden[vraagIndex] && antwoorden[vraagIndex][spelerId]) {
+              db.ref('sessies/' + huidigeSessieCode + '/antwoorden/' + vraagIndex + '/' + spelerId).remove();
+            }
+          });
+        });
+      });
       lijstEl.appendChild(chip);
     });
 
@@ -419,7 +431,9 @@ function renderSessieVoorHost(sessie) {
 
     const antwoordenVoorVraag = (sessie.antwoorden && sessie.antwoorden[sessie.huidigeVraagIndex]) || {};
     const aantalGeantwoord = Object.keys(antwoordenVoorVraag).length;
-    document.getElementById('host-antwoord-teller').textContent =
+    const tellerEl = document.getElementById('host-antwoord-teller');
+    tellerEl.classList.add('laad-rij');
+    tellerEl.innerHTML = '<span class="laad-spinner"></span>' +
       aantalGeantwoord + ' van ' + aantalSpelers + ' spelers hebben geantwoord';
 
     toonScherm('scherm-host-vraag');
@@ -594,6 +608,17 @@ document.getElementById('btn-speler-terug-naar-start').addEventListener('click',
 });
 
 function renderSessieVoorSpeler(sessie) {
+  const spelers = sessie.spelers || {};
+
+  if (huidigeSpelerId && !spelers[huidigeSpelerId]) {
+    // De host heeft deze speler uit de sessie verwijderd.
+    stopSessieListener();
+    huidigeRol = null;
+    alert('Je bent door de quizmaster uit de quiz gezet.');
+    toonScherm('scherm-algemeen');
+    return;
+  }
+
   if (sessie.status === 'wachtkamer') {
     toonScherm('scherm-speler-wachtkamer');
   }
@@ -618,8 +643,26 @@ function renderSessieVoorSpeler(sessie) {
 
     if (eigenAntwoord) {
       antwoordenEl.innerHTML = '';
-      statusEl.textContent = 'Antwoord verzonden! Wacht op de andere spelers...';
+      vraag.antwoorden.forEach((tekst, index) => {
+        const nummer = index + 1;
+        const optie = document.createElement('div');
+        optie.className = 'antwoord-optie';
+        optie.textContent = tekst;
+        if (nummer === vraag.goedAntwoord) {
+          optie.classList.add('goed');
+        } else if (nummer === eigenAntwoord.antwoordIndex) {
+          optie.classList.add('fout');
+        }
+        antwoordenEl.appendChild(optie);
+      });
+
+      statusEl.classList.add('laad-rij');
+      statusEl.innerHTML = '<span class="laad-spinner"></span>' +
+        (eigenAntwoord.antwoordIndex === vraag.goedAntwoord
+          ? 'Goed! Wacht op de andere spelers...'
+          : 'Helaas, dat was niet goed. Wacht op de andere spelers...');
     } else {
+      statusEl.classList.remove('laad-rij');
       statusEl.textContent = '';
       antwoordenEl.innerHTML = '';
       vraag.antwoorden.forEach((tekst, index) => {
@@ -644,7 +687,6 @@ function renderSessieVoorSpeler(sessie) {
   }
 
   if (sessie.status === 'scorebord' || sessie.status === 'afgelopen') {
-    const spelers = sessie.spelers || {};
     const vraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
 
     document.getElementById('speler-scorebord-titel').textContent =
@@ -654,8 +696,14 @@ function renderSessieVoorSpeler(sessie) {
 
     renderScorebordLijst('speler-scorebord-lijst', spelers, huidigeSpelerId);
 
-    document.getElementById('speler-scorebord-status').textContent =
-      sessie.status === 'afgelopen' ? '' : 'Wacht tot de quizmaster verdergaat...';
+    const scorebordStatusEl = document.getElementById('speler-scorebord-status');
+    if (sessie.status === 'afgelopen') {
+      scorebordStatusEl.classList.remove('laad-rij');
+      scorebordStatusEl.textContent = '';
+    } else {
+      scorebordStatusEl.classList.add('laad-rij');
+      scorebordStatusEl.innerHTML = '<span class="laad-spinner"></span>Wacht tot de quizmaster verdergaat...';
+    }
 
     document.getElementById('btn-speler-terug-naar-start').style.display =
       sessie.status === 'afgelopen' ? 'block' : 'none';
