@@ -56,13 +56,7 @@ body {
 /* ---------- Regenboog titelstijl (overal hergebruikt) ---------- */
 
 .titel-regenboog {
-  background: linear-gradient(90deg,
-    #ff2d55, #ff9500, #ffee00, #37e07c, #00c3ff, #6c5ce7, #ff2d55);
-  background-size: 300% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: regenboog-schuiven 5s linear infinite;
+  color: #f2f2f5;
   font-weight: 800;
 }
 
@@ -71,7 +65,15 @@ body {
   100% { background-position: 300% 0; }
 }
 
+/* Alleen de titel op het startscherm (QUIZZZZZZZZZZZZZZ) krijgt regenboogkleuren */
 h1.titel-regenboog {
+  background: linear-gradient(90deg,
+    #ff2d55, #ff9500, #ffee00, #37e07c, #00c3ff, #6c5ce7, #ff2d55);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: regenboog-schuiven 5s linear infinite;
   font-size: 44px;
   text-align: center;
   letter-spacing: 1px;
@@ -150,10 +152,8 @@ h2.titel-regenboog {
 }
 
 .btn-primary {
-  background: linear-gradient(90deg, #ff2d55, #ff9500, #ffee00, #37e07c, #00c3ff, #6c5ce7);
-  background-size: 300% 100%;
+  background: #ffffff;
   color: #0a0a0a;
-  animation: regenboog-schuiven 6s linear infinite;
 }
 
 .btn-primary:hover {
@@ -223,12 +223,7 @@ label {
   padding: 18px;
   border-radius: 14px;
   margin: 12px 0;
-  background: linear-gradient(90deg, #ff2d55, #ff9500, #ffee00, #37e07c, #00c3ff, #6c5ce7, #ff2d55);
-  background-size: 300% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: regenboog-schuiven 5s linear infinite;
+  color: #f2f2f5;
 }
 
 .vraag-blok {
@@ -327,6 +322,10 @@ label {
   background: #123023;
   border-color: #37e07c;
   color: #8cf5b6;
+}
+
+.antwoord-optie.goed::after {
+  content: " ✔";
 }
 
 .antwoord-optie.fout {
@@ -433,12 +432,7 @@ label {
 
 .scorebord-score {
   font-weight: 800;
-  background: linear-gradient(90deg, #ff2d55, #ff9500, #ffee00, #37e07c, #00c3ff, #6c5ce7, #ff2d55);
-  background-size: 300% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: regenboog-schuiven 5s linear infinite;
+  color: #f2f2f5;
 }
 
 /* ---------- Quiz-item met meerdere knoppen ---------- */
