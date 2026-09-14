@@ -1,440 +1,665 @@
-* {
-  box-sizing: border-box;
+// ---------- Navigatie tussen schermen ----------
+
+function toonScherm(id) {
+  document.querySelectorAll('.scherm').forEach(el => el.classList.remove('actief'));
+  document.getElementById(id).classList.add('actief');
 }
 
-html, body {
-  height: 100%;
-  margin: 0;
+document.getElementById('btn-naar-quizmaken').addEventListener('click', () => {
+  toonScherm('scherm-quizmaken');
+  laadEigenQuizzen();
+});
+
+document.getElementById('btn-naar-meedoen').addEventListener('click', () => {
+  toonScherm('scherm-meedoen');
+});
+
+document.querySelectorAll('[data-terug-naar]').forEach(knop => {
+  knop.addEventListener('click', () => {
+    const doel = knop.getAttribute('data-terug-naar');
+    toonScherm(doel);
+    if (doel === 'scherm-quizmaken') {
+      laadEigenQuizzen();
+    }
+  });
+});
+
+// ---------- Vraagblokken opbouwen (nieuwe quiz) ----------
+
+const vragenContainer = document.getElementById('vragen-container');
+const sjabloonVraagBlok = document.getElementById('sjabloon-vraag-blok');
+
+// Als dit null is, wordt er een nieuwe quiz gemaakt. Anders wordt de quiz
+// met deze code bewerkt en overschreven in plaats van dat er een nieuwe
+// code wordt aangemaakt.
+let huidigeBewerkCode = null;
+
+function vernummerVraagBlokken() {
+  const blokken = vragenContainer.querySelectorAll('.vraag-blok');
+  blokken.forEach((blok, index) => {
+    blok.querySelector('.vraag-blok-titel').textContent = 'Vraag ' + (index + 1);
+  });
 }
 
-body {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  background: #000;
-  color: #f2f2f5;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: stretch;
+function voegVraagBlokToe(vraagData) {
+  const kloon = sjabloonVraagBlok.content.cloneNode(true);
+  const blokEl = kloon.querySelector('.vraag-blok');
+
+  if (vraagData) {
+    blokEl.querySelector('.veld-vraag').value = vraagData.vraag;
+    const antwoordVelden = blokEl.querySelectorAll('.veld-antwoord');
+    antwoordVelden.forEach((veld, i) => {
+      veld.value = vraagData.antwoorden[i] || '';
+    });
+    blokEl.querySelector('.veld-goed').value = vraagData.goedAntwoord;
+  }
+
+  blokEl.querySelector('.btn-verwijder-vraag').addEventListener('click', () => {
+    const aantalBlokken = vragenContainer.querySelectorAll('.vraag-blok').length;
+    if (aantalBlokken <= 1) {
+      document.getElementById('quizmaken-foutmelding').textContent = 'Een quiz heeft minstens 1 vraag nodig.';
+      return;
+    }
+    blokEl.remove();
+    vernummerVraagBlokken();
+  });
+
+  vragenContainer.appendChild(blokEl);
+  vernummerVraagBlokken();
 }
 
-/* Foutbalk bovenaan als Firebase niet goed is ingesteld */
-#firebase-fout-balk {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: #d63447;
-  color: white;
-  padding: 10px 16px;
-  font-size: 13px;
-  text-align: center;
-  z-index: 999;
+document.getElementById('btn-vraag-toevoegen').addEventListener('click', () => {
+  voegVraagBlokToe();
+});
+
+document.getElementById('btn-toevoegen-quiz').addEventListener('click', () => {
+  huidigeBewerkCode = null;
+  document.getElementById('input-titel').value = '';
+  vragenContainer.innerHTML = '';
+  document.getElementById('quizmaken-foutmelding').textContent = '';
+  document.getElementById('nieuwe-quiz-titel-kop').textContent = 'Nieuwe quiz';
+  document.getElementById('btn-quiz-opslaan').textContent = 'Quiz opslaan';
+  voegVraagBlokToe();
+  toonScherm('scherm-nieuwe-quiz');
+});
+
+function startBewerkenVanQuiz(code) {
+  db.ref('quizzen/' + code).once('value').then(snapshot => {
+    const quizData = snapshot.val();
+    if (!quizData) {
+      alert('Deze quiz kon niet gevonden worden (misschien is hij verwijderd).');
+      return;
+    }
+
+    huidigeBewerkCode = code;
+    document.getElementById('input-titel').value = quizData.titel;
+    vragenContainer.innerHTML = '';
+    document.getElementById('quizmaken-foutmelding').textContent = '';
+    quizData.vragen.forEach(vraag => voegVraagBlokToe(vraag));
+    document.getElementById('nieuwe-quiz-titel-kop').textContent = 'Quiz bewerken';
+    document.getElementById('btn-quiz-opslaan').textContent = 'Wijzigingen opslaan';
+    toonScherm('scherm-nieuwe-quiz');
+  });
 }
 
-.container {
-  width: 100%;
-  max-width: 720px;
-  min-height: 100vh;
-  background: #000;
-  padding: 32px 24px 48px;
-  display: flex;
-  flex-direction: column;
+// ---------- Quiz opslaan ----------
+
+function genereerCode() {
+  const tekens = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // zonder verwarrende tekens zoals O/0, I/1
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += tekens.charAt(Math.floor(Math.random() * tekens.length));
+  }
+  return code;
 }
 
-.scherm {
-  display: none;
-  flex-direction: column;
-  gap: 14px;
-  flex: 1;
+document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
+  const titel = document.getElementById('input-titel').value.trim();
+  const foutmelding = document.getElementById('quizmaken-foutmelding');
+  foutmelding.textContent = '';
+
+  if (!titel) {
+    foutmelding.textContent = 'Vul een titel in.';
+    return;
+  }
+
+  const blokken = vragenContainer.querySelectorAll('.vraag-blok');
+  if (blokken.length === 0) {
+    foutmelding.textContent = 'Voeg minstens 1 vraag toe.';
+    return;
+  }
+
+  const vragen = [];
+
+  for (const blok of blokken) {
+    const vraagTekst = blok.querySelector('.veld-vraag').value.trim();
+    const antwoordVelden = blok.querySelectorAll('.veld-antwoord');
+    const antwoorden = Array.from(antwoordVelden).map(veld => veld.value.trim());
+    const goedAntwoord = parseInt(blok.querySelector('.veld-goed').value, 10);
+
+    if (!vraagTekst || antwoorden.some(a => !a)) {
+      foutmelding.textContent = 'Vul bij elke vraag de vraagtekst en alle 4 antwoorden in.';
+      return;
+    }
+
+    vragen.push({
+      vraag: vraagTekst,
+      antwoorden: antwoorden,
+      goedAntwoord: goedAntwoord
+    });
+  }
+
+  if (huidigeBewerkCode) {
+    // Bestaande quiz bijwerken: zelfde code, alleen titel + vragen overschrijven.
+    const code = huidigeBewerkCode;
+
+    db.ref('quizzen/' + code).update({ titel: titel, vragen: vragen })
+      .then(() => {
+        const eigenQuizzen = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]');
+        const bijgewerkteLijst = eigenQuizzen.map(q =>
+          q.code === code ? { code: code, titel: titel, aantalVragen: vragen.length } : q
+        );
+        localStorage.setItem('eigenQuizzen', JSON.stringify(bijgewerkteLijst));
+
+        huidigeBewerkCode = null;
+        toonScherm('scherm-quizmaken');
+        laadEigenQuizzen();
+      })
+      .catch(err => {
+        foutmelding.textContent = 'Opslaan mislukt: ' + err.message;
+      });
+    return;
+  }
+
+  const code = genereerCode();
+
+  const quizData = {
+    titel: titel,
+    vragen: vragen,
+    aangemaaktOp: Date.now()
+  };
+
+  db.ref('quizzen/' + code).set(quizData)
+    .then(() => {
+      // Titel + code lokaal onthouden zodat "Mijn quizzen" ze kan tonen
+      const eigenQuizzen = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]');
+      eigenQuizzen.push({ code: code, titel: titel, aantalVragen: vragen.length });
+      localStorage.setItem('eigenQuizzen', JSON.stringify(eigenQuizzen));
+
+      document.getElementById('code-weergave').textContent = code;
+      toonScherm('scherm-quiz-klaar');
+    })
+    .catch(err => {
+      foutmelding.textContent = 'Opslaan mislukt: ' + err.message;
+    });
+});
+
+document.getElementById('btn-nu-hosten').addEventListener('click', () => {
+  const code = document.getElementById('code-weergave').textContent;
+  startHostenVanQuiz(code);
+});
+
+// ---------- Eigen quizzen tonen (overzicht) ----------
+
+function laadEigenQuizzen() {
+  const lijstEl = document.getElementById('lijst-eigen-quizzen');
+  lijstEl.innerHTML = '';
+
+  const eigenQuizzen = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]');
+
+  if (eigenQuizzen.length === 0) {
+    lijstEl.innerHTML = '<p>Je hebt nog geen quiz gemaakt.</p>';
+    return;
+  }
+
+  eigenQuizzen.forEach(quiz => {
+    const item = document.createElement('div');
+    item.className = 'quiz-item';
+
+    const info = document.createElement('div');
+    info.className = 'quiz-item-info';
+    info.innerHTML = `<strong>${quiz.titel}</strong><span>${quiz.aantalVragen} vraag/vragen</span>`;
+
+    const knoppen = document.createElement('div');
+    knoppen.className = 'quiz-item-knoppen';
+
+    const speelKnop = document.createElement('button');
+    speelKnop.className = 'btn-spelen';
+    speelKnop.textContent = 'Spelen';
+    speelKnop.addEventListener('click', () => {
+      startHostenVanQuiz(quiz.code);
+    });
+
+    const aanpassenKnop = document.createElement('button');
+    aanpassenKnop.className = 'btn-aanpassen-quiz';
+    aanpassenKnop.textContent = 'Aanpassen';
+    aanpassenKnop.addEventListener('click', () => {
+      startBewerkenVanQuiz(quiz.code);
+    });
+
+    const verwijderKnop = document.createElement('button');
+    verwijderKnop.className = 'btn-verwijderen-quiz';
+    verwijderKnop.textContent = 'Verwijderen';
+    verwijderKnop.addEventListener('click', () => {
+      const zekerWeten = confirm('Weet je zeker dat je "' + quiz.titel + '" wilt verwijderen? Dit kan niet ongedaan gemaakt worden.');
+      if (!zekerWeten) return;
+
+      db.ref('quizzen/' + quiz.code).remove()
+        .then(() => db.ref('sessies/' + quiz.code).remove())
+        .then(() => {
+          const bijgewerkteLijst = eigenQuizzen.filter(q => q.code !== quiz.code);
+          localStorage.setItem('eigenQuizzen', JSON.stringify(bijgewerkteLijst));
+          laadEigenQuizzen();
+        })
+        .catch(err => {
+          alert('Verwijderen mislukt: ' + err.message);
+        });
+    });
+
+    knoppen.appendChild(speelKnop);
+    knoppen.appendChild(aanpassenKnop);
+    knoppen.appendChild(verwijderKnop);
+
+    item.appendChild(info);
+    item.appendChild(knoppen);
+    lijstEl.appendChild(item);
+  });
 }
 
-.scherm.actief {
-  display: flex;
-}
+// ================================================================
+//  LIVE QUIZ: hosten, meedoen, spelen en scorebord
+// ================================================================
+//
+// Structuur in Firebase:
+//   quizzen/<code>            -> titel, vragen, aangemaaktOp  (al bestond)
+//   sessies/<code>            -> status, huidigeVraagIndex, spelers, antwoorden
+//     status: 'wachtkamer' | 'vraag' | 'scorebord' | 'afgelopen'
+//     spelers/<spelerId>      -> naam, score, totaleReactietijd
+//     antwoorden/<vraagIndex>/<spelerId> -> antwoordIndex, reactietijdMs
+//
+// Puntentelling: een goed antwoord levert 1000 punten op. Bij een gelijke
+// stand wint degene die (opgeteld over de vragen) het snelst klikte.
 
-/* ---------- Regenboog titelstijl (overal hergebruikt) ---------- */
+let huidigeSessieRef = null;
+let huidigeRol = null; // 'host' of 'speler'
+let huidigeSessieCode = null;
+let huidigeQuizVragen = [];
+let huidigeQuizTitel = '';
+let huidigeVraagIndexHost = -1;
+let huidigeSpelerId = null;
 
-.titel-regenboog {
-  background: linear-gradient(90deg,
-    #ff2d55, #ff9500, #ffee00, #37e07c, #00c3ff, #6c5ce7, #ff2d55);
-  background-size: 300% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: regenboog-schuiven 5s linear infinite;
-  font-weight: 800;
-}
+let laatstGetoondeVraagIndexSpeler = -1;
+let vraagGetoondOpSpeler = 0;
+let spelerHeeftGeantwoord = false;
 
-@keyframes regenboog-schuiven {
-  0%   { background-position: 0% 0; }
-  100% { background-position: 300% 0; }
-}
-
-h1.titel-regenboog {
-  font-size: 44px;
-  text-align: center;
-  letter-spacing: 1px;
-  margin: 12px 0 4px;
-}
-
-h2.titel-regenboog {
-  font-size: 26px;
-  margin: 0 0 4px 0;
-}
-
-.subtitel {
-  margin: 0 0 20px 0;
-  color: #9a97a8;
-  text-align: center;
-}
-
-/* ---------- Grote vakken op het startscherm ---------- */
-
-.vakken-rij {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-  margin-top: 12px;
-}
-
-@media (max-width: 560px) {
-  .vakken-rij {
-    grid-template-columns: 1fr;
+function stopSessieListener() {
+  if (huidigeSessieRef) {
+    huidigeSessieRef.off();
+    huidigeSessieRef = null;
   }
 }
 
-.vak {
-  border: none;
-  border-radius: 20px;
-  padding: 24px;
-  font-size: 20px;
-  font-weight: 700;
-  color: #fff;
-  cursor: pointer;
-  min-height: 220px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  background: #121218;
-  border: 1px solid #2a2a35;
-  position: relative;
-  transition: transform 0.15s ease, border-color 0.15s ease;
+function luisterNaarSessie(code) {
+  stopSessieListener();
+  huidigeSessieRef = db.ref('sessies/' + code);
+  huidigeSessieRef.on('value', snapshot => {
+    const sessie = snapshot.val();
+    if (!sessie) return;
+    if (huidigeRol === 'host') {
+      renderSessieVoorHost(sessie);
+    } else if (huidigeRol === 'speler') {
+      renderSessieVoorSpeler(sessie);
+    }
+  });
 }
 
-.vak:hover {
-  transform: translateY(-4px);
-  border-color: transparent;
-  box-shadow: 0 0 0 2px #6c5ce7, 0 12px 30px rgba(108, 92, 231, 0.35);
+function renderScorebordLijst(containerId, spelers, eigenSpelerId) {
+  const lijstEl = document.getElementById(containerId);
+  lijstEl.innerHTML = '';
+
+  const gesorteerdeSpelers = Object.entries(spelers || {}).sort((a, b) => {
+    const scoreA = (a[1].score) || 0;
+    const scoreB = (b[1].score) || 0;
+    if (scoreB !== scoreA) return scoreB - scoreA;
+    const tijdA = (a[1].totaleReactietijd) || 0;
+    const tijdB = (b[1].totaleReactietijd) || 0;
+    return tijdA - tijdB; // sneller (lagere tijd) wint bij gelijke stand
+  });
+
+  gesorteerdeSpelers.forEach(([spelerId, speler], index) => {
+    const rij = document.createElement('div');
+    rij.className = 'scorebord-rij' + (spelerId === eigenSpelerId ? ' eigen' : '');
+
+    const plek = document.createElement('div');
+    plek.className = 'scorebord-plek';
+    plek.textContent = '#' + (index + 1);
+
+    const naam = document.createElement('div');
+    naam.className = 'scorebord-naam';
+    naam.textContent = speler.naam;
+
+    const score = document.createElement('div');
+    score.className = 'scorebord-score';
+    score.textContent = (speler.score || 0) + ' pt';
+
+    rij.appendChild(plek);
+    rij.appendChild(naam);
+    rij.appendChild(score);
+    lijstEl.appendChild(rij);
+  });
 }
 
-.vak-maken {
-  background: linear-gradient(160deg, #1c1330 0%, #121218 60%);
+// ---------- Hosten (de maker van de quiz speelt hem live) ----------
+
+function startHostenVanQuiz(code) {
+  db.ref('quizzen/' + code).once('value').then(snapshot => {
+    const quizData = snapshot.val();
+    if (!quizData) {
+      alert('Deze quiz kon niet gevonden worden (misschien is hij verwijderd).');
+      return;
+    }
+
+    huidigeQuizVragen = quizData.vragen;
+    huidigeQuizTitel = quizData.titel;
+    huidigeSessieCode = code;
+    huidigeRol = 'host';
+    huidigeVraagIndexHost = -1;
+
+    const nieuweSessie = {
+      status: 'wachtkamer',
+      huidigeVraagIndex: -1,
+      spelers: {},
+      antwoorden: {}
+    };
+
+    db.ref('sessies/' + code).set(nieuweSessie).then(() => {
+      document.getElementById('host-wachtkamer-titel').textContent = huidigeQuizTitel;
+      document.getElementById('host-wachtkamer-code').textContent = code;
+      toonScherm('scherm-host-wachtkamer');
+      luisterNaarSessie(code);
+    });
+  });
 }
 
-.vak-meedoen {
-  background: linear-gradient(160deg, #0f2233 0%, #121218 60%);
+function renderSessieVoorHost(sessie) {
+  huidigeVraagIndexHost = sessie.huidigeVraagIndex;
+  const spelers = sessie.spelers || {};
+  const aantalSpelers = Object.keys(spelers).length;
+
+  if (sessie.status === 'wachtkamer') {
+    document.getElementById('host-wachtkamer-aantal').textContent = aantalSpelers + ' speler(s) aanwezig';
+
+    const lijstEl = document.getElementById('host-wachtkamer-spelerslijst');
+    lijstEl.innerHTML = '';
+    Object.values(spelers).forEach(speler => {
+      const chip = document.createElement('div');
+      chip.className = 'speler-chip';
+      chip.textContent = speler.naam;
+      lijstEl.appendChild(chip);
+    });
+
+    toonScherm('scherm-host-wachtkamer');
+  }
+
+  if (sessie.status === 'vraag') {
+    const vraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
+
+    document.getElementById('host-voortgang-weergave').textContent =
+      'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length;
+    document.getElementById('host-vraag-weergave').textContent = vraag.vraag;
+
+    const antwoordenEl = document.getElementById('host-antwoorden-weergave');
+    antwoordenEl.innerHTML = '';
+    vraag.antwoorden.forEach(tekst => {
+      const optie = document.createElement('div');
+      optie.className = 'antwoord-optie';
+      optie.textContent = tekst;
+      antwoordenEl.appendChild(optie);
+    });
+
+    const antwoordenVoorVraag = (sessie.antwoorden && sessie.antwoorden[sessie.huidigeVraagIndex]) || {};
+    const aantalGeantwoord = Object.keys(antwoordenVoorVraag).length;
+    document.getElementById('host-antwoord-teller').textContent =
+      aantalGeantwoord + ' van ' + aantalSpelers + ' spelers hebben geantwoord';
+
+    toonScherm('scherm-host-vraag');
+  }
+
+  if (sessie.status === 'scorebord' || sessie.status === 'afgelopen') {
+    const vraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
+
+    document.getElementById('host-scorebord-titel').textContent =
+      sessie.status === 'afgelopen' ? 'Eindstand 🏆' : 'Scorebord';
+    document.getElementById('host-scorebord-goede-antwoord').textContent =
+      sessie.status === 'afgelopen' ? '' : 'Het goede antwoord was: ' + vraag.antwoorden[vraag.goedAntwoord - 1];
+
+    renderScorebordLijst('host-scorebord-lijst', spelers, null);
+
+    const isLaatsteVraag = sessie.huidigeVraagIndex + 1 >= huidigeQuizVragen.length;
+    const volgendeKnop = document.getElementById('btn-host-volgende-vraag');
+    volgendeKnop.style.display = sessie.status === 'afgelopen' ? 'none' : 'block';
+    volgendeKnop.textContent = isLaatsteVraag ? 'Bekijk eindstand' : 'Volgende vraag';
+
+    toonScherm('scherm-host-scorebord');
+  }
 }
 
-/* ---------- Algemene elementen ---------- */
+document.getElementById('btn-host-start-quiz').addEventListener('click', () => {
+  db.ref('sessies/' + huidigeSessieCode).update({
+    huidigeVraagIndex: 0,
+    status: 'vraag',
+    vraagGestartOp: Date.now()
+  });
+});
 
-.btn {
-  border: none;
-  border-radius: 12px;
-  padding: 14px 18px;
-  font-size: 16px;
-  cursor: pointer;
-  font-weight: 700;
+function berekenEnToonScorebord() {
+  const sessieRef = db.ref('sessies/' + huidigeSessieCode);
+  return sessieRef.once('value').then(snapshot => {
+    const sessie = snapshot.val();
+    const vraagIndex = sessie.huidigeVraagIndex;
+    const vraag = huidigeQuizVragen[vraagIndex];
+    const antwoordenVoorVraag = (sessie.antwoorden && sessie.antwoorden[vraagIndex]) || {};
+    const spelers = sessie.spelers || {};
+
+    const updates = {};
+    Object.keys(antwoordenVoorVraag).forEach(spelerId => {
+      const antwoord = antwoordenVoorVraag[spelerId];
+      if (antwoord.antwoordIndex === vraag.goedAntwoord) {
+        const huidigeScore = (spelers[spelerId] && spelers[spelerId].score) || 0;
+        const huidigeTijd = (spelers[spelerId] && spelers[spelerId].totaleReactietijd) || 0;
+        updates['spelers/' + spelerId + '/score'] = huidigeScore + 1000;
+        updates['spelers/' + spelerId + '/totaleReactietijd'] = huidigeTijd + (antwoord.reactietijdMs || 0);
+      }
+    });
+    updates['status'] = 'scorebord';
+
+    return sessieRef.update(updates);
+  });
 }
 
-.btn-primary {
-  background: linear-gradient(90deg, #ff2d55, #ff9500, #ffee00, #37e07c, #00c3ff, #6c5ce7);
-  background-size: 300% 100%;
-  color: #0a0a0a;
-  animation: regenboog-schuiven 6s linear infinite;
-}
+document.getElementById('btn-host-toon-scorebord').addEventListener('click', (e) => {
+  e.target.disabled = true;
+  berekenEnToonScorebord().finally(() => {
+    e.target.disabled = false;
+  });
+});
 
-.btn-primary:hover {
-  filter: brightness(1.08);
-}
+document.getElementById('btn-host-volgende-vraag').addEventListener('click', () => {
+  const volgende = huidigeVraagIndexHost + 1;
+  const sessieRef = db.ref('sessies/' + huidigeSessieCode);
 
-.btn-secondary {
-  background: #1a1a22;
-  color: #d8d5e6;
-  border: 1px solid #2a2a35;
-}
+  if (volgende < huidigeQuizVragen.length) {
+    sessieRef.update({
+      huidigeVraagIndex: volgende,
+      status: 'vraag',
+      vraagGestartOp: Date.now()
+    });
+  } else {
+    sessieRef.update({ status: 'afgelopen' });
+  }
+});
 
-.btn-secondary:hover {
-  border-color: #6c5ce7;
-}
+document.getElementById('btn-host-afronden').addEventListener('click', () => {
+  if (huidigeSessieCode) {
+    db.ref('sessies/' + huidigeSessieCode).remove();
+  }
+  stopSessieListener();
+  huidigeRol = null;
+  toonScherm('scherm-quizmaken');
+  laadEigenQuizzen();
+});
 
-.btn-terug {
-  align-self: flex-start;
-  background: none;
-  border: none;
-  color: #a99bff;
-  font-size: 14px;
-  cursor: pointer;
-  padding: 0;
-  margin-bottom: 4px;
-}
+document.getElementById('btn-host-verlaat-wachtkamer').addEventListener('click', () => {
+  if (huidigeSessieCode) {
+    db.ref('sessies/' + huidigeSessieCode).remove();
+  }
+  stopSessieListener();
+  huidigeRol = null;
+  toonScherm('scherm-quizmaken');
+  laadEigenQuizzen();
+});
 
-input[type="text"], select {
-  padding: 12px 14px;
-  border-radius: 10px;
-  border: 1px solid #2a2a35;
-  background: #121218;
-  color: #f2f2f5;
-  font-size: 15px;
-  width: 100%;
-}
+// ---------- Meedoen aan quiz (speler) ----------
 
-input[type="text"]::placeholder {
-  color: #6b6580;
-}
+document.getElementById('btn-ga-naar-quiz').addEventListener('click', () => {
+  const code = document.getElementById('input-code').value.trim().toUpperCase();
+  const naam = document.getElementById('input-speler-naam').value.trim();
+  const foutmelding = document.getElementById('meedoen-foutmelding');
+  foutmelding.textContent = '';
 
-input[type="text"]:focus, select:focus {
-  outline: none;
-  border-color: #6c5ce7;
-}
+  if (!code) {
+    foutmelding.textContent = 'Vul een code in.';
+    return;
+  }
+  if (!naam) {
+    foutmelding.textContent = 'Vul je naam in.';
+    return;
+  }
 
-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #c9c6da;
-  margin-top: 4px;
-}
+  db.ref('quizzen/' + code).once('value')
+    .then(snapshot => {
+      const quizData = snapshot.val();
+      if (!quizData) {
+        foutmelding.textContent = 'Geen quiz gevonden met deze code.';
+        return;
+      }
 
-.foutmelding {
-  color: #ff5c72;
-  font-size: 14px;
-  min-height: 18px;
-}
+      return db.ref('sessies/' + code).once('value').then(sessieSnapshot => {
+        const sessie = sessieSnapshot.val();
 
-.code-weergave {
-  font-size: 34px;
-  font-weight: 800;
-  letter-spacing: 5px;
-  text-align: center;
-  background: #121218;
-  border: 1px solid #2a2a35;
-  padding: 18px;
-  border-radius: 14px;
-  margin: 12px 0;
-  background: linear-gradient(90deg, #ff2d55, #ff9500, #ffee00, #37e07c, #00c3ff, #6c5ce7, #ff2d55);
-  background-size: 300% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: regenboog-schuiven 5s linear infinite;
-}
+        if (!sessie) {
+          foutmelding.textContent = 'Deze quiz is nog niet gestart. Vraag de quizmaster om op "Spelen" te klikken op zijn/haar laptop.';
+          return;
+        }
+        if (sessie.status !== 'wachtkamer') {
+          foutmelding.textContent = 'Deze quiz is al begonnen, je kan er nu niet meer bij.';
+          return;
+        }
 
-.vraag-blok {
-  border: 1px solid #2a2a35;
-  border-radius: 14px;
-  padding: 16px;
-  margin-top: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: #0d0d12;
-}
+        huidigeQuizVragen = quizData.vragen;
+        huidigeQuizTitel = quizData.titel;
+        huidigeSessieCode = code;
+        huidigeRol = 'speler';
+        huidigeSpelerId = 'speler-' + Math.random().toString(36).slice(2, 10);
+        laatstGetoondeVraagIndexSpeler = -1;
 
-.vraag-blok-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
+        return db.ref('sessies/' + code + '/spelers/' + huidigeSpelerId)
+          .set({ naam: naam, score: 0, totaleReactietijd: 0 })
+          .then(() => {
+            document.getElementById('speler-wachtkamer-naam').textContent = naam;
+            document.getElementById('input-code').value = '';
+            toonScherm('scherm-speler-wachtkamer');
+            luisterNaarSessie(code);
+          });
+      });
+    })
+    .catch(err => {
+      foutmelding.textContent = 'Er ging iets mis: ' + err.message;
+    });
+});
 
-.vraag-blok-titel {
-  color: #d8d5e6;
-}
+document.getElementById('btn-speler-verlaat-wachtkamer').addEventListener('click', () => {
+  if (huidigeSessieCode && huidigeSpelerId) {
+    db.ref('sessies/' + huidigeSessieCode + '/spelers/' + huidigeSpelerId).remove();
+  }
+  stopSessieListener();
+  huidigeRol = null;
+  toonScherm('scherm-algemeen');
+});
 
-.btn-verwijder-vraag {
-  background: none;
-  border: none;
-  color: #ff5c72;
-  font-size: 13px;
-  cursor: pointer;
-  padding: 0;
-}
+document.getElementById('btn-speler-terug-naar-start').addEventListener('click', () => {
+  stopSessieListener();
+  huidigeRol = null;
+  toonScherm('scherm-algemeen');
+});
 
-.voortgang {
-  margin: 0;
-  font-size: 13px;
-  color: #9a97a8;
-}
+function renderSessieVoorSpeler(sessie) {
+  if (sessie.status === 'wachtkamer') {
+    toonScherm('scherm-speler-wachtkamer');
+  }
 
-.quiz-item {
-  border: 1px solid #2a2a35;
-  border-radius: 14px;
-  padding: 14px 16px;
-  margin-top: 10px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  background: #0d0d12;
-}
+  if (sessie.status === 'vraag') {
+    if (sessie.huidigeVraagIndex !== laatstGetoondeVraagIndexSpeler) {
+      laatstGetoondeVraagIndexSpeler = sessie.huidigeVraagIndex;
+      vraagGetoondOpSpeler = Date.now();
+      spelerHeeftGeantwoord = false;
+    }
 
-.quiz-item-info strong {
-  display: block;
-  color: #f2f2f5;
-}
+    const vraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
+    document.getElementById('speler-voortgang-weergave').textContent =
+      'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length;
+    document.getElementById('speler-vraag-weergave').textContent = vraag.vraag;
 
-.quiz-item-info span {
-  font-size: 13px;
-  color: #9a97a8;
-}
+    const eigenAntwoorden = (sessie.antwoorden && sessie.antwoorden[sessie.huidigeVraagIndex]) || {};
+    const eigenAntwoord = eigenAntwoorden[huidigeSpelerId];
 
-.btn-spelen {
-  background: linear-gradient(90deg, #37e07c, #00c3ff);
-  color: #061014;
-  border: none;
-  border-radius: 10px;
-  padding: 10px 16px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-}
+    const antwoordenEl = document.getElementById('speler-antwoorden-weergave');
+    const statusEl = document.getElementById('speler-vraag-status');
 
-.btn-spelen:hover {
-  filter: brightness(1.08);
-}
+    if (eigenAntwoord) {
+      antwoordenEl.innerHTML = '';
+      statusEl.textContent = 'Antwoord verzonden! Wacht op de andere spelers...';
+    } else {
+      statusEl.textContent = '';
+      antwoordenEl.innerHTML = '';
+      vraag.antwoorden.forEach((tekst, index) => {
+        const optie = document.createElement('div');
+        optie.className = 'antwoord-optie';
+        optie.textContent = tekst;
 
-.antwoorden-lijst {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
+        optie.addEventListener('click', () => {
+          if (spelerHeeftGeantwoord) return;
+          spelerHeeftGeantwoord = true;
 
-.antwoord-optie {
-  border: 1px solid #2a2a35;
-  border-radius: 12px;
-  padding: 14px 16px;
-  cursor: pointer;
-  background: #121218;
-  color: #f2f2f5;
-}
+          const reactietijdMs = Date.now() - vraagGetoondOpSpeler;
+          db.ref('sessies/' + huidigeSessieCode + '/antwoorden/' + sessie.huidigeVraagIndex + '/' + huidigeSpelerId)
+            .set({ antwoordIndex: index + 1, reactietijdMs: reactietijdMs });
+        });
 
-.antwoord-optie:hover {
-  border-color: #6c5ce7;
-}
+        antwoordenEl.appendChild(optie);
+      });
+    }
 
-.antwoord-optie.goed {
-  background: #123023;
-  border-color: #37e07c;
-  color: #8cf5b6;
-}
+    toonScherm('scherm-speler-vraag');
+  }
 
-.antwoord-optie.fout {
-  background: #34131a;
-  border-color: #ff5c72;
-  color: #ffb0bc;
-}
+  if (sessie.status === 'scorebord' || sessie.status === 'afgelopen') {
+    const spelers = sessie.spelers || {};
+    const vraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
 
-/* ---------- Wachtkamer (host) ---------- */
+    document.getElementById('speler-scorebord-titel').textContent =
+      sessie.status === 'afgelopen' ? 'Eindstand 🏆' : 'Scorebord';
+    document.getElementById('speler-scorebord-goede-antwoord').textContent =
+      sessie.status === 'afgelopen' ? 'Bedankt voor het meespelen!' : 'Het goede antwoord was: ' + vraag.antwoorden[vraag.goedAntwoord - 1];
 
-.wachtkamer-spelerslijst {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 4px 0 20px;
-}
+    renderScorebordLijst('speler-scorebord-lijst', spelers, huidigeSpelerId);
 
-.speler-chip {
-  background: #121218;
-  border: 1px solid #2a2a35;
-  border-radius: 999px;
-  padding: 8px 14px;
-  font-size: 14px;
-  color: #d8d5e6;
-}
+    document.getElementById('speler-scorebord-status').textContent =
+      sessie.status === 'afgelopen' ? '' : 'Wacht tot de quizmaster verdergaat...';
 
-/* ---------- Scorebord ---------- */
+    document.getElementById('btn-speler-terug-naar-start').style.display =
+      sessie.status === 'afgelopen' ? 'block' : 'none';
 
-.scorebord-lijst {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 4px 0 20px;
-}
-
-.scorebord-rij {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border: 1px solid #2a2a35;
-  border-radius: 12px;
-  padding: 12px 16px;
-  background: #0d0d12;
-}
-
-.scorebord-rij.eigen {
-  border-color: #6c5ce7;
-  box-shadow: 0 0 0 1px #6c5ce7;
-}
-
-.scorebord-plek {
-  font-weight: 800;
-  color: #9a97a8;
-  width: 30px;
-  text-align: center;
-}
-
-.scorebord-naam {
-  flex: 1;
-  color: #f2f2f5;
-  font-weight: 600;
-}
-
-.scorebord-score {
-  font-weight: 800;
-  background: linear-gradient(90deg, #ff2d55, #ff9500, #ffee00, #37e07c, #00c3ff, #6c5ce7, #ff2d55);
-  background-size: 300% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: regenboog-schuiven 5s linear infinite;
-}
-
-/* ---------- Quiz-item met meerdere knoppen ---------- */
-
-.quiz-item-knoppen {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.btn-aanpassen-quiz {
-  background: #121218;
-  color: #a99bff;
-  border: 1px solid #2a2a35;
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.btn-aanpassen-quiz:hover {
-  border-color: #6c5ce7;
-}
-
-.btn-verwijderen-quiz {
-  background: #2a1218;
-  color: #ff8fa0;
-  border: 1px solid #4a2029;
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.btn-verwijderen-quiz:hover {
-  border-color: #ff5c72;
+    toonScherm('scherm-speler-scorebord');
+  }
 }
