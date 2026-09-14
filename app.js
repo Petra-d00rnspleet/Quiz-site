@@ -444,8 +444,21 @@ function renderSessieVoorHost(sessie) {
 
     document.getElementById('host-scorebord-titel').textContent =
       sessie.status === 'afgelopen' ? 'Eindstand 🏆' : 'Scorebord';
-    document.getElementById('host-scorebord-goede-antwoord').textContent =
-      sessie.status === 'afgelopen' ? '' : 'Het goede antwoord was: ' + vraag.antwoorden[vraag.goedAntwoord - 1];
+
+    const hostScorebordAntwoordenEl = document.getElementById('host-scorebord-antwoorden');
+    hostScorebordAntwoordenEl.innerHTML = '';
+
+    if (sessie.status === 'afgelopen') {
+      document.getElementById('host-scorebord-goede-antwoord').textContent = '';
+    } else {
+      document.getElementById('host-scorebord-goede-antwoord').textContent = 'Het goede antwoord:';
+      vraag.antwoorden.forEach((tekst, index) => {
+        const optie = document.createElement('div');
+        optie.className = 'antwoord-optie' + (index + 1 === vraag.goedAntwoord ? ' goed' : '');
+        optie.textContent = tekst;
+        hostScorebordAntwoordenEl.appendChild(optie);
+      });
+    }
 
     renderScorebordLijst('host-scorebord-lijst', spelers, null);
 
@@ -682,7 +695,29 @@ function renderSessieVoorSpeler(sessie) {
     document.getElementById('speler-scorebord-titel').textContent =
       sessie.status === 'afgelopen' ? 'Eindstand 🏆' : 'Scorebord';
     document.getElementById('speler-scorebord-goede-antwoord').textContent =
-      sessie.status === 'afgelopen' ? 'Bedankt voor het meespelen!' : 'Het goede antwoord was: ' + vraag.antwoorden[vraag.goedAntwoord - 1];
+      sessie.status === 'afgelopen' ? 'Bedankt voor het meespelen!' : 'Het goede antwoord:';
+
+    const spelerScorebordAntwoordenEl = document.getElementById('speler-scorebord-antwoorden');
+    spelerScorebordAntwoordenEl.innerHTML = '';
+
+    if (sessie.status === 'scorebord') {
+      const eigenAntwoordenVraag = (sessie.antwoorden && sessie.antwoorden[sessie.huidigeVraagIndex]) || {};
+      const eigenAntwoordDitVraag = eigenAntwoordenVraag[huidigeSpelerId];
+      const eigenGekozenIndex = eigenAntwoordDitVraag ? eigenAntwoordDitVraag.antwoordIndex : null;
+
+      vraag.antwoorden.forEach((tekst, index) => {
+        const optie = document.createElement('div');
+        let klasse = 'antwoord-optie';
+        if (index + 1 === vraag.goedAntwoord) {
+          klasse += ' goed';
+        } else if (index + 1 === eigenGekozenIndex) {
+          klasse += ' fout';
+        }
+        optie.className = klasse;
+        optie.textContent = tekst;
+        spelerScorebordAntwoordenEl.appendChild(optie);
+      });
+    }
 
     renderScorebordLijst('speler-scorebord-lijst', spelers, huidigeSpelerId);
 
