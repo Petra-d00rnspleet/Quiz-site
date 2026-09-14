@@ -26,20 +26,37 @@
     <section id="scherm-meedoen" class="scherm">
       <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
       <h2 class="titel-regenboog">Meedoen aan quiz</h2>
-      <p>Voer de code in die je hebt gekregen.</p>
+      <p>Voer de code in die je hebt gekregen en je naam. De quizmaster moet de quiz wel al gestart hebben op zijn/haar laptop.</p>
+      <label for="input-code">Code</label>
       <input type="text" id="input-code" placeholder="Bijv. AB12CD" maxlength="6">
+      <label for="input-speler-naam">Jouw naam</label>
+      <input type="text" id="input-speler-naam" placeholder="Bijv. Sam" maxlength="20">
       <button class="btn btn-primary" id="btn-ga-naar-quiz">Ga naar quiz</button>
       <p id="meedoen-foutmelding" class="foutmelding"></p>
     </section>
 
-    <!-- SCHERM: QUIZ SPELEN (na code invoer) -->
-    <section id="scherm-quiz-spelen" class="scherm">
-      <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
-      <h2 id="quiz-titel-weergave" class="titel-regenboog"></h2>
-      <p id="quiz-voortgang-weergave" class="voortgang"></p>
-      <div id="quiz-vraag-weergave"></div>
-      <div id="quiz-antwoorden-weergave" class="antwoorden-lijst"></div>
-      <button class="btn btn-primary" id="btn-volgende-vraag" style="display:none;">Volgende vraag</button>
+    <!-- SCHERM: SPELER WACHTKAMER -->
+    <section id="scherm-speler-wachtkamer" class="scherm">
+      <button class="btn-terug" id="btn-speler-verlaat-wachtkamer">&larr; Terug</button>
+      <h2 class="titel-regenboog">Even geduld...</h2>
+      <p>Je doet mee als <strong id="speler-wachtkamer-naam"></strong>. Wacht tot de quizmaster de quiz start.</p>
+    </section>
+
+    <!-- SCHERM: SPELER VRAAG -->
+    <section id="scherm-speler-vraag" class="scherm">
+      <p id="speler-voortgang-weergave" class="voortgang"></p>
+      <h2 id="speler-vraag-weergave" class="titel-regenboog"></h2>
+      <div id="speler-antwoorden-weergave" class="antwoorden-lijst"></div>
+      <p id="speler-vraag-status" class="voortgang"></p>
+    </section>
+
+    <!-- SCHERM: SPELER SCOREBORD -->
+    <section id="scherm-speler-scorebord" class="scherm">
+      <h2 id="speler-scorebord-titel" class="titel-regenboog">Scorebord</h2>
+      <p id="speler-scorebord-goede-antwoord" class="voortgang"></p>
+      <div id="speler-scorebord-lijst" class="scorebord-lijst"></div>
+      <p id="speler-scorebord-status" class="voortgang">Wacht tot de quizmaster verdergaat...</p>
+      <button class="btn btn-secondary" id="btn-speler-terug-naar-start" style="display:none;">Terug naar start</button>
     </section>
 
     <!-- SCHERM: QUIZ MAKEN (overzicht) -->
@@ -71,7 +88,37 @@
       <h2 class="titel-regenboog">Quiz klaar om te spelen! 🎉</h2>
       <p>Deel deze code met anderen zodat zij kunnen meedoen:</p>
       <div class="code-weergave" id="code-weergave"></div>
-      <button class="btn btn-primary" data-terug-naar="scherm-algemeen">Naar startscherm</button>
+      <button class="btn btn-primary" id="btn-nu-hosten">Nu hosten</button>
+      <button class="btn btn-secondary" data-terug-naar="scherm-algemeen">Naar startscherm</button>
+    </section>
+
+    <!-- SCHERM: HOST WACHTKAMER -->
+    <section id="scherm-host-wachtkamer" class="scherm">
+      <button class="btn-terug" id="btn-host-verlaat-wachtkamer">&larr; Terug</button>
+      <h2 id="host-wachtkamer-titel" class="titel-regenboog"></h2>
+      <p>Spelers doen mee via deze code:</p>
+      <div class="code-weergave" id="host-wachtkamer-code"></div>
+      <p id="host-wachtkamer-aantal" class="voortgang"></p>
+      <div id="host-wachtkamer-spelerslijst" class="wachtkamer-spelerslijst"></div>
+      <button class="btn btn-primary" id="btn-host-start-quiz">Start quiz</button>
+    </section>
+
+    <!-- SCHERM: HOST VRAAG (live tijdens quiz) -->
+    <section id="scherm-host-vraag" class="scherm">
+      <p id="host-voortgang-weergave" class="voortgang"></p>
+      <h2 id="host-vraag-weergave" class="titel-regenboog"></h2>
+      <div id="host-antwoorden-weergave" class="antwoorden-lijst"></div>
+      <p id="host-antwoord-teller" class="voortgang"></p>
+      <button class="btn btn-primary" id="btn-host-toon-scorebord">Bekijk scorebord</button>
+    </section>
+
+    <!-- SCHERM: HOST SCOREBORD -->
+    <section id="scherm-host-scorebord" class="scherm">
+      <h2 id="host-scorebord-titel" class="titel-regenboog">Scorebord</h2>
+      <p id="host-scorebord-goede-antwoord" class="voortgang"></p>
+      <div id="host-scorebord-lijst" class="scorebord-lijst"></div>
+      <button class="btn btn-primary" id="btn-host-volgende-vraag">Volgende vraag</button>
+      <button class="btn btn-secondary" id="btn-host-afronden">Terug naar start</button>
     </section>
 
   </div>
