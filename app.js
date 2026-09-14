@@ -607,6 +607,10 @@ document.getElementById('btn-speler-terug-naar-start').addEventListener('click',
   toonScherm('scherm-algemeen');
 });
 
+document.getElementById('btn-speler-verwijderd-terug').addEventListener('click', () => {
+  toonScherm('scherm-algemeen');
+});
+
 function renderSessieVoorSpeler(sessie) {
   const spelers = sessie.spelers || {};
 
@@ -614,8 +618,7 @@ function renderSessieVoorSpeler(sessie) {
     // De host heeft deze speler uit de sessie verwijderd.
     stopSessieListener();
     huidigeRol = null;
-    alert('Je bent door de quizmaster uit de quiz gezet.');
-    toonScherm('scherm-algemeen');
+    toonScherm('scherm-speler-verwijderd');
     return;
   }
 
@@ -631,39 +634,26 @@ function renderSessieVoorSpeler(sessie) {
     }
 
     const vraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
-    document.getElementById('speler-voortgang-weergave').textContent =
-      'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length;
-    document.getElementById('speler-vraag-weergave').textContent = vraag.vraag;
-
     const eigenAntwoorden = (sessie.antwoorden && sessie.antwoorden[sessie.huidigeVraagIndex]) || {};
     const eigenAntwoord = eigenAntwoorden[huidigeSpelerId];
 
-    const antwoordenEl = document.getElementById('speler-antwoorden-weergave');
-    const statusEl = document.getElementById('speler-vraag-status');
-
     if (eigenAntwoord) {
-      antwoordenEl.innerHTML = '';
-      vraag.antwoorden.forEach((tekst, index) => {
-        const nummer = index + 1;
-        const optie = document.createElement('div');
-        optie.className = 'antwoord-optie';
-        optie.textContent = tekst;
-        if (nummer === vraag.goedAntwoord) {
-          optie.classList.add('goed');
-        } else if (nummer === eigenAntwoord.antwoordIndex) {
-          optie.classList.add('fout');
-        }
-        antwoordenEl.appendChild(optie);
-      });
+      // Al geantwoord op deze vraag: apart tussenscherm, niet de vraag zelf.
+      const goedGeantwoord = eigenAntwoord.antwoordIndex === vraag.goedAntwoord;
+      document.getElementById('speler-antwoord-verzonden-titel').textContent =
+        goedGeantwoord ? 'Goed! ✅' : 'Helaas ❌';
+      document.getElementById('speler-antwoord-verzonden-tekst').textContent =
+        goedGeantwoord
+          ? 'Dat was het juiste antwoord.'
+          : 'Dat was niet het juiste antwoord. Het juiste antwoord was: ' + vraag.antwoorden[vraag.goedAntwoord - 1];
 
-      statusEl.classList.add('laad-rij');
-      statusEl.innerHTML = '<span class="laad-spinner"></span>' +
-        (eigenAntwoord.antwoordIndex === vraag.goedAntwoord
-          ? 'Goed! Wacht op de andere spelers...'
-          : 'Helaas, dat was niet goed. Wacht op de andere spelers...');
+      toonScherm('scherm-speler-antwoord-verzonden');
     } else {
-      statusEl.classList.remove('laad-rij');
-      statusEl.textContent = '';
+      document.getElementById('speler-voortgang-weergave').textContent =
+        'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length;
+      document.getElementById('speler-vraag-weergave').textContent = vraag.vraag;
+
+      const antwoordenEl = document.getElementById('speler-antwoorden-weergave');
       antwoordenEl.innerHTML = '';
       vraag.antwoorden.forEach((tekst, index) => {
         const optie = document.createElement('div');
@@ -681,9 +671,9 @@ function renderSessieVoorSpeler(sessie) {
 
         antwoordenEl.appendChild(optie);
       });
-    }
 
-    toonScherm('scherm-speler-vraag');
+      toonScherm('scherm-speler-vraag');
+    }
   }
 
   if (sessie.status === 'scorebord' || sessie.status === 'afgelopen') {
