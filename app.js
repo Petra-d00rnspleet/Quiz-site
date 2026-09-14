@@ -654,7 +654,7 @@ function renderSessieVoorSpeler(sessie) {
       // Al geantwoord op deze vraag: apart tussenscherm, niet de vraag zelf.
       const goedGeantwoord = eigenAntwoord.antwoordIndex === vraag.goedAntwoord;
       document.getElementById('speler-antwoord-verzonden-titel').textContent =
-        goedGeantwoord ? 'Goed! ✅' : 'Helaas ❌';
+        goedGeantwoord ? 'Goed! ✔' : 'Helaas ✗';
       document.getElementById('speler-antwoord-verzonden-tekst').textContent =
         goedGeantwoord
           ? 'Dat was het juiste antwoord.'
