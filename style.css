@@ -404,7 +404,24 @@ label {
 
 .quiz-item-knoppen {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
+}
+
+.btn-aanpassen-quiz {
+  background: #121218;
+  color: #a99bff;
+  border: 1px solid #2a2a35;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-aanpassen-quiz:hover {
+  border-color: #6c5ce7;
 }
 
 .btn-verwijderen-quiz {
