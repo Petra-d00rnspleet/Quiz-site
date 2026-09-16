@@ -304,7 +304,15 @@ function luisterNaarSessie(code) {
   huidigeSessieRef = db.ref('sessies/' + code);
   huidigeSessieRef.on('value', snapshot => {
     const sessie = snapshot.val();
-    if (!sessie) return;
+    if (!sessie) {
+      // De sessie bestaat niet meer, bijv. omdat de quizmaster is gestopt/weggegaan.
+      if (huidigeRol === 'speler') {
+        stopSessieListener();
+        huidigeRol = null;
+        toonScherm('scherm-speler-host-weg');
+      }
+      return;
+    }
     if (huidigeRol === 'host') {
       renderSessieVoorHost(sessie);
     } else if (huidigeRol === 'speler') {
@@ -372,7 +380,12 @@ function startHostenVanQuiz(code) {
       antwoorden: {}
     };
 
-    db.ref('sessies/' + code).set(nieuweSessie).then(() => {
+    const sessieRef = db.ref('sessies/' + code);
+    sessieRef.set(nieuweSessie).then(() => {
+      // Als de host de pagina sluit of de verbinding verliest, wordt de sessie
+      // automatisch verwijderd. Spelers krijgen dit meteen te zien (zie luisterNaarSessie).
+      sessieRef.onDisconnect().remove();
+
       document.getElementById('host-wachtkamer-titel').textContent = huidigeQuizTitel;
       document.getElementById('host-wachtkamer-code').textContent = code;
       toonScherm('scherm-host-wachtkamer');
@@ -621,6 +634,10 @@ document.getElementById('btn-speler-terug-naar-start').addEventListener('click',
 });
 
 document.getElementById('btn-speler-verwijderd-terug').addEventListener('click', () => {
+  toonScherm('scherm-algemeen');
+});
+
+document.getElementById('btn-speler-host-weg-terug').addEventListener('click', () => {
   toonScherm('scherm-algemeen');
 });
 
