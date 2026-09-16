@@ -140,58 +140,6 @@ h2.titel-regenboog {
   background: linear-gradient(160deg, #0f2233 0%, #121218 60%);
 }
 
-.vak-maken::before,
-.vak-maken::after,
-.vak-meedoen::before,
-.vak-meedoen::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-repeat: no-repeat;
-  mix-blend-mode: screen;
-}
-
-.vak-maken::before,
-.vak-meedoen::before {
-  background-image:
-    radial-gradient(circle at 7% 18%, #fffbe8 0 2px, transparent 2.6px),
-    radial-gradient(circle at 18% 62%, #ffd700 0 1.4px, transparent 2px),
-    radial-gradient(circle at 28% 30%, #fff2b8 0 1.1px, transparent 1.7px),
-    radial-gradient(circle at 37% 78%, #ffe07a 0 1.6px, transparent 2.2px),
-    radial-gradient(circle at 46% 12%, #ffd700 0 1.1px, transparent 1.7px),
-    radial-gradient(circle at 55% 52%, #fffbe8 0 2px, transparent 2.6px),
-    radial-gradient(circle at 63% 85%, #ffe07a 0 1.2px, transparent 1.8px),
-    radial-gradient(circle at 72% 25%, #ffd700 0 1.6px, transparent 2.2px),
-    radial-gradient(circle at 81% 66%, #fff2b8 0 1.1px, transparent 1.7px),
-    radial-gradient(circle at 89% 40%, #fffbe8 0 1.8px, transparent 2.4px),
-    radial-gradient(circle at 94% 15%, #ffd700 0 1.1px, transparent 1.7px),
-    radial-gradient(circle at 12% 90%, #ffe07a 0 1.3px, transparent 1.9px),
-    radial-gradient(circle at 60% 8%, #fff2b8 0 1.1px, transparent 1.7px),
-    radial-gradient(circle at 40% 45%, #ffd700 0 1.2px, transparent 1.8px);
-  animation: glitter-twinkelen-a 2.4s ease-in-out infinite;
-}
-
-.vak-maken::after,
-.vak-meedoen::after {
-  background-image:
-    radial-gradient(circle at 14% 42%, #ffd700 0 1.3px, transparent 1.9px),
-    radial-gradient(circle at 24% 8%, #fffbe8 0 1.7px, transparent 2.3px),
-    radial-gradient(circle at 33% 70%, #ffe07a 0 1.1px, transparent 1.7px),
-    radial-gradient(circle at 43% 25%, #fff2b8 0 1.5px, transparent 2.1px),
-    radial-gradient(circle at 51% 92%, #ffd700 0 1.1px, transparent 1.7px),
-    radial-gradient(circle at 59% 35%, #fffbe8 0 1.3px, transparent 1.9px),
-    radial-gradient(circle at 68% 60%, #ffe07a 0 1.8px, transparent 2.4px),
-    radial-gradient(circle at 77% 10%, #ffd700 0 1.2px, transparent 1.8px),
-    radial-gradient(circle at 86% 80%, #fff2b8 0 1.4px, transparent 2px),
-    radial-gradient(circle at 92% 50%, #fffbe8 0 1.1px, transparent 1.7px),
-    radial-gradient(circle at 6% 65%, #ffe07a 0 1.6px, transparent 2.2px),
-    radial-gradient(circle at 20% 95%, #ffd700 0 1.1px, transparent 1.7px),
-    radial-gradient(circle at 80% 32%, #fffbe8 0 1.2px, transparent 1.8px);
-  animation: glitter-twinkelen-b 3.1s ease-in-out infinite;
-  animation-delay: 0.5s;
-}
-
 @keyframes glitter-twinkelen-a {
   0%, 100% { opacity: 0.25; }
   50% { opacity: 1; }
@@ -214,19 +162,54 @@ h2.titel-regenboog {
 }
 
 @keyframes glitter-schuiven {
-  0%   { background-position: 0% 0, 0 0, 0 0, 0 0; }
-  100% { background-position: 300% 0, 0 0, 0 0, 0 0; }
+  0%   { background-position: 0% 0; }
+  100% { background-position: 300% 0; }
 }
 
 .btn-primary {
-  background-image:
-    radial-gradient(circle at 12% 30%, rgba(255,255,255,0.95) 0 1px, transparent 1px),
-    radial-gradient(circle at 78% 60%, rgba(255,255,255,0.9) 0 1px, transparent 1px),
-    radial-gradient(circle at 45% 80%, rgba(255,255,255,0.85) 0 1px, transparent 1px),
-    linear-gradient(120deg, #fff8e1, #ffe9a8, #fffdf5, #d9c8ff, #fff8e1, #ffe9a8);
-  background-size: 100% 100%, 100% 100%, 100% 100%, 300% 100%;
+  background-image: linear-gradient(120deg, #fff8e1, #ffe9a8, #fffdf5, #d9c8ff, #fff8e1, #ffe9a8);
+  background-size: 300% 100%;
   animation: glitter-schuiven 5s linear infinite;
   color: #0a0a0a;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::before,
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-repeat: no-repeat;
+}
+
+.btn-primary::before {
+  mix-blend-mode: multiply;
+  background-image:
+    radial-gradient(circle at 7% 30%, #b8860b 0 2px, transparent 2.6px),
+    radial-gradient(circle at 18% 70%, #a9720a 0 1.4px, transparent 2px),
+    radial-gradient(circle at 30% 20%, #cf9a1a 0 1.1px, transparent 1.7px),
+    radial-gradient(circle at 42% 65%, #b8860b 0 1.6px, transparent 2.2px),
+    radial-gradient(circle at 55% 25%, #a9720a 0 1.1px, transparent 1.7px),
+    radial-gradient(circle at 67% 75%, #cf9a1a 0 2px, transparent 2.6px),
+    radial-gradient(circle at 78% 30%, #b8860b 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 90% 65%, #a9720a 0 1.6px, transparent 2.2px);
+  animation: glitter-twinkelen-a 2.4s ease-in-out infinite;
+}
+
+.btn-primary::after {
+  background-image:
+    radial-gradient(circle at 12% 55%, #ffffff 0 1px, transparent 1.5px),
+    radial-gradient(circle at 24% 22%, #ffffff 0 1.3px, transparent 1.8px),
+    radial-gradient(circle at 37% 78%, #ffffff 0 0.9px, transparent 1.3px),
+    radial-gradient(circle at 50% 40%, #ffffff 0 1.1px, transparent 1.6px),
+    radial-gradient(circle at 63% 68%, #ffffff 0 0.9px, transparent 1.3px),
+    radial-gradient(circle at 75% 25%, #ffffff 0 1.4px, transparent 1.9px),
+    radial-gradient(circle at 87% 58%, #ffffff 0 0.9px, transparent 1.3px),
+    radial-gradient(circle at 95% 20%, #ffffff 0 1px, transparent 1.5px);
+  animation: glitter-twinkelen-b 3.1s ease-in-out infinite;
+  animation-delay: 0.5s;
 }
 
 .btn-primary:hover {
