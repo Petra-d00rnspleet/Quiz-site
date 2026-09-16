@@ -59,8 +59,10 @@ Als een speler een code invoert terwijl de host nog niet op "Spelen" heeft gekli
 - Staat het na een vraag gelijk in punten, dan wint degene die (over alle beantwoorde vragen samen) **het snelst klikte** — dus hoe eerder je een goed antwoord geeft, hoe beter je rangschikt bij een gelijke stand.
 - Het scorebord toont iedereen gerangschikt van hoog naar laag; spelers zien hun eigen rij gemarkeerd.
 
+### Host verlaat de quiz (nieuw)
+Zodra de quizmaster op "Terug" of "Afronden" klikt, of het tabblad sluit / de verbinding verliest (via Firebase `onDisconnect`), wordt de sessie verwijderd. Alle spelers die op dat moment meedoen, zien meteen een scherm dat de quiz gestopt is en kunnen terug naar start.
+
 ## Mogelijke volgende stappen
-- Automatisch een sessie opruimen als de host de pagina sluit zonder op "Terug"/"Afronden" te klikken (bijv. met Firebase `onDisconnect`).
 - Quiz bewerken na het maken.
 - Firebase-regels aanscherpen zodat mensen niet zomaar andermans quiz of sessie kunnen overschrijven.
 - Punten laten afnemen naarmate je langzamer antwoordt (in plaats van altijd vlak 1000 punten).
