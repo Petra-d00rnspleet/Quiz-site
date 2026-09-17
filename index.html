@@ -18,8 +18,17 @@
       <p class="subtitel">Maak een quiz of doe mee met een quiz</p>
       <div class="vakken-rij">
         <button class="vak vak-maken" id="btn-naar-quizmaken">Quiz maken</button>
+        <button class="vak vak-speelbaar" id="btn-naar-speelbaar">Speelbare quizzen</button>
         <button class="vak vak-meedoen" id="btn-naar-meedoen">Meedoen aan quiz</button>
       </div>
+    </section>
+
+    <!-- SCHERM: SPEELBARE QUIZZEN (openbaar gemaakt door anderen) -->
+    <section id="scherm-speelbare-quizzen" class="scherm">
+      <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
+      <h2 class="titel-regenboog">Speelbare quizzen</h2>
+      <p class="subtitel">Quizzen die door anderen openbaar zijn gezet. Klik op "Spelen" om er zelf een wachtkamer voor te openen.</p>
+      <div id="lijst-openbare-quizzen" class="quizzen-grid"></div>
     </section>
 
     <!-- SCHERM: MEEDOEN AAN QUIZ -->
@@ -95,6 +104,11 @@
 
       <label for="input-titel">Titel van de quiz</label>
       <input type="text" id="input-titel" placeholder="Bijv. Algemene kennis">
+
+      <label class="openbaar-optie">
+        <input type="checkbox" id="input-openbaar">
+        Deze quiz openbaar maken (zichtbaar voor iedereen bij "Speelbare quizzen")
+      </label>
 
       <label>Omslagfoto</label>
       <div class="omslag-kiezer">
