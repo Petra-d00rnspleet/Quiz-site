@@ -10,6 +10,11 @@ document.getElementById('btn-naar-quizmaken').addEventListener('click', () => {
   laadEigenQuizzen();
 });
 
+document.getElementById('btn-naar-speelbaar').addEventListener('click', () => {
+  toonScherm('scherm-speelbare-quizzen');
+  laadOpenbareQuizzen();
+});
+
 document.getElementById('btn-naar-meedoen').addEventListener('click', () => {
   toonScherm('scherm-meedoen');
 });
@@ -189,6 +194,7 @@ document.getElementById('btn-toevoegen-quiz').addEventListener('click', () => {
   document.getElementById('quizmaken-foutmelding').textContent = '';
   document.getElementById('nieuwe-quiz-titel-kop').textContent = 'Nieuwe quiz';
   document.getElementById('btn-quiz-opslaan').textContent = 'Quiz opslaan';
+  document.getElementById('input-openbaar').checked = false;
   bouwOmslagGalerij(STANDAARD_OMSLAGEN[0].url);
   toonOmslagPreview(STANDAARD_OMSLAGEN[0].url);
   voegVraagBlokToe();
@@ -207,6 +213,7 @@ function startBewerkenVanQuiz(code) {
     document.getElementById('input-titel').value = quizData.titel;
     vragenContainer.innerHTML = '';
     document.getElementById('quizmaken-foutmelding').textContent = '';
+    document.getElementById('input-openbaar').checked = !!quizData.openbaar;
     const huidigeOmslag = quizData.afbeelding || STANDAARD_OMSLAGEN[0].url;
     bouwOmslagGalerij(huidigeOmslag);
     toonOmslagPreview(huidigeOmslag);
@@ -264,15 +271,17 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
     });
   }
 
+  const isOpenbaar = document.getElementById('input-openbaar').checked;
+
   if (huidigeBewerkCode) {
-    // Bestaande quiz bijwerken: zelfde code, alleen titel + vragen + omslag overschrijven.
+    // Bestaande quiz bijwerken: zelfde code, alleen titel + vragen + omslag + openbaar overschrijven.
     const code = huidigeBewerkCode;
 
-    db.ref('quizzen/' + code).update({ titel: titel, vragen: vragen, afbeelding: geselecteerdeOmslagUrl })
+    db.ref('quizzen/' + code).update({ titel: titel, vragen: vragen, afbeelding: geselecteerdeOmslagUrl, openbaar: isOpenbaar })
       .then(() => {
         const eigenQuizzen = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]');
         const bijgewerkteLijst = eigenQuizzen.map(q =>
-          q.code === code ? { code: code, titel: titel, aantalVragen: vragen.length, afbeelding: geselecteerdeOmslagUrl } : q
+          q.code === code ? { code: code, titel: titel, aantalVragen: vragen.length, afbeelding: geselecteerdeOmslagUrl, openbaar: isOpenbaar } : q
         );
         localStorage.setItem('eigenQuizzen', JSON.stringify(bijgewerkteLijst));
 
@@ -292,6 +301,7 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
     titel: titel,
     vragen: vragen,
     afbeelding: geselecteerdeOmslagUrl,
+    openbaar: isOpenbaar,
     aangemaaktOp: Date.now()
   };
 
@@ -299,7 +309,7 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
     .then(() => {
       // Titel + code lokaal onthouden zodat "Mijn quizzen" ze kan tonen
       const eigenQuizzen = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]');
-      eigenQuizzen.push({ code: code, titel: titel, aantalVragen: vragen.length, afbeelding: geselecteerdeOmslagUrl });
+      eigenQuizzen.push({ code: code, titel: titel, aantalVragen: vragen.length, afbeelding: geselecteerdeOmslagUrl, openbaar: isOpenbaar });
       localStorage.setItem('eigenQuizzen', JSON.stringify(eigenQuizzen));
 
       document.getElementById('code-weergave').textContent = code;
@@ -342,7 +352,7 @@ function laadEigenQuizzen() {
 
     const info = document.createElement('div');
     info.className = 'quiz-item-info';
-    info.innerHTML = `<strong>${quiz.titel}</strong><span>${quiz.aantalVragen} vraag/vragen</span>`;
+    info.innerHTML = `<strong>${quiz.titel}</strong><span>${quiz.aantalVragen} vraag/vragen${quiz.openbaar ? ' · Openbaar' : ''}</span>`;
 
     const knoppen = document.createElement('div');
     knoppen.className = 'quiz-item-knoppen';
@@ -390,6 +400,62 @@ function laadEigenQuizzen() {
     item.appendChild(body);
     lijstEl.appendChild(item);
   });
+}
+
+// ---------- Speelbare quizzen tonen (openbaar gemaakt door anderen) ----------
+
+function laadOpenbareQuizzen() {
+  const lijstEl = document.getElementById('lijst-openbare-quizzen');
+  lijstEl.innerHTML = '<p>Bezig met laden...</p>';
+
+  db.ref('quizzen').orderByChild('openbaar').equalTo(true).once('value')
+    .then(snapshot => {
+      lijstEl.innerHTML = '';
+      const data = snapshot.val();
+
+      if (!data) {
+        lijstEl.innerHTML = '<p>Er zijn nog geen openbare quizzen. Zet je eigen quiz op openbaar om hem hier te laten verschijnen.</p>';
+        return;
+      }
+
+      Object.entries(data).forEach(([code, quiz]) => {
+        const item = document.createElement('div');
+        item.className = 'quiz-item';
+
+        const afbeelding = document.createElement('img');
+        afbeelding.className = 'quiz-item-afbeelding';
+        afbeelding.src = quiz.afbeelding || STANDAARD_OMSLAGEN[0].url;
+        afbeelding.alt = quiz.titel;
+
+        const body = document.createElement('div');
+        body.className = 'quiz-item-body';
+
+        const info = document.createElement('div');
+        info.className = 'quiz-item-info';
+        const aantalVragen = (quiz.vragen || []).length;
+        info.innerHTML = `<strong>${quiz.titel}</strong><span>${aantalVragen} vraag/vragen</span>`;
+
+        const knoppen = document.createElement('div');
+        knoppen.className = 'quiz-item-knoppen';
+
+        const speelKnop = document.createElement('button');
+        speelKnop.className = 'btn-spelen';
+        speelKnop.textContent = 'Spelen';
+        speelKnop.addEventListener('click', () => {
+          startHostenVanQuiz(code);
+        });
+
+        knoppen.appendChild(speelKnop);
+        body.appendChild(info);
+        body.appendChild(knoppen);
+        item.appendChild(afbeelding);
+        item.appendChild(body);
+        lijstEl.appendChild(item);
+      });
+    })
+    .catch(err => {
+      lijstEl.innerHTML = '<p>Laden van openbare quizzen mislukt: ' + err.message + '</p>';
+    });
 }
 
 // ================================================================
