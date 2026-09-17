@@ -85,7 +85,7 @@
       <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
       <h2 class="titel-regenboog">Mijn quizzen</h2>
       <button class="btn btn-primary" id="btn-toevoegen-quiz">+ Quiz</button>
-      <div id="lijst-eigen-quizzen"></div>
+      <div id="lijst-eigen-quizzen" class="quizzen-grid"></div>
     </section>
 
     <!-- SCHERM: NIEUWE QUIZ INVULLEN -->
@@ -95,6 +95,19 @@
 
       <label for="input-titel">Titel van de quiz</label>
       <input type="text" id="input-titel" placeholder="Bijv. Algemene kennis">
+
+      <label>Omslagfoto</label>
+      <div class="omslag-kiezer">
+        <div class="omslag-preview" id="omslag-preview">
+          <img id="omslag-preview-img" alt="Gekozen omslagfoto">
+        </div>
+        <div class="omslag-upload-rij">
+          <button class="btn btn-secondary" id="btn-omslag-uploaden" type="button">Eigen foto uploaden</button>
+          <input type="file" id="input-omslag-bestand" accept="image/*" style="display:none;">
+        </div>
+        <p class="omslag-subtitel">Of kies een standaardfoto:</p>
+        <div class="omslag-galerij" id="omslag-galerij"></div>
+      </div>
 
       <div id="vragen-container"></div>
 
