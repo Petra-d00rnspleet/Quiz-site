@@ -24,7 +24,117 @@ document.querySelectorAll('[data-terug-naar]').forEach(knop => {
   });
 });
 
-// ---------- Vraagblokken opbouwen (nieuwe quiz) ----------
+// ---------- Omslagfoto's (standaard-galerij + eigen upload) ----------
+
+function maakStandaardOmslag(embleem, label, kleurVan, kleurNaar) {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="480" height="270" viewBox="0 0 480 270">
+      <defs>
+        <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="${kleurVan}"/>
+          <stop offset="100%" stop-color="${kleurNaar}"/>
+        </linearGradient>
+      </defs>
+      <rect width="480" height="270" fill="url(#g)"/>
+      <circle cx="70" cy="45" r="2" fill="#ffe9a8" opacity="0.85"/>
+      <circle cx="135" cy="215" r="1.6" fill="#ffe9a8" opacity="0.7"/>
+      <circle cx="405" cy="38" r="1.8" fill="#ffe9a8" opacity="0.8"/>
+      <circle cx="425" cy="205" r="2.2" fill="#ffe9a8" opacity="0.6"/>
+      <circle cx="55" cy="185" r="1.4" fill="#ffe9a8" opacity="0.6"/>
+      <circle cx="350" cy="230" r="1.5" fill="#ffe9a8" opacity="0.6"/>
+      <text x="240" y="145" font-size="92" text-anchor="middle" dominant-baseline="middle">${embleem}</text>
+      <text x="240" y="222" font-size="22" font-family="system-ui, sans-serif" font-weight="700" fill="#fff8e1" text-anchor="middle" opacity="0.9">${label}</text>
+    </svg>`;
+  return 'data:image/svg+xml,' + encodeURIComponent(svg);
+}
+
+const STANDAARD_OMSLAGEN = [
+  { id: 'trofee', url: maakStandaardOmslag('🏆', 'Algemene kennis', '#1c2456', '#05081c') },
+  { id: 'gloeilamp', url: maakStandaardOmslag('💡', 'Weetjes', '#2a1c40', '#0a0620') },
+  { id: 'wereldbol', url: maakStandaardOmslag('🌍', 'Aardrijkskunde', '#0d2a3a', '#04101c') },
+  { id: 'boek', url: maakStandaardOmslag('📚', 'Schoolquiz', '#1a1230', '#050816') },
+  { id: 'sterren', url: maakStandaardOmslag('✨', 'Sterrenquiz', '#141a3c', '#03050f') },
+  { id: 'vraagteken', url: maakStandaardOmslag('❓', 'Mysterie', '#241638', '#060310') }
+];
+
+let geselecteerdeOmslagUrl = STANDAARD_OMSLAGEN[0].url;
+
+const omslagPreviewImg = document.getElementById('omslag-preview-img');
+const omslagGalerijEl = document.getElementById('omslag-galerij');
+
+function toonOmslagPreview(url) {
+  geselecteerdeOmslagUrl = url;
+  omslagPreviewImg.src = url;
+}
+
+function bouwOmslagGalerij(actieveUrl) {
+  omslagGalerijEl.innerHTML = '';
+  STANDAARD_OMSLAGEN.forEach(optie => {
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'omslag-optie' + (optie.url === actieveUrl ? ' geselecteerd' : '');
+    knop.innerHTML = `<img src="${optie.url}" alt="${optie.id}">`;
+    knop.addEventListener('click', () => {
+      toonOmslagPreview(optie.url);
+      omslagGalerijEl.querySelectorAll('.omslag-optie').forEach(el => el.classList.remove('geselecteerd'));
+      knop.classList.add('geselecteerd');
+    });
+    omslagGalerijEl.appendChild(knop);
+  });
+}
+
+function leesEnVerkleinAfbeelding(bestand) {
+  return new Promise((resolve, reject) => {
+    const lezer = new FileReader();
+    lezer.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const doelBreedte = 480;
+        const doelHoogte = 270;
+        const canvas = document.createElement('canvas');
+        canvas.width = doelBreedte;
+        canvas.height = doelHoogte;
+        const ctx = canvas.getContext('2d');
+
+        const schaal = Math.max(doelBreedte / img.width, doelHoogte / img.height);
+        const geschaaldeBreedte = img.width * schaal;
+        const geschaaldeHoogte = img.height * schaal;
+        const x = (doelBreedte - geschaaldeBreedte) / 2;
+        const y = (doelHoogte - geschaaldeHoogte) / 2;
+        ctx.drawImage(img, x, y, geschaaldeBreedte, geschaaldeHoogte);
+
+        resolve(canvas.toDataURL('image/jpeg', 0.75));
+      };
+      img.onerror = () => reject(new Error('Kon de afbeelding niet lezen.'));
+      img.src = lezer.result;
+    };
+    lezer.onerror = () => reject(new Error('Kon het bestand niet lezen.'));
+    lezer.readAsDataURL(bestand);
+  });
+}
+
+document.getElementById('btn-omslag-uploaden').addEventListener('click', () => {
+  document.getElementById('input-omslag-bestand').click();
+});
+
+document.getElementById('input-omslag-bestand').addEventListener('change', (e) => {
+  const bestand = e.target.files[0];
+  if (!bestand) return;
+
+  leesEnVerkleinAfbeelding(bestand)
+    .then(dataUrl => {
+      toonOmslagPreview(dataUrl);
+      omslagGalerijEl.querySelectorAll('.omslag-optie').forEach(el => el.classList.remove('geselecteerd'));
+    })
+    .catch(err => {
+      document.getElementById('quizmaken-foutmelding').textContent = 'Foto uploaden mislukt: ' + err.message;
+    })
+    .finally(() => {
+      e.target.value = '';
+    });
+});
+
+
 
 const vragenContainer = document.getElementById('vragen-container');
 const sjabloonVraagBlok = document.getElementById('sjabloon-vraag-blok');
@@ -79,6 +189,8 @@ document.getElementById('btn-toevoegen-quiz').addEventListener('click', () => {
   document.getElementById('quizmaken-foutmelding').textContent = '';
   document.getElementById('nieuwe-quiz-titel-kop').textContent = 'Nieuwe quiz';
   document.getElementById('btn-quiz-opslaan').textContent = 'Quiz opslaan';
+  bouwOmslagGalerij(STANDAARD_OMSLAGEN[0].url);
+  toonOmslagPreview(STANDAARD_OMSLAGEN[0].url);
   voegVraagBlokToe();
   toonScherm('scherm-nieuwe-quiz');
 });
@@ -95,6 +207,9 @@ function startBewerkenVanQuiz(code) {
     document.getElementById('input-titel').value = quizData.titel;
     vragenContainer.innerHTML = '';
     document.getElementById('quizmaken-foutmelding').textContent = '';
+    const huidigeOmslag = quizData.afbeelding || STANDAARD_OMSLAGEN[0].url;
+    bouwOmslagGalerij(huidigeOmslag);
+    toonOmslagPreview(huidigeOmslag);
     quizData.vragen.forEach(vraag => voegVraagBlokToe(vraag));
     document.getElementById('nieuwe-quiz-titel-kop').textContent = 'Quiz bewerken';
     document.getElementById('btn-quiz-opslaan').textContent = 'Wijzigingen opslaan';
@@ -150,14 +265,14 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
   }
 
   if (huidigeBewerkCode) {
-    // Bestaande quiz bijwerken: zelfde code, alleen titel + vragen overschrijven.
+    // Bestaande quiz bijwerken: zelfde code, alleen titel + vragen + omslag overschrijven.
     const code = huidigeBewerkCode;
 
-    db.ref('quizzen/' + code).update({ titel: titel, vragen: vragen })
+    db.ref('quizzen/' + code).update({ titel: titel, vragen: vragen, afbeelding: geselecteerdeOmslagUrl })
       .then(() => {
         const eigenQuizzen = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]');
         const bijgewerkteLijst = eigenQuizzen.map(q =>
-          q.code === code ? { code: code, titel: titel, aantalVragen: vragen.length } : q
+          q.code === code ? { code: code, titel: titel, aantalVragen: vragen.length, afbeelding: geselecteerdeOmslagUrl } : q
         );
         localStorage.setItem('eigenQuizzen', JSON.stringify(bijgewerkteLijst));
 
@@ -176,6 +291,7 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
   const quizData = {
     titel: titel,
     vragen: vragen,
+    afbeelding: geselecteerdeOmslagUrl,
     aangemaaktOp: Date.now()
   };
 
@@ -183,7 +299,7 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
     .then(() => {
       // Titel + code lokaal onthouden zodat "Mijn quizzen" ze kan tonen
       const eigenQuizzen = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]');
-      eigenQuizzen.push({ code: code, titel: titel, aantalVragen: vragen.length });
+      eigenQuizzen.push({ code: code, titel: titel, aantalVragen: vragen.length, afbeelding: geselecteerdeOmslagUrl });
       localStorage.setItem('eigenQuizzen', JSON.stringify(eigenQuizzen));
 
       document.getElementById('code-weergave').textContent = code;
@@ -215,6 +331,14 @@ function laadEigenQuizzen() {
   eigenQuizzen.forEach(quiz => {
     const item = document.createElement('div');
     item.className = 'quiz-item';
+
+    const afbeelding = document.createElement('img');
+    afbeelding.className = 'quiz-item-afbeelding';
+    afbeelding.src = quiz.afbeelding || STANDAARD_OMSLAGEN[0].url;
+    afbeelding.alt = quiz.titel;
+
+    const body = document.createElement('div');
+    body.className = 'quiz-item-body';
 
     const info = document.createElement('div');
     info.className = 'quiz-item-info';
@@ -260,8 +384,10 @@ function laadEigenQuizzen() {
     knoppen.appendChild(aanpassenKnop);
     knoppen.appendChild(verwijderKnop);
 
-    item.appendChild(info);
-    item.appendChild(knoppen);
+    body.appendChild(info);
+    body.appendChild(knoppen);
+    item.appendChild(afbeelding);
+    item.appendChild(body);
     lijstEl.appendChild(item);
   });
 }
