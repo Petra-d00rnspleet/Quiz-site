@@ -62,6 +62,27 @@ Als een speler een code invoert terwijl de host nog niet op "Spelen" heeft gekli
 ### Host verlaat de quiz (nieuw)
 Zodra de quizmaster op "Terug" of "Afronden" klikt, of het tabblad sluit / de verbinding verliest (via Firebase `onDisconnect`), wordt de sessie verwijderd. Alle spelers die op dat moment meedoen, zien meteen een scherm dat de quiz gestopt is en kunnen terug naar start.
 
+### Speelbare quizzen (nieuw)
+Bij het maken (of bewerken) van een quiz kun je een vinkje "Deze quiz openbaar maken" aanzetten. Zo'n quiz verschijnt dan voor iedereen onder de nieuwe knop **"Speelbare quizzen"** op het startscherm, met omslagfoto en al. Iedereen kan daar op **"Spelen"** klikken om zelf een wachtkamer voor die quiz te openen (net als bij "Mijn quizzen" → Spelen) — je hoeft de code niet meer te kennen of te delen.
+
+Tip voor betere prestaties bij veel quizzen: voeg in de Firebase-regels een index toe op het `openbaar`-veld:
+```json
+{
+  "rules": {
+    "quizzen": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": ["openbaar"]
+    },
+    "sessies": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
+```
+Zonder deze index werkt alles ook gewoon, Firebase geeft dan alleen een waarschuwing in de console bij grotere datasets.
+
 ## Mogelijke volgende stappen
 - Quiz bewerken na het maken.
 - Firebase-regels aanscherpen zodat mensen niet zomaar andermans quiz of sessie kunnen overschrijven.
