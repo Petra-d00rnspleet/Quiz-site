@@ -557,12 +557,130 @@ label {
   color: #f0c04d;
 }
 
-/* ---------- Quiz-item met meerdere knoppen ---------- */
+/* ---------- Omslagfoto kiezen (nieuwe/bewerken quiz) ---------- */
+
+.omslag-kiezer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.omslag-preview {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  border: 2px solid #b8863c;
+  overflow: hidden;
+  background: #10152e;
+}
+
+.omslag-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.omslag-upload-rij {
+  display: flex;
+}
+
+.omslag-subtitel {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #9a97a8;
+}
+
+.omslag-galerij {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.omslag-optie {
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  border: 2px solid #4a3c1a;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  background: #10152e;
+}
+
+.omslag-optie img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.omslag-optie:hover {
+  border-color: #f0c04d;
+}
+
+.omslag-optie.geselecteerd {
+  border-color: #f0c04d;
+  box-shadow: 0 0 0 2px #f0c04d;
+}
+
+/* ---------- Overzicht "Mijn quizzen": kaarten met omslagfoto ---------- */
+
+.quizzen-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+@media (max-width: 560px) {
+  .quizzen-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.quiz-item {
+  border: 1px solid #4a3c1a;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0c1130;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  margin-top: 0;
+}
+
+.quiz-item-afbeelding {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  display: block;
+  border-bottom: 1px solid #4a3c1a;
+}
+
+.quiz-item-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.quiz-item-info strong {
+  display: block;
+  color: #f0c04d;
+  font-size: 16px;
+}
+
+.quiz-item-info span {
+  font-size: 13px;
+  color: #9a97a8;
+}
 
 .quiz-item-knoppen {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
 }
 
