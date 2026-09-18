@@ -1,3 +1,70 @@
+// ---------- Sitebeheer (wachtwoord-beveiligd: quizzen uit "Speelbare quizzen" verwijderen) ----------
+//
+// Let op: dit is alleen een simpele drempel, geen echte beveiliging. Omdat dit
+// wachtwoord in de JS-broncode staat, kan iedereen die de site bekijkt het
+// wachtwoord in principe terugvinden (bijv. via de ontwikkelaarstools van de
+// browser). Gebruik dus geen wachtwoord dat je ergens anders ook gebruikt,
+// en zie dit als een drempel tegen toevallige bezoekers, niet als een slot.
+const SITEBEHEER_WACHTWOORD = 'Pleun&Sara!YEAH!123'; // Pas dit gerust aan naar jouw eigen wachtwoord.
+
+let sitebeheerActief = false;
+
+const sitebeheerOverlayEl = document.getElementById('sitebeheer-overlay');
+const inputSitebeheerWachtwoordEl = document.getElementById('input-sitebeheer-wachtwoord');
+const sitebeheerFoutmeldingEl = document.getElementById('sitebeheer-foutmelding');
+const btnSitebeheerEl = document.getElementById('btn-sitebeheer');
+
+function openSitebeheerOverlay() {
+  sitebeheerFoutmeldingEl.textContent = '';
+  inputSitebeheerWachtwoordEl.value = '';
+  sitebeheerOverlayEl.classList.add('actief');
+  inputSitebeheerWachtwoordEl.focus();
+}
+
+function sluitSitebeheerOverlay() {
+  sitebeheerOverlayEl.classList.remove('actief');
+}
+
+btnSitebeheerEl.addEventListener('click', () => {
+  if (sitebeheerActief) {
+    // Al ingelogd: nogmaals klikken logt meteen uit, geen wachtwoord nodig.
+    sitebeheerActief = false;
+    btnSitebeheerEl.classList.remove('actief');
+    btnSitebeheerEl.textContent = '⚙ Sitebeheer';
+    if (document.getElementById('scherm-speelbare-quizzen').classList.contains('actief')) {
+      laadOpenbareQuizzen();
+    }
+    return;
+  }
+  openSitebeheerOverlay();
+});
+
+document.getElementById('btn-sitebeheer-annuleren').addEventListener('click', () => {
+  sluitSitebeheerOverlay();
+});
+
+function probeerSitebeheerInloggen() {
+  if (inputSitebeheerWachtwoordEl.value === SITEBEHEER_WACHTWOORD) {
+    sitebeheerActief = true;
+    btnSitebeheerEl.classList.add('actief');
+    btnSitebeheerEl.textContent = '🔓 Sitebeheer actief';
+    sluitSitebeheerOverlay();
+    if (document.getElementById('scherm-speelbare-quizzen').classList.contains('actief')) {
+      laadOpenbareQuizzen();
+    }
+  } else {
+    sitebeheerFoutmeldingEl.textContent = 'Onjuist wachtwoord.';
+  }
+}
+
+document.getElementById('btn-sitebeheer-bevestigen').addEventListener('click', probeerSitebeheerInloggen);
+
+inputSitebeheerWachtwoordEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    probeerSitebeheerInloggen();
+  }
+});
+
 // ---------- Navigatie tussen schermen ----------
 
 function toonScherm(id) {
@@ -446,6 +513,26 @@ function laadOpenbareQuizzen() {
         });
 
         knoppen.appendChild(speelKnop);
+
+        if (sitebeheerActief) {
+          const verwijderKnop = document.createElement('button');
+          verwijderKnop.className = 'btn-verwijderen-quiz';
+          verwijderKnop.textContent = 'Verwijderen';
+          verwijderKnop.addEventListener('click', () => {
+            const zekerWeten = confirm('Weet je zeker dat je "' + quiz.titel + '" wilt verwijderen uit Speelbare quizzen? De quiz zelf blijft bestaan voor de maker, hij verdwijnt alleen uit deze lijst.');
+            if (!zekerWeten) return;
+
+            db.ref('quizzen/' + code).update({ openbaar: false })
+              .then(() => {
+                laadOpenbareQuizzen();
+              })
+              .catch(err => {
+                alert('Verwijderen mislukt: ' + err.message);
+              });
+          });
+          knoppen.appendChild(verwijderKnop);
+        }
+
         body.appendChild(info);
         body.appendChild(knoppen);
         item.appendChild(afbeelding);
