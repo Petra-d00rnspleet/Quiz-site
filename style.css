@@ -733,3 +733,105 @@ label {
 .btn-verwijderen-quiz:hover {
   border-color: #ff5c72;
 }
+
+/* ---------- Sitebeheer (wachtwoord-knopje + overlay) ---------- */
+
+.btn-sitebeheer {
+  align-self: center;
+  margin-top: 28px;
+  background: none;
+  border: 1px solid #33304a;
+  color: #6b6580;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.btn-sitebeheer:hover {
+  border-color: #4a3c1a;
+  color: #9a97a8;
+}
+
+.btn-sitebeheer.actief {
+  border-color: #f0c04d;
+  color: #f0c04d;
+}
+
+.sitebeheer-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 28, 0.8);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.sitebeheer-overlay.actief {
+  display: flex;
+}
+
+.sitebeheer-venster {
+  width: 100%;
+  max-width: 360px;
+  background: #10152e;
+  border: 1px solid #4a3c1a;
+  border-radius: 16px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sitebeheer-venster h3 {
+  margin: 0;
+  color: #f0c04d;
+}
+
+.sitebeheer-venster p {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: #9a97a8;
+}
+
+.sitebeheer-knoppen {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* ---------- Melding op een eigen quiz: door sitebeheer weggehaald bij openbaar ---------- */
+
+.quiz-beheer-melding {
+  background: #34131a;
+  border-bottom: 1px solid #ff5c72;
+  color: #ffb0bc;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.quiz-beheer-melding-sluiten {
+  background: none;
+  border: 1px solid #ff5c72;
+  color: #ffb0bc;
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.quiz-beheer-melding-sluiten:hover {
+  background: #ff5c72;
+  color: #2a0910;
+}
