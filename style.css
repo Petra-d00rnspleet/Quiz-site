@@ -390,6 +390,28 @@ label {
   align-items: center;
 }
 
+.antwoord-invoer-rij {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.antwoord-invoer-rij.verborgen {
+  display: none;
+}
+
+.antwoord-invoer-rij .veld-antwoord {
+  flex: 1;
+}
+
+.veld-goed-vinkje {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  accent-color: #37e07c;
+  cursor: pointer;
+}
+
 .vraag-blok-titel {
   color: #e6cd8f;
 }
@@ -463,6 +485,17 @@ label {
 
 .antwoord-optie:hover {
   border-color: #f0c04d;
+}
+
+.antwoord-optie.geselecteerd {
+  border-color: #f0c04d;
+  background: #1c1a33;
+  box-shadow: 0 0 0 1px #f0c04d;
+}
+
+.antwoord-optie.geselecteerd::after {
+  content: " ✓";
+  color: #f0c04d;
 }
 
 .antwoord-optie.goed {
