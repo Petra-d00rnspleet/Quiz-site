@@ -1,39 +1,46 @@
-// ---------- Sitebeheer (wachtwoord-beveiligd: quizzen uit "Speelbare quizzen" verwijderen) ----------
+// ---------- Sitebeheer (echt inloggen via Firebase Authentication) ----------
 //
-// Let op: dit is alleen een simpele drempel, geen echte beveiliging. Omdat dit
-// wachtwoord in de JS-broncode staat, kan iedereen die de site bekijkt het
-// wachtwoord in principe terugvinden (bijv. via de ontwikkelaarstools van de
-// browser). Gebruik dus geen wachtwoord dat je ergens anders ook gebruikt,
-// en zie dit als een drempel tegen toevallige bezoekers, niet als een slot.
-const SITEBEHEER_WACHTWOORD = 'Pleun&Sara!YEAH!123'; // Pas dit gerust aan naar jouw eigen wachtwoord.
+// De beheerder logt in met een e-mailadres + wachtwoord dat in de Firebase
+// Console staat (Authentication -> Users), niet in deze broncode. Zie de
+// readme voor hoe je dat account daar aanmaakt. Firebase onthoudt het
+// ingelogd zijn automatisch, dus na een herlaadbeurt blijft de beheerder
+// ingelogd tot er bewust wordt uitgelogd.
 
 let sitebeheerActief = false;
 
 const sitebeheerOverlayEl = document.getElementById('sitebeheer-overlay');
+const inputSitebeheerEmailEl = document.getElementById('input-sitebeheer-email');
 const inputSitebeheerWachtwoordEl = document.getElementById('input-sitebeheer-wachtwoord');
 const sitebeheerFoutmeldingEl = document.getElementById('sitebeheer-foutmelding');
 const btnSitebeheerEl = document.getElementById('btn-sitebeheer');
+const btnSitebeheerBevestigenEl = document.getElementById('btn-sitebeheer-bevestigen');
 
 function openSitebeheerOverlay() {
   sitebeheerFoutmeldingEl.textContent = '';
+  inputSitebeheerEmailEl.value = '';
   inputSitebeheerWachtwoordEl.value = '';
   sitebeheerOverlayEl.classList.add('actief');
-  inputSitebeheerWachtwoordEl.focus();
+  inputSitebeheerEmailEl.focus();
 }
 
 function sluitSitebeheerOverlay() {
   sitebeheerOverlayEl.classList.remove('actief');
 }
 
-btnSitebeheerEl.addEventListener('click', () => {
+function werkSitebeheerKnopBij() {
   if (sitebeheerActief) {
-    // Al ingelogd: nogmaals klikken logt meteen uit, geen wachtwoord nodig.
-    sitebeheerActief = false;
+    btnSitebeheerEl.classList.add('actief');
+    btnSitebeheerEl.textContent = '🔓 Sitebeheer actief';
+  } else {
     btnSitebeheerEl.classList.remove('actief');
     btnSitebeheerEl.textContent = '⚙ Sitebeheer';
-    if (document.getElementById('scherm-speelbare-quizzen').classList.contains('actief')) {
-      laadOpenbareQuizzen();
-    }
+  }
+}
+
+btnSitebeheerEl.addEventListener('click', () => {
+  if (sitebeheerActief) {
+    // Al ingelogd: nogmaals klikken logt meteen uit.
+    auth.signOut();
     return;
   }
   openSitebeheerOverlay();
@@ -44,24 +51,47 @@ document.getElementById('btn-sitebeheer-annuleren').addEventListener('click', ()
 });
 
 function probeerSitebeheerInloggen() {
-  if (inputSitebeheerWachtwoordEl.value === SITEBEHEER_WACHTWOORD) {
-    sitebeheerActief = true;
-    btnSitebeheerEl.classList.add('actief');
-    btnSitebeheerEl.textContent = '🔓 Sitebeheer actief';
-    sluitSitebeheerOverlay();
-    if (document.getElementById('scherm-speelbare-quizzen').classList.contains('actief')) {
-      laadOpenbareQuizzen();
-    }
-  } else {
-    sitebeheerFoutmeldingEl.textContent = 'Onjuist wachtwoord.';
+  const email = inputSitebeheerEmailEl.value.trim();
+  const wachtwoord = inputSitebeheerWachtwoordEl.value;
+
+  if (!email || !wachtwoord) {
+    sitebeheerFoutmeldingEl.textContent = 'Vul e-mailadres en wachtwoord in.';
+    return;
   }
+
+  sitebeheerFoutmeldingEl.textContent = '';
+  btnSitebeheerBevestigenEl.disabled = true;
+  btnSitebeheerBevestigenEl.textContent = 'Bezig...';
+
+  auth.signInWithEmailAndPassword(email, wachtwoord)
+    .then(() => {
+      // sitebeheerActief wordt automatisch gezet via onAuthStateChanged hieronder.
+      sluitSitebeheerOverlay();
+    })
+    .catch(() => {
+      sitebeheerFoutmeldingEl.textContent = 'Inloggen mislukt: onjuist e-mailadres of wachtwoord.';
+    })
+    .finally(() => {
+      btnSitebeheerBevestigenEl.disabled = false;
+      btnSitebeheerBevestigenEl.textContent = 'Inloggen';
+    });
 }
 
-document.getElementById('btn-sitebeheer-bevestigen').addEventListener('click', probeerSitebeheerInloggen);
+btnSitebeheerBevestigenEl.addEventListener('click', probeerSitebeheerInloggen);
 
-inputSitebeheerWachtwoordEl.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    probeerSitebeheerInloggen();
+[inputSitebeheerEmailEl, inputSitebeheerWachtwoordEl].forEach(veld => {
+  veld.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      probeerSitebeheerInloggen();
+    }
+  });
+});
+
+auth.onAuthStateChanged(gebruiker => {
+  sitebeheerActief = !!gebruiker;
+  werkSitebeheerKnopBij();
+  if (document.getElementById('scherm-speelbare-quizzen').classList.contains('actief')) {
+    laadOpenbareQuizzen();
   }
 });
 
