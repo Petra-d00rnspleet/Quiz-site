@@ -95,6 +95,42 @@ auth.onAuthStateChanged(gebruiker => {
   }
 });
 
+// ---------- Naam van de quizmaker (verplicht, eenmalig, niet meer te wijzigen) ----------
+//
+// Voordat iemand een quiz kan maken, moet die zijn/haar naam invullen. Deze
+// naam wordt lokaal onthouden (localStorage) en bij elke quiz die diegene
+// maakt als "makerNaam" opgeslagen in Firebase. Zodra een quiz openbaar
+// staat, is die naam voor iedereen zichtbaar bij "Speelbare quizzen".
+// Er is bewust geen manier om de naam later te wijzigen.
+
+const MAKER_NAAM_SLEUTEL = 'makerNaam';
+
+function huidigeMakerNaam() {
+  return localStorage.getItem(MAKER_NAAM_SLEUTEL);
+}
+
+const inputMakerNaamEl = document.getElementById('input-maker-naam');
+const naamInvullenFoutmeldingEl = document.getElementById('naam-invullen-foutmelding');
+
+function bevestigMakerNaam() {
+  const naam = inputMakerNaamEl.value.trim();
+  if (!naam) {
+    naamInvullenFoutmeldingEl.textContent = 'Vul je naam in.';
+    return;
+  }
+  localStorage.setItem(MAKER_NAAM_SLEUTEL, naam);
+  toonScherm('scherm-quizmaken');
+  laadEigenQuizzen();
+}
+
+document.getElementById('btn-naam-bevestigen').addEventListener('click', bevestigMakerNaam);
+
+inputMakerNaamEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    bevestigMakerNaam();
+  }
+});
+
 // ---------- Navigatie tussen schermen ----------
 
 function toonScherm(id) {
@@ -103,8 +139,14 @@ function toonScherm(id) {
 }
 
 document.getElementById('btn-naar-quizmaken').addEventListener('click', () => {
-  toonScherm('scherm-quizmaken');
-  laadEigenQuizzen();
+  if (huidigeMakerNaam()) {
+    toonScherm('scherm-quizmaken');
+    laadEigenQuizzen();
+  } else {
+    inputMakerNaamEl.value = '';
+    naamInvullenFoutmeldingEl.textContent = '';
+    toonScherm('scherm-naam-invullen');
+  }
 });
 
 document.getElementById('btn-naar-speelbaar').addEventListener('click', () => {
@@ -495,6 +537,7 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
     vragen: vragen,
     afbeelding: geselecteerdeOmslagUrl,
     openbaar: isOpenbaar,
+    makerNaam: huidigeMakerNaam() || '',
     aangemaaktOp: Date.now()
   };
 
@@ -561,6 +604,7 @@ function laadEigenQuizzen() {
 
     resultaten.forEach(({ quiz, liveData }) => {
       const actueelOpenbaar = liveData ? !!liveData.openbaar : quiz.openbaar;
+      const makerNaam = (liveData && liveData.makerNaam) || '';
 
       const item = document.createElement('div');
       item.className = 'quiz-item';
@@ -597,7 +641,7 @@ function laadEigenQuizzen() {
 
       const info = document.createElement('div');
       info.className = 'quiz-item-info';
-      info.innerHTML = `<strong>${quiz.titel}</strong><span>${quiz.aantalVragen} vraag/vragen${actueelOpenbaar ? ' · Openbaar' : ''}</span>`;
+      info.innerHTML = `<strong>${quiz.titel}</strong><span>${quiz.aantalVragen} vraag/vragen${makerNaam ? ' · Door ' + makerNaam : ''}${actueelOpenbaar ? ' · Openbaar' : ''}</span>`;
 
       const knoppen = document.createElement('div');
       knoppen.className = 'quiz-item-knoppen';
@@ -681,7 +725,8 @@ function laadOpenbareQuizzen() {
         const info = document.createElement('div');
         info.className = 'quiz-item-info';
         const aantalVragen = (quiz.vragen || []).length;
-        info.innerHTML = `<strong>${quiz.titel}</strong><span>${aantalVragen} vraag/vragen</span>`;
+        const makerNaam = quiz.makerNaam || '';
+        info.innerHTML = `<strong>${quiz.titel}</strong><span>${aantalVragen} vraag/vragen${makerNaam ? ' · Door ' + makerNaam : ''}</span>`;
 
         const knoppen = document.createElement('div');
         knoppen.className = 'quiz-item-knoppen';
