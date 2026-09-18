@@ -269,6 +269,11 @@ h2.titel-regenboog {
   font-weight: 700;
 }
 
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 @keyframes glitter-schuiven {
   0%   { background-position: 0% 0; }
   100% { background-position: 300% 0; }
@@ -734,7 +739,7 @@ label {
   border-color: #ff5c72;
 }
 
-/* ---------- Sitebeheer (wachtwoord-knopje + overlay) ---------- */
+/* ---------- Sitebeheer (inlogknopje + inlogvenster) ---------- */
 
 .btn-sitebeheer {
   align-self: center;
@@ -743,9 +748,10 @@ label {
   border: 1px solid #33304a;
   color: #6b6580;
   font-size: 12px;
-  padding: 6px 12px;
+  padding: 6px 14px;
   border-radius: 999px;
   cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
 
 .btn-sitebeheer:hover {
@@ -762,7 +768,9 @@ label {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(5, 8, 28, 0.8);
+  background: rgba(5, 8, 28, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   z-index: 1000;
   align-items: center;
   justify-content: center;
@@ -773,34 +781,66 @@ label {
   display: flex;
 }
 
+@keyframes sitebeheer-verschijnen {
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .sitebeheer-venster {
   width: 100%;
-  max-width: 360px;
-  background: #10152e;
-  border: 1px solid #4a3c1a;
-  border-radius: 16px;
-  padding: 22px;
+  max-width: 380px;
+  background: linear-gradient(165deg, #171d42 0%, #0b1029 65%);
+  border: 1px solid #b8863c;
+  border-radius: 20px;
+  padding: 30px 26px 24px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 40px rgba(240, 192, 77, 0.08);
+  animation: sitebeheer-verschijnen 0.2s ease-out;
+}
+
+.sitebeheer-icoon {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #3a2a10, #120e04);
+  border: 1px solid #b8863c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin: 0 auto 6px;
+  box-shadow: 0 0 18px rgba(240, 192, 77, 0.25);
 }
 
 .sitebeheer-venster h3 {
   margin: 0;
   color: #f0c04d;
+  font-size: 21px;
+  text-align: center;
 }
 
 .sitebeheer-venster p {
-  margin: 0 0 6px;
+  margin: 0 0 8px;
   font-size: 13px;
   color: #9a97a8;
+  text-align: center;
+}
+
+.sitebeheer-venster label {
+  margin-top: 2px;
+}
+
+.sitebeheer-venster input {
+  margin-bottom: 2px;
 }
 
 .sitebeheer-knoppen {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 12px;
 }
 
 /* ---------- Melding op een eigen quiz: door sitebeheer weggehaald bij openbaar ---------- */
