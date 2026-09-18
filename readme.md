@@ -41,6 +41,14 @@ Open `index.html` gewoon in je browser (of gebruik een simpele lokale server, bi
 
 ## Hoe het nu werkt
 
+### Naam invullen (verplicht, eenmalig)
+Voordat je voor het eerst op "Quiz maken" klikt, vraagt de site om je naam. Die naam:
+- wordt lokaal onthouden in je browser en kan daarna **niet meer gewijzigd worden**;
+- komt automatisch bij **elke quiz die je maakt** te staan (ook quizzen die je later nog toevoegt);
+- is voor **iedereen zichtbaar** zodra je een quiz openbaar zet (bij "Speelbare quizzen" staat "Door <jouw naam>" onder elke quiz).
+
+Als je op een ander apparaat of in een andere browser inlogt, wordt daar opnieuw om een naam gevraagd (het wordt per browser lokaal onthouden, niet gekoppeld aan een account).
+
 ### Quiz maken en verwijderen
 - **Quiz maken:** titel + per vraag de vraagtekst en de antwoorden. Per vraag kies je **2 of 4 antwoorden**, en je kunt **meer dan 1 antwoord als goed aanvinken** (in plaats van er maar 1 te kunnen kiezen). Na opslaan krijg je een unieke 6-tekens code en zie je meteen een knop **"Nu hosten"**.
 - **Mijn quizzen:** elke quiz heeft nu een knop **"Spelen"** (start de live quiz als host), **"Aanpassen"** (bewerk titel/vragen/omslag) en **"Verwijderen"** (verwijdert de quiz definitief uit Firebase, na een bevestigingsvraag).
