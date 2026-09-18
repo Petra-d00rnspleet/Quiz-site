@@ -42,8 +42,8 @@ Open `index.html` gewoon in je browser (of gebruik een simpele lokale server, bi
 ## Hoe het nu werkt
 
 ### Quiz maken en verwijderen
-- **Quiz maken:** titel + per vraag de vraagtekst, 4 antwoorden en welk antwoord goed is. Na opslaan krijg je een unieke 6-tekens code en zie je meteen een knop **"Nu hosten"**.
-- **Mijn quizzen:** elke quiz heeft nu een knop **"Spelen"** (start de live quiz als host) en een knop **"Verwijderen"** (verwijdert de quiz definitief uit Firebase, na een bevestigingsvraag).
+- **Quiz maken:** titel + per vraag de vraagtekst en de antwoorden. Per vraag kies je **2 of 4 antwoorden**, en je kunt **meer dan 1 antwoord als goed aanvinken** (in plaats van er maar 1 te kunnen kiezen). Na opslaan krijg je een unieke 6-tekens code en zie je meteen een knop **"Nu hosten"**.
+- **Mijn quizzen:** elke quiz heeft nu een knop **"Spelen"** (start de live quiz als host), **"Aanpassen"** (bewerk titel/vragen/omslag) en **"Verwijderen"** (verwijdert de quiz definitief uit Firebase, na een bevestigingsvraag).
 
 ### Live hosten (nieuw)
 De quiz wordt nu **live gespeeld door de maker**, net als bij Kahoot:
@@ -56,9 +56,15 @@ De quiz wordt nu **live gespeeld door de maker**, net als bij Kahoot:
 
 Als een speler een code invoert terwijl de host nog niet op "Spelen" heeft geklikt, krijgt die speler een duidelijke foutmelding dat de quiz nog niet gestart is.
 
+### Antwoorden: 2 of 4 opties, en meerdere goede antwoorden mogelijk (nieuw)
+- Bij het maken van een vraag kies je bij **"Aantal antwoorden"** voor **2** (bijv. waar/niet waar) of **4** antwoorden.
+- Bij elk antwoord staat een vinkje. Je kunt **meer dan 1 antwoord als goed aanvinken** — een vraag kan dus 1 of meerdere juiste antwoorden hebben.
+- Spelers zien bij zo'n vraag geen directe klik-en-klaar meer: ze **vinken alle antwoorden aan die ze goed vinden** en klikken daarna op **"Antwoord versturen"**. Pas na dat klikken staat hun antwoord vast.
+- Een vraag telt alleen als **goed beantwoord** als een speler precies alle juiste antwoorden heeft aangevinkt (niet meer en niet minder).
+
 ### Puntentelling en scorebord (nieuw)
 - Een goed antwoord levert **1000 punten** op.
-- Staat het na een vraag gelijk in punten, dan wint degene die (over alle beantwoorde vragen samen) **het snelst klikte** — dus hoe eerder je een goed antwoord geeft, hoe beter je rangschikt bij een gelijke stand.
+- Staat het na een vraag gelijk in punten, dan wint degene die (over alle beantwoorde vragen samen) **het snelst klikte** — dus hoe eerder je op "Antwoord versturen" klikt bij een goed antwoord, hoe beter je rangschikt bij een gelijke stand.
 - Het scorebord toont iedereen gerangschikt van hoog naar laag; spelers zien hun eigen rij gemarkeerd.
 
 ### Host verlaat de quiz (nieuw)
@@ -86,7 +92,11 @@ Tip voor betere prestaties bij veel quizzen: voeg in de Firebase-regels een inde
 Zonder deze index werkt alles ook gewoon, Firebase geeft dan alleen een waarschuwing in de console bij grotere datasets.
 
 ### Sitebeheer (nieuw, met echt account via Firebase Authentication)
-Onderaan elk scherm staat een klein knopje **"Sitebeheer"**. Daar klik je op, log je in met het e-mailadres + wachtwoord van het beheerdersaccount (zie Stap 1 hierboven), en kom je terug op dezelfde pagina — alleen kun je nu bij **"Speelbare quizzen"** per quiz op **"Verwijderen"** klikken. Dat haalt de quiz uit die lijst (hij wordt "niet-openbaar" gezet); de quiz zelf blijft gewoon bestaan voor de maker. Nogmaals op "Sitebeheer" klikken logt je weer uit.
+Onderaan elk scherm staat een klein knopje **"Sitebeheer"**. Daar klik je op, log je in met het e-mailadres + wachtwoord van het beheerdersaccount (zie Stap 1 hierboven), en kom je terug op dezelfde pagina — alleen kun je nu bij **"Speelbare quizzen"** per quiz op **"Aanpassen"** of **"Verwijderen"** klikken:
+- **Aanpassen:** opent hetzelfde bewerkformulier als bij "Mijn quizzen", zodat sitebeheer de titel, vragen, antwoorden en omslagfoto van elke openbare quiz kan wijzigen — ook van quizzen die door iemand anders zijn gemaakt. Na opslaan (of op "Terug" klikken) kom je weer terug bij "Speelbare quizzen".
+- **Verwijderen:** haalt de quiz uit die lijst (hij wordt "niet-openbaar" gezet); de quiz zelf blijft gewoon bestaan voor de maker.
+
+Nogmaals op "Sitebeheer" klikken logt je weer uit.
 
 Dit inloggen verloopt via **Firebase Authentication**, niet via een wachtwoord in de broncode: de inloggegevens staan alleen in de Firebase Console, dus niemand kan ze terugvinden door in de bestanden van de site te kijken. Firebase onthoudt bovendien dat je bent ingelogd, dus na het herladen van de pagina blijf je ingelogd totdat je bewust uitlogt. Wil je meerdere mensen sitebeheerder maken? Voeg dan in Firebase Console → Authentication → Users gewoon nog een gebruiker toe.
 
@@ -95,6 +105,6 @@ Let op: dit account beschermt alleen de knop in de website zelf. De Firebase-reg
 Zodra een quiz zo wordt weggehaald, ziet de maker (op zijn/haar eigen apparaat, onder "Mijn quizzen") bovenaan die quiz een rode melding: "Uw quiz is weggehaald bij openbaar." Met de knop "OK" bij die melding gaat hij weer weg.
 
 ## Mogelijke volgende stappen
-- Quiz bewerken na het maken.
 - Firebase-regels aanscherpen zodat mensen niet zomaar andermans quiz of sessie kunnen overschrijven.
 - Punten laten afnemen naarmate je langzamer antwoordt (in plaats van altijd vlak 1000 punten).
+- Gedeeltelijke punten geven als een speler bij een vraag met meerdere goede antwoorden er een paar goed heeft, maar niet allemaal.
