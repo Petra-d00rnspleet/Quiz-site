@@ -27,6 +27,8 @@
    Let op: dit is open voor iedereen. Voor een echt project wil je later regels toevoegen die misbruik voorkomen.
 4. Ga naar **Project instellingen → Algemeen → Jouw apps → Web app (</> icoon)** en registreer een app.
 5. Kopieer de `firebaseConfig` gegevens naar `firebase-config.js` in dit project.
+6. Ga naar **Build → Authentication → Sign-in method** en zet de provider **E-mail/Wachtwoord** aan.
+7. Ga naar **Authentication → Users → Add user** en maak het beheerdersaccount aan: vul het e-mailadres en wachtwoord in waarmee jij (of wie de site beheert) later via het "Sitebeheer"-knopje wil inloggen. Dit account staat alleen in Firebase, nergens in de broncode.
 
 ## Stap 2: Lokaal testen
 Open `index.html` gewoon in je browser (of gebruik een simpele lokale server, bijv. de "Live Server" extensie in VS Code). Open de host-kant en een speler-kant in twee verschillende tabbladen/apparaten om te testen.
@@ -83,10 +85,12 @@ Tip voor betere prestaties bij veel quizzen: voeg in de Firebase-regels een inde
 ```
 Zonder deze index werkt alles ook gewoon, Firebase geeft dan alleen een waarschuwing in de console bij grotere datasets.
 
-### Sitebeheer (nieuw)
-Onderaan elk scherm staat een klein knopje **"Sitebeheer"**. Daar klik je op, vul je een wachtwoord in, en kom je terug op dezelfde pagina — alleen kun je nu bij **"Speelbare quizzen"** per quiz op **"Verwijderen"** klikken. Dat haalt de quiz uit die lijst (hij wordt "niet-openbaar" gezet); de quiz zelf blijft gewoon bestaan voor de maker. Nogmaals op "Sitebeheer" klikken logt je weer uit.
+### Sitebeheer (nieuw, met echt account via Firebase Authentication)
+Onderaan elk scherm staat een klein knopje **"Sitebeheer"**. Daar klik je op, log je in met het e-mailadres + wachtwoord van het beheerdersaccount (zie Stap 1 hierboven), en kom je terug op dezelfde pagina — alleen kun je nu bij **"Speelbare quizzen"** per quiz op **"Verwijderen"** klikken. Dat haalt de quiz uit die lijst (hij wordt "niet-openbaar" gezet); de quiz zelf blijft gewoon bestaan voor de maker. Nogmaals op "Sitebeheer" klikken logt je weer uit.
 
-Het wachtwoord staat bovenaan in `app.js` bij `SITEBEHEER_WACHTWOORD` — pas dit aan naar jouw eigen wachtwoord voordat je de site online zet. Let op: dit is alleen een simpele drempel, geen echte beveiliging — het wachtwoord staat gewoon in de broncode en is voor iedereen te vinden die dat zoekt (bijv. via de ontwikkelaarstools van de browser). Gebruik er dus geen wachtwoord voor dat je ergens anders ook gebruikt.
+Dit inloggen verloopt via **Firebase Authentication**, niet via een wachtwoord in de broncode: de inloggegevens staan alleen in de Firebase Console, dus niemand kan ze terugvinden door in de bestanden van de site te kijken. Firebase onthoudt bovendien dat je bent ingelogd, dus na het herladen van de pagina blijf je ingelogd totdat je bewust uitlogt. Wil je meerdere mensen sitebeheerder maken? Voeg dan in Firebase Console → Authentication → Users gewoon nog een gebruiker toe.
+
+Let op: dit account beschermt alleen de knop in de website zelf. De Firebase-regels hieronder staan nog steeds iedereen toe om in `quizzen` en `sessies` te lezen en schrijven (dat is nodig omdat gewone bezoekers zonder account al hun eigen quizzen kunnen maken/spelen). Wil je dat ook op databaseniveau afschermen, dan is dat een grotere aanpassing van de regels — laat het weten als je dat ook wil.
 
 Zodra een quiz zo wordt weggehaald, ziet de maker (op zijn/haar eigen apparaat, onder "Mijn quizzen") bovenaan die quiz een rode melding: "Uw quiz is weggehaald bij openbaar." Met de knop "OK" bij die melding gaat hij weer weg.
 
