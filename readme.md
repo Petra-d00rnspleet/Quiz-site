@@ -83,6 +83,13 @@ Tip voor betere prestaties bij veel quizzen: voeg in de Firebase-regels een inde
 ```
 Zonder deze index werkt alles ook gewoon, Firebase geeft dan alleen een waarschuwing in de console bij grotere datasets.
 
+### Sitebeheer (nieuw)
+Onderaan elk scherm staat een klein knopje **"Sitebeheer"**. Daar klik je op, vul je een wachtwoord in, en kom je terug op dezelfde pagina — alleen kun je nu bij **"Speelbare quizzen"** per quiz op **"Verwijderen"** klikken. Dat haalt de quiz uit die lijst (hij wordt "niet-openbaar" gezet); de quiz zelf blijft gewoon bestaan voor de maker. Nogmaals op "Sitebeheer" klikken logt je weer uit.
+
+Het wachtwoord staat bovenaan in `app.js` bij `SITEBEHEER_WACHTWOORD` — pas dit aan naar jouw eigen wachtwoord voordat je de site online zet. Let op: dit is alleen een simpele drempel, geen echte beveiliging — het wachtwoord staat gewoon in de broncode en is voor iedereen te vinden die dat zoekt (bijv. via de ontwikkelaarstools van de browser). Gebruik er dus geen wachtwoord voor dat je ergens anders ook gebruikt.
+
+Zodra een quiz zo wordt weggehaald, ziet de maker (op zijn/haar eigen apparaat, onder "Mijn quizzen") bovenaan die quiz een rode melding: "Uw quiz is weggehaald bij openbaar." Met de knop "OK" bij die melding gaat hij weer weg.
+
 ## Mogelijke volgende stappen
 - Quiz bewerken na het maken.
 - Firebase-regels aanscherpen zodat mensen niet zomaar andermans quiz of sessie kunnen overschrijven.
