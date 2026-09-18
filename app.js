@@ -344,7 +344,7 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
     // Bestaande quiz bijwerken: zelfde code, alleen titel + vragen + omslag + openbaar overschrijven.
     const code = huidigeBewerkCode;
 
-    db.ref('quizzen/' + code).update({ titel: titel, vragen: vragen, afbeelding: geselecteerdeOmslagUrl, openbaar: isOpenbaar })
+    db.ref('quizzen/' + code).update({ titel: titel, vragen: vragen, afbeelding: geselecteerdeOmslagUrl, openbaar: isOpenbaar, doorBeheerVerwijderd: false })
       .then(() => {
         const eigenQuizzen = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]');
         const bijgewerkteLijst = eigenQuizzen.map(q =>
@@ -396,7 +396,6 @@ document.getElementById('btn-nu-hosten').addEventListener('click', () => {
 
 function laadEigenQuizzen() {
   const lijstEl = document.getElementById('lijst-eigen-quizzen');
-  lijstEl.innerHTML = '';
 
   const eigenQuizzen = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]');
 
@@ -405,67 +404,123 @@ function laadEigenQuizzen() {
     return;
   }
 
-  eigenQuizzen.forEach(quiz => {
-    const item = document.createElement('div');
-    item.className = 'quiz-item';
+  lijstEl.innerHTML = '<p>Bezig met laden...</p>';
 
-    const afbeelding = document.createElement('img');
-    afbeelding.className = 'quiz-item-afbeelding';
-    afbeelding.src = quiz.afbeelding || STANDAARD_OMSLAGEN[0].url;
-    afbeelding.alt = quiz.titel;
+  // Voor elke eigen quiz de actuele gegevens uit Firebase ophalen, zodat we
+  // weten of de quiz nog "openbaar" is en of sitebeheer hem heeft weggehaald.
+  Promise.all(
+    eigenQuizzen.map(quiz =>
+      db.ref('quizzen/' + quiz.code).once('value').then(snapshot => ({
+        quiz: quiz,
+        liveData: snapshot.val()
+      }))
+    )
+  ).then(resultaten => {
+    lijstEl.innerHTML = '';
 
-    const body = document.createElement('div');
-    body.className = 'quiz-item-body';
-
-    const info = document.createElement('div');
-    info.className = 'quiz-item-info';
-    info.innerHTML = `<strong>${quiz.titel}</strong><span>${quiz.aantalVragen} vraag/vragen${quiz.openbaar ? ' · Openbaar' : ''}</span>`;
-
-    const knoppen = document.createElement('div');
-    knoppen.className = 'quiz-item-knoppen';
-
-    const speelKnop = document.createElement('button');
-    speelKnop.className = 'btn-spelen';
-    speelKnop.textContent = 'Spelen';
-    speelKnop.addEventListener('click', () => {
-      startHostenVanQuiz(quiz.code);
+    // Lokale lijst bijwerken als de "openbaar"-status inmiddels afwijkt
+    // (bijv. omdat sitebeheer de quiz heeft weggehaald bij openbaar).
+    let lijstIsGewijzigd = false;
+    const bijgewerkteEigenQuizzen = eigenQuizzen.map(q => {
+      const resultaat = resultaten.find(r => r.quiz.code === q.code);
+      if (resultaat && resultaat.liveData && resultaat.liveData.openbaar !== q.openbaar) {
+        lijstIsGewijzigd = true;
+        return Object.assign({}, q, { openbaar: resultaat.liveData.openbaar });
+      }
+      return q;
     });
+    if (lijstIsGewijzigd) {
+      localStorage.setItem('eigenQuizzen', JSON.stringify(bijgewerkteEigenQuizzen));
+    }
 
-    const aanpassenKnop = document.createElement('button');
-    aanpassenKnop.className = 'btn-aanpassen-quiz';
-    aanpassenKnop.textContent = 'Aanpassen';
-    aanpassenKnop.addEventListener('click', () => {
-      startBewerkenVanQuiz(quiz.code);
-    });
+    resultaten.forEach(({ quiz, liveData }) => {
+      const actueelOpenbaar = liveData ? !!liveData.openbaar : quiz.openbaar;
 
-    const verwijderKnop = document.createElement('button');
-    verwijderKnop.className = 'btn-verwijderen-quiz';
-    verwijderKnop.textContent = 'Verwijderen';
-    verwijderKnop.addEventListener('click', () => {
-      const zekerWeten = confirm('Weet je zeker dat je "' + quiz.titel + '" wilt verwijderen? Dit kan niet ongedaan gemaakt worden.');
-      if (!zekerWeten) return;
+      const item = document.createElement('div');
+      item.className = 'quiz-item';
 
-      db.ref('quizzen/' + quiz.code).remove()
-        .then(() => db.ref('sessies/' + quiz.code).remove())
-        .then(() => {
-          const bijgewerkteLijst = eigenQuizzen.filter(q => q.code !== quiz.code);
-          localStorage.setItem('eigenQuizzen', JSON.stringify(bijgewerkteLijst));
-          laadEigenQuizzen();
-        })
-        .catch(err => {
-          alert('Verwijderen mislukt: ' + err.message);
+      if (liveData && liveData.doorBeheerVerwijderd) {
+        const melding = document.createElement('div');
+        melding.className = 'quiz-beheer-melding';
+
+        const meldingTekst = document.createElement('span');
+        meldingTekst.textContent = 'Uw quiz is weggehaald bij openbaar.';
+
+        const meldingSluiten = document.createElement('button');
+        meldingSluiten.type = 'button';
+        meldingSluiten.className = 'quiz-beheer-melding-sluiten';
+        meldingSluiten.textContent = 'OK';
+        meldingSluiten.addEventListener('click', () => {
+          db.ref('quizzen/' + quiz.code + '/doorBeheerVerwijderd').remove()
+            .then(() => melding.remove())
+            .catch(err => alert('Melding weghalen mislukt: ' + err.message));
         });
+
+        melding.appendChild(meldingTekst);
+        melding.appendChild(meldingSluiten);
+        item.appendChild(melding);
+      }
+
+      const afbeelding = document.createElement('img');
+      afbeelding.className = 'quiz-item-afbeelding';
+      afbeelding.src = quiz.afbeelding || STANDAARD_OMSLAGEN[0].url;
+      afbeelding.alt = quiz.titel;
+
+      const body = document.createElement('div');
+      body.className = 'quiz-item-body';
+
+      const info = document.createElement('div');
+      info.className = 'quiz-item-info';
+      info.innerHTML = `<strong>${quiz.titel}</strong><span>${quiz.aantalVragen} vraag/vragen${actueelOpenbaar ? ' · Openbaar' : ''}</span>`;
+
+      const knoppen = document.createElement('div');
+      knoppen.className = 'quiz-item-knoppen';
+
+      const speelKnop = document.createElement('button');
+      speelKnop.className = 'btn-spelen';
+      speelKnop.textContent = 'Spelen';
+      speelKnop.addEventListener('click', () => {
+        startHostenVanQuiz(quiz.code);
+      });
+
+      const aanpassenKnop = document.createElement('button');
+      aanpassenKnop.className = 'btn-aanpassen-quiz';
+      aanpassenKnop.textContent = 'Aanpassen';
+      aanpassenKnop.addEventListener('click', () => {
+        startBewerkenVanQuiz(quiz.code);
+      });
+
+      const verwijderKnop = document.createElement('button');
+      verwijderKnop.className = 'btn-verwijderen-quiz';
+      verwijderKnop.textContent = 'Verwijderen';
+      verwijderKnop.addEventListener('click', () => {
+        const zekerWeten = confirm('Weet je zeker dat je "' + quiz.titel + '" wilt verwijderen? Dit kan niet ongedaan gemaakt worden.');
+        if (!zekerWeten) return;
+
+        db.ref('quizzen/' + quiz.code).remove()
+          .then(() => db.ref('sessies/' + quiz.code).remove())
+          .then(() => {
+            const bijgewerkteLijst = eigenQuizzen.filter(q => q.code !== quiz.code);
+            localStorage.setItem('eigenQuizzen', JSON.stringify(bijgewerkteLijst));
+            laadEigenQuizzen();
+          })
+          .catch(err => {
+            alert('Verwijderen mislukt: ' + err.message);
+          });
+      });
+
+      knoppen.appendChild(speelKnop);
+      knoppen.appendChild(aanpassenKnop);
+      knoppen.appendChild(verwijderKnop);
+
+      body.appendChild(info);
+      body.appendChild(knoppen);
+      item.appendChild(afbeelding);
+      item.appendChild(body);
+      lijstEl.appendChild(item);
     });
-
-    knoppen.appendChild(speelKnop);
-    knoppen.appendChild(aanpassenKnop);
-    knoppen.appendChild(verwijderKnop);
-
-    body.appendChild(info);
-    body.appendChild(knoppen);
-    item.appendChild(afbeelding);
-    item.appendChild(body);
-    lijstEl.appendChild(item);
+  }).catch(err => {
+    lijstEl.innerHTML = '<p>Laden van je quizzen mislukt: ' + err.message + '</p>';
   });
 }
 
@@ -522,7 +577,7 @@ function laadOpenbareQuizzen() {
             const zekerWeten = confirm('Weet je zeker dat je "' + quiz.titel + '" wilt verwijderen uit Speelbare quizzen? De quiz zelf blijft bestaan voor de maker, hij verdwijnt alleen uit deze lijst.');
             if (!zekerWeten) return;
 
-            db.ref('quizzen/' + code).update({ openbaar: false })
+            db.ref('quizzen/' + code).update({ openbaar: false, doorBeheerVerwijderd: true })
               .then(() => {
                 laadOpenbareQuizzen();
               })
