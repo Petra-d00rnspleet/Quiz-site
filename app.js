@@ -1212,41 +1212,74 @@ function renderSessieVoorSpeler(sessie) {
         'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length;
       document.getElementById('speler-vraag-weergave').textContent = vraag.vraag;
 
-      const verstuurKnop = document.getElementById('btn-speler-antwoord-versturen');
-      verstuurKnop.disabled = spelerGeselecteerdeAntwoorden.length === 0;
+      // Bij precies 1 goed antwoord werkt het net als vroeger: 1 tik = meteen
+      // versturen. Alleen als er meerdere antwoorden goed kunnen zijn, moet de
+      // speler eerst aanvinken en daarna bewust op "Antwoord versturen" klikken
+      // (anders is het niet uit te drukken welke combinatie bedoeld is).
+      const meerdereGoedMogelijk = vraag.goedAntwoorden.length > 1;
 
+      const verstuurKnop = document.getElementById('btn-speler-antwoord-versturen');
+      const instructieEl = document.getElementById('speler-vraag-instructie');
       const antwoordenEl = document.getElementById('speler-antwoorden-weergave');
       antwoordenEl.innerHTML = '';
-      vraag.antwoorden.forEach((tekst, index) => {
-        const antwoordIndex = index + 1;
-        const optie = document.createElement('div');
-        optie.className = 'antwoord-optie' + (spelerGeselecteerdeAntwoorden.includes(antwoordIndex) ? ' geselecteerd' : '');
-        optie.textContent = tekst;
 
-        optie.addEventListener('click', () => {
-          if (spelerHeeftGeantwoord) return;
-
-          const positie = spelerGeselecteerdeAntwoorden.indexOf(antwoordIndex);
-          if (positie === -1) {
-            spelerGeselecteerdeAntwoorden.push(antwoordIndex);
-          } else {
-            spelerGeselecteerdeAntwoorden.splice(positie, 1);
-          }
-          optie.classList.toggle('geselecteerd');
-          verstuurKnop.disabled = spelerGeselecteerdeAntwoorden.length === 0;
-        });
-
-        antwoordenEl.appendChild(optie);
-      });
-
-      verstuurKnop.onclick = () => {
-        if (spelerHeeftGeantwoord || spelerGeselecteerdeAntwoorden.length === 0) return;
+      const verstuurAntwoord = (indexen) => {
+        if (spelerHeeftGeantwoord) return;
         spelerHeeftGeantwoord = true;
-
         const reactietijdMs = Date.now() - vraagGetoondOpSpeler;
         db.ref('sessies/' + huidigeSessieCode + '/antwoorden/' + sessie.huidigeVraagIndex + '/' + huidigeSpelerId)
-          .set({ antwoordIndexen: spelerGeselecteerdeAntwoorden.slice(), reactietijdMs: reactietijdMs });
+          .set({ antwoordIndexen: indexen, reactietijdMs: reactietijdMs });
       };
+
+      if (meerdereGoedMogelijk) {
+        instructieEl.textContent = 'Tik op alle antwoorden die je goed denkt dat zijn en klik daarna op "Antwoord versturen".';
+        verstuurKnop.style.display = '';
+        verstuurKnop.disabled = spelerGeselecteerdeAntwoorden.length === 0;
+
+        vraag.antwoorden.forEach((tekst, index) => {
+          const antwoordIndex = index + 1;
+          const optie = document.createElement('div');
+          optie.className = 'antwoord-optie' + (spelerGeselecteerdeAntwoorden.includes(antwoordIndex) ? ' geselecteerd' : '');
+          optie.textContent = tekst;
+
+          optie.addEventListener('click', () => {
+            if (spelerHeeftGeantwoord) return;
+
+            const positie = spelerGeselecteerdeAntwoorden.indexOf(antwoordIndex);
+            if (positie === -1) {
+              spelerGeselecteerdeAntwoorden.push(antwoordIndex);
+            } else {
+              spelerGeselecteerdeAntwoorden.splice(positie, 1);
+            }
+            optie.classList.toggle('geselecteerd');
+            verstuurKnop.disabled = spelerGeselecteerdeAntwoorden.length === 0;
+          });
+
+          antwoordenEl.appendChild(optie);
+        });
+
+        verstuurKnop.onclick = () => {
+          if (spelerGeselecteerdeAntwoorden.length === 0) return;
+          verstuurAntwoord(spelerGeselecteerdeAntwoorden.slice());
+        };
+      } else {
+        instructieEl.textContent = 'Tik op het antwoord dat je goed denkt dat is.';
+        verstuurKnop.style.display = 'none';
+        verstuurKnop.onclick = null;
+
+        vraag.antwoorden.forEach((tekst, index) => {
+          const antwoordIndex = index + 1;
+          const optie = document.createElement('div');
+          optie.className = 'antwoord-optie';
+          optie.textContent = tekst;
+
+          optie.addEventListener('click', () => {
+            verstuurAntwoord([antwoordIndex]);
+          });
+
+          antwoordenEl.appendChild(optie);
+        });
+      }
 
       toonScherm('scherm-speler-vraag');
     }
