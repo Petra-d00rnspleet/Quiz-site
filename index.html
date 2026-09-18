@@ -55,7 +55,9 @@
     <section id="scherm-speler-vraag" class="scherm">
       <p id="speler-voortgang-weergave" class="voortgang"></p>
       <h2 id="speler-vraag-weergave" class="titel-regenboog"></h2>
+      <p class="subtitel">Tik op alle antwoorden die je goed denkt dat zijn en klik daarna op versturen.</p>
       <div id="speler-antwoorden-weergave" class="antwoorden-lijst"></div>
+      <button class="btn btn-primary" id="btn-speler-antwoord-versturen" disabled>Antwoord versturen</button>
     </section>
 
     <!-- SCHERM: SPELER ANTWOORD VERZONDEN (tussenscherm, wachten op andere spelers) -->
@@ -99,7 +101,7 @@
 
     <!-- SCHERM: NIEUWE QUIZ INVULLEN -->
     <section id="scherm-nieuwe-quiz" class="scherm">
-      <button class="btn-terug" data-terug-naar="scherm-quizmaken">&larr; Terug</button>
+      <button class="btn-terug" id="btn-nieuwe-quiz-terug">&larr; Terug</button>
       <h2 class="titel-regenboog" id="nieuwe-quiz-titel-kop">Nieuwe quiz</h2>
 
       <label for="input-titel">Titel van de quiz</label>
@@ -206,19 +208,29 @@
       <label>Vraag</label>
       <input type="text" class="veld-vraag" placeholder="Typ hier de vraag">
 
-      <label>Antwoorden</label>
-      <input type="text" class="veld-antwoord" data-antwoord-index="1" placeholder="Antwoord 1">
-      <input type="text" class="veld-antwoord" data-antwoord-index="2" placeholder="Antwoord 2">
-      <input type="text" class="veld-antwoord" data-antwoord-index="3" placeholder="Antwoord 3">
-      <input type="text" class="veld-antwoord" data-antwoord-index="4" placeholder="Antwoord 4">
-
-      <label>Welk antwoord is goed?</label>
-      <select class="veld-goed">
-        <option value="1">Antwoord 1</option>
-        <option value="2">Antwoord 2</option>
-        <option value="3">Antwoord 3</option>
-        <option value="4">Antwoord 4</option>
+      <label>Aantal antwoorden</label>
+      <select class="veld-aantal-antwoorden">
+        <option value="4">4 antwoorden</option>
+        <option value="2">2 antwoorden (bijv. waar/niet waar)</option>
       </select>
+
+      <label>Antwoorden — vink aan welk antwoord (of welke antwoorden) goed is/zijn</label>
+      <div class="antwoord-invoer-rij">
+        <input type="checkbox" class="veld-goed-vinkje" title="Dit antwoord is goed">
+        <input type="text" class="veld-antwoord" data-antwoord-index="1" placeholder="Antwoord 1">
+      </div>
+      <div class="antwoord-invoer-rij">
+        <input type="checkbox" class="veld-goed-vinkje" title="Dit antwoord is goed">
+        <input type="text" class="veld-antwoord" data-antwoord-index="2" placeholder="Antwoord 2">
+      </div>
+      <div class="antwoord-invoer-rij">
+        <input type="checkbox" class="veld-goed-vinkje" title="Dit antwoord is goed">
+        <input type="text" class="veld-antwoord" data-antwoord-index="3" placeholder="Antwoord 3">
+      </div>
+      <div class="antwoord-invoer-rij">
+        <input type="checkbox" class="veld-goed-vinkje" title="Dit antwoord is goed">
+        <input type="text" class="veld-antwoord" data-antwoord-index="4" placeholder="Antwoord 4">
+      </div>
     </div>
   </template>
 
