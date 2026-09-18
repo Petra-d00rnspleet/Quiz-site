@@ -126,6 +126,21 @@ document.querySelectorAll('[data-terug-naar]').forEach(knop => {
   });
 });
 
+// Terug-knop op het bewerkformulier gaat terug naar waar we vandaan kwamen:
+// "Mijn quizzen" normaal, of "Speelbare quizzen" als sitebeheer een openbare
+// quiz van iemand anders aan het aanpassen was.
+document.getElementById('btn-nieuwe-quiz-terug').addEventListener('click', () => {
+  const bestemming = huidigeBewerkTerugScherm || 'scherm-quizmaken';
+  huidigeBewerkCode = null;
+  huidigeBewerkTerugScherm = 'scherm-quizmaken';
+  toonScherm(bestemming);
+  if (bestemming === 'scherm-speelbare-quizzen') {
+    laadOpenbareQuizzen();
+  } else {
+    laadEigenQuizzen();
+  }
+});
+
 // ---------- Omslagfoto's (standaard-galerij + eigen upload) ----------
 
 function maakStandaardOmslag(embleem, label, kleurVan, kleurNaar) {
@@ -246,6 +261,55 @@ const sjabloonVraagBlok = document.getElementById('sjabloon-vraag-blok');
 // code wordt aangemaakt.
 let huidigeBewerkCode = null;
 
+// Naar welk scherm we teruggaan na het opslaan/annuleren van het bewerkformulier.
+// Normaal 'scherm-quizmaken' (Mijn quizzen), maar als sitebeheer een quiz
+// aanpast vanuit "Speelbare quizzen", dan 'scherm-speelbare-quizzen'.
+let huidigeBewerkTerugScherm = 'scherm-quizmaken';
+
+// ---------- Hulpfuncties voor vragen (meerdere goede antwoorden, 2 of 4 opties) ----------
+//
+// Een vraag wordt overal in de app in dit formaat gebruikt:
+//   { vraag: "...", antwoorden: [...2 of 4 stuks...], goedAntwoorden: [1, 3, ...] }
+// Oudere quizzen (gemaakt vóór deze functie) hebben nog een los veld
+// `goedAntwoord` (één getal) in plaats van `goedAntwoorden` (een lijst).
+// normaliseerVraag() zorgt dat de rest van de app altijd met `goedAntwoorden` werkt.
+
+function normaliseerVraag(vraag) {
+  let goedAntwoorden = vraag.goedAntwoorden;
+  if (!goedAntwoorden) {
+    goedAntwoorden = vraag.goedAntwoord ? [vraag.goedAntwoord] : [];
+  }
+  return {
+    vraag: vraag.vraag,
+    antwoorden: vraag.antwoorden || [],
+    goedAntwoorden: goedAntwoorden
+  };
+}
+
+// Vergelijkt twee lijsten met antwoordnummers zonder rekening te houden met volgorde.
+function setsGelijk(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+  const aSorted = [...a].sort();
+  const bSorted = [...b].sort();
+  return aSorted.every((waarde, i) => waarde === bSorted[i]);
+}
+
+// Toont/verbergt de antwoord-invoerrijen 3 en 4 in een vraagblok, afhankelijk
+// van of er 2 of 4 antwoorden gekozen zijn. Bij verbergen worden die velden
+// ook geleegd zodat ze niet per ongeluk meegestuurd worden.
+function werkAantalAntwoordenZichtbaarheidBij(blokEl, aantal) {
+  const rijen = blokEl.querySelectorAll('.antwoord-invoer-rij');
+  rijen.forEach((rij, i) => {
+    if (i < aantal) {
+      rij.classList.remove('verborgen');
+    } else {
+      rij.classList.add('verborgen');
+      rij.querySelector('.veld-antwoord').value = '';
+      rij.querySelector('.veld-goed-vinkje').checked = false;
+    }
+  });
+}
+
 function vernummerVraagBlokken() {
   const blokken = vragenContainer.querySelectorAll('.vraag-blok');
   blokken.forEach((blok, index) => {
@@ -258,13 +322,29 @@ function voegVraagBlokToe(vraagData) {
   const blokEl = kloon.querySelector('.vraag-blok');
 
   if (vraagData) {
-    blokEl.querySelector('.veld-vraag').value = vraagData.vraag;
+    const genormaliseerd = normaliseerVraag(vraagData);
+    const aantalAntwoorden = genormaliseerd.antwoorden.length === 2 ? 2 : 4;
+
+    blokEl.querySelector('.veld-vraag').value = genormaliseerd.vraag;
+    blokEl.querySelector('.veld-aantal-antwoorden').value = String(aantalAntwoorden);
+
     const antwoordVelden = blokEl.querySelectorAll('.veld-antwoord');
+    const goedVinkjes = blokEl.querySelectorAll('.veld-goed-vinkje');
     antwoordVelden.forEach((veld, i) => {
-      veld.value = vraagData.antwoorden[i] || '';
+      veld.value = genormaliseerd.antwoorden[i] || '';
     });
-    blokEl.querySelector('.veld-goed').value = vraagData.goedAntwoord;
+    goedVinkjes.forEach((vinkje, i) => {
+      vinkje.checked = genormaliseerd.goedAntwoorden.includes(i + 1);
+    });
+
+    werkAantalAntwoordenZichtbaarheidBij(blokEl, aantalAntwoorden);
+  } else {
+    werkAantalAntwoordenZichtbaarheidBij(blokEl, 4);
   }
+
+  blokEl.querySelector('.veld-aantal-antwoorden').addEventListener('change', (e) => {
+    werkAantalAntwoordenZichtbaarheidBij(blokEl, parseInt(e.target.value, 10));
+  });
 
   blokEl.querySelector('.btn-verwijder-vraag').addEventListener('click', () => {
     const aantalBlokken = vragenContainer.querySelectorAll('.vraag-blok').length;
@@ -286,6 +366,7 @@ document.getElementById('btn-vraag-toevoegen').addEventListener('click', () => {
 
 document.getElementById('btn-toevoegen-quiz').addEventListener('click', () => {
   huidigeBewerkCode = null;
+  huidigeBewerkTerugScherm = 'scherm-quizmaken';
   document.getElementById('input-titel').value = '';
   vragenContainer.innerHTML = '';
   document.getElementById('quizmaken-foutmelding').textContent = '';
@@ -298,7 +379,7 @@ document.getElementById('btn-toevoegen-quiz').addEventListener('click', () => {
   toonScherm('scherm-nieuwe-quiz');
 });
 
-function startBewerkenVanQuiz(code) {
+function startBewerkenVanQuiz(code, terugScherm) {
   db.ref('quizzen/' + code).once('value').then(snapshot => {
     const quizData = snapshot.val();
     if (!quizData) {
@@ -307,6 +388,7 @@ function startBewerkenVanQuiz(code) {
     }
 
     huidigeBewerkCode = code;
+    huidigeBewerkTerugScherm = terugScherm || 'scherm-quizmaken';
     document.getElementById('input-titel').value = quizData.titel;
     vragenContainer.innerHTML = '';
     document.getElementById('quizmaken-foutmelding').textContent = '';
@@ -352,19 +434,27 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
 
   for (const blok of blokken) {
     const vraagTekst = blok.querySelector('.veld-vraag').value.trim();
-    const antwoordVelden = blok.querySelectorAll('.veld-antwoord');
-    const antwoorden = Array.from(antwoordVelden).map(veld => veld.value.trim());
-    const goedAntwoord = parseInt(blok.querySelector('.veld-goed').value, 10);
+    const aantalAntwoorden = parseInt(blok.querySelector('.veld-aantal-antwoorden').value, 10);
+    const antwoordVelden = Array.from(blok.querySelectorAll('.veld-antwoord')).slice(0, aantalAntwoorden);
+    const antwoorden = antwoordVelden.map(veld => veld.value.trim());
+    const goedVinkjes = Array.from(blok.querySelectorAll('.veld-goed-vinkje')).slice(0, aantalAntwoorden);
+    const goedAntwoorden = goedVinkjes
+      .map((vinkje, i) => vinkje.checked ? i + 1 : null)
+      .filter(i => i !== null);
 
     if (!vraagTekst || antwoorden.some(a => !a)) {
-      foutmelding.textContent = 'Vul bij elke vraag de vraagtekst en alle 4 antwoorden in.';
+      foutmelding.textContent = 'Vul bij elke vraag de vraagtekst en alle antwoorden in.';
+      return;
+    }
+    if (goedAntwoorden.length === 0) {
+      foutmelding.textContent = 'Vink bij elke vraag minstens 1 goed antwoord aan.';
       return;
     }
 
     vragen.push({
       vraag: vraagTekst,
       antwoorden: antwoorden,
-      goedAntwoord: goedAntwoord
+      goedAntwoorden: goedAntwoorden
     });
   }
 
@@ -373,6 +463,7 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
   if (huidigeBewerkCode) {
     // Bestaande quiz bijwerken: zelfde code, alleen titel + vragen + omslag + openbaar overschrijven.
     const code = huidigeBewerkCode;
+    const terugScherm = huidigeBewerkTerugScherm;
 
     db.ref('quizzen/' + code).update({ titel: titel, vragen: vragen, afbeelding: geselecteerdeOmslagUrl, openbaar: isOpenbaar, doorBeheerVerwijderd: false })
       .then(() => {
@@ -383,8 +474,13 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
         localStorage.setItem('eigenQuizzen', JSON.stringify(bijgewerkteLijst));
 
         huidigeBewerkCode = null;
-        toonScherm('scherm-quizmaken');
-        laadEigenQuizzen();
+        huidigeBewerkTerugScherm = 'scherm-quizmaken';
+        toonScherm(terugScherm);
+        if (terugScherm === 'scherm-speelbare-quizzen') {
+          laadOpenbareQuizzen();
+        } else {
+          laadEigenQuizzen();
+        }
       })
       .catch(err => {
         foutmelding.textContent = 'Opslaan mislukt: ' + err.message;
@@ -600,6 +696,14 @@ function laadOpenbareQuizzen() {
         knoppen.appendChild(speelKnop);
 
         if (sitebeheerActief) {
+          const aanpassenKnop = document.createElement('button');
+          aanpassenKnop.className = 'btn-aanpassen-quiz';
+          aanpassenKnop.textContent = 'Aanpassen';
+          aanpassenKnop.addEventListener('click', () => {
+            startBewerkenVanQuiz(code, 'scherm-speelbare-quizzen');
+          });
+          knoppen.appendChild(aanpassenKnop);
+
           const verwijderKnop = document.createElement('button');
           verwijderKnop.className = 'btn-verwijderen-quiz';
           verwijderKnop.textContent = 'Verwijderen';
@@ -639,7 +743,12 @@ function laadOpenbareQuizzen() {
 //   sessies/<code>            -> status, huidigeVraagIndex, spelers, antwoorden
 //     status: 'wachtkamer' | 'vraag' | 'scorebord' | 'afgelopen'
 //     spelers/<spelerId>      -> naam, score, totaleReactietijd
-//     antwoorden/<vraagIndex>/<spelerId> -> antwoordIndex, reactietijdMs
+//     antwoorden/<vraagIndex>/<spelerId> -> antwoordIndexen (lijst), reactietijdMs
+//
+// Een vraag kan 2 of 4 antwoorden hebben en 1 of meerdere daarvan kunnen goed
+// zijn (zie goedAntwoorden in normaliseerVraag hierboven). Een speler moet
+// precies de goede antwoorden aanvinken (niet meer, niet minder) om de vraag
+// goed te hebben.
 //
 // Puntentelling: een goed antwoord levert 1000 punten op. Bij een gelijke
 // stand wint degene die (opgeteld over de vragen) het snelst klikte.
@@ -655,6 +764,7 @@ let huidigeSpelerId = null;
 let laatstGetoondeVraagIndexSpeler = -1;
 let vraagGetoondOpSpeler = 0;
 let spelerHeeftGeantwoord = false;
+let spelerGeselecteerdeAntwoorden = [];
 
 function stopSessieListener() {
   if (huidigeSessieRef) {
@@ -731,7 +841,7 @@ function startHostenVanQuiz(code) {
       return;
     }
 
-    huidigeQuizVragen = quizData.vragen;
+    huidigeQuizVragen = (quizData.vragen || []).map(normaliseerVraag);
     huidigeQuizTitel = quizData.titel;
     huidigeSessieCode = code;
     huidigeRol = 'host';
@@ -828,10 +938,11 @@ function renderSessieVoorHost(sessie) {
     if (sessie.status === 'afgelopen') {
       document.getElementById('host-scorebord-goede-antwoord').textContent = '';
     } else {
-      document.getElementById('host-scorebord-goede-antwoord').textContent = 'Het goede antwoord:';
+      document.getElementById('host-scorebord-goede-antwoord').textContent =
+        vraag.goedAntwoorden.length > 1 ? 'De goede antwoorden:' : 'Het goede antwoord:';
       vraag.antwoorden.forEach((tekst, index) => {
         const optie = document.createElement('div');
-        optie.className = 'antwoord-optie' + (index + 1 === vraag.goedAntwoord ? ' goed' : '');
+        optie.className = 'antwoord-optie' + (vraag.goedAntwoorden.includes(index + 1) ? ' goed' : '');
         optie.textContent = tekst;
         hostScorebordAntwoordenEl.appendChild(optie);
       });
@@ -868,7 +979,8 @@ function berekenEnToonScorebord() {
     const updates = {};
     Object.keys(antwoordenVoorVraag).forEach(spelerId => {
       const antwoord = antwoordenVoorVraag[spelerId];
-      if (antwoord.antwoordIndex === vraag.goedAntwoord) {
+      const gekozenIndexen = antwoord.antwoordIndexen || [];
+      if (setsGelijk(gekozenIndexen, vraag.goedAntwoorden)) {
         const huidigeScore = (spelers[spelerId] && spelers[spelerId].score) || 0;
         const huidigeTijd = (spelers[spelerId] && spelers[spelerId].totaleReactietijd) || 0;
         updates['spelers/' + spelerId + '/score'] = huidigeScore + 1000;
@@ -960,7 +1072,7 @@ document.getElementById('btn-ga-naar-quiz').addEventListener('click', () => {
           return;
         }
 
-        huidigeQuizVragen = quizData.vragen;
+        huidigeQuizVragen = (quizData.vragen || []).map(normaliseerVraag);
         huidigeQuizTitel = quizData.titel;
         huidigeSessieCode = code;
         huidigeRol = 'speler';
@@ -1025,6 +1137,7 @@ function renderSessieVoorSpeler(sessie) {
       laatstGetoondeVraagIndexSpeler = sessie.huidigeVraagIndex;
       vraagGetoondOpSpeler = Date.now();
       spelerHeeftGeantwoord = false;
+      spelerGeselecteerdeAntwoorden = [];
     }
 
     const vraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
@@ -1033,13 +1146,20 @@ function renderSessieVoorSpeler(sessie) {
 
     if (eigenAntwoord) {
       // Al geantwoord op deze vraag: apart tussenscherm, niet de vraag zelf.
-      const goedGeantwoord = eigenAntwoord.antwoordIndex === vraag.goedAntwoord;
+      const gekozenIndexen = eigenAntwoord.antwoordIndexen || [];
+      const goedGeantwoord = setsGelijk(gekozenIndexen, vraag.goedAntwoorden);
       document.getElementById('speler-antwoord-verzonden-titel').textContent =
         goedGeantwoord ? 'Goed! ✔' : 'Helaas ✗';
-      document.getElementById('speler-antwoord-verzonden-tekst').textContent =
-        goedGeantwoord
-          ? 'Dat was het juiste antwoord.'
-          : 'Dat was niet het juiste antwoord. Het juiste antwoord was: ' + vraag.antwoorden[vraag.goedAntwoord - 1];
+
+      if (goedGeantwoord) {
+        document.getElementById('speler-antwoord-verzonden-tekst').textContent = 'Dat was het juiste antwoord.';
+      } else {
+        const goedeTeksten = vraag.goedAntwoorden.map(i => vraag.antwoorden[i - 1]);
+        document.getElementById('speler-antwoord-verzonden-tekst').textContent =
+          goedeTeksten.length > 1
+            ? 'Dat was niet (helemaal) juist. De juiste antwoorden waren: ' + goedeTeksten.join(', ')
+            : 'Dat was niet het juiste antwoord. Het juiste antwoord was: ' + goedeTeksten[0];
+      }
 
       toonScherm('scherm-speler-antwoord-verzonden');
     } else {
@@ -1047,24 +1167,41 @@ function renderSessieVoorSpeler(sessie) {
         'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length;
       document.getElementById('speler-vraag-weergave').textContent = vraag.vraag;
 
+      const verstuurKnop = document.getElementById('btn-speler-antwoord-versturen');
+      verstuurKnop.disabled = spelerGeselecteerdeAntwoorden.length === 0;
+
       const antwoordenEl = document.getElementById('speler-antwoorden-weergave');
       antwoordenEl.innerHTML = '';
       vraag.antwoorden.forEach((tekst, index) => {
+        const antwoordIndex = index + 1;
         const optie = document.createElement('div');
-        optie.className = 'antwoord-optie';
+        optie.className = 'antwoord-optie' + (spelerGeselecteerdeAntwoorden.includes(antwoordIndex) ? ' geselecteerd' : '');
         optie.textContent = tekst;
 
         optie.addEventListener('click', () => {
           if (spelerHeeftGeantwoord) return;
-          spelerHeeftGeantwoord = true;
 
-          const reactietijdMs = Date.now() - vraagGetoondOpSpeler;
-          db.ref('sessies/' + huidigeSessieCode + '/antwoorden/' + sessie.huidigeVraagIndex + '/' + huidigeSpelerId)
-            .set({ antwoordIndex: index + 1, reactietijdMs: reactietijdMs });
+          const positie = spelerGeselecteerdeAntwoorden.indexOf(antwoordIndex);
+          if (positie === -1) {
+            spelerGeselecteerdeAntwoorden.push(antwoordIndex);
+          } else {
+            spelerGeselecteerdeAntwoorden.splice(positie, 1);
+          }
+          optie.classList.toggle('geselecteerd');
+          verstuurKnop.disabled = spelerGeselecteerdeAntwoorden.length === 0;
         });
 
         antwoordenEl.appendChild(optie);
       });
+
+      verstuurKnop.onclick = () => {
+        if (spelerHeeftGeantwoord || spelerGeselecteerdeAntwoorden.length === 0) return;
+        spelerHeeftGeantwoord = true;
+
+        const reactietijdMs = Date.now() - vraagGetoondOpSpeler;
+        db.ref('sessies/' + huidigeSessieCode + '/antwoorden/' + sessie.huidigeVraagIndex + '/' + huidigeSpelerId)
+          .set({ antwoordIndexen: spelerGeselecteerdeAntwoorden.slice(), reactietijdMs: reactietijdMs });
+      };
 
       toonScherm('scherm-speler-vraag');
     }
@@ -1076,7 +1213,7 @@ function renderSessieVoorSpeler(sessie) {
     document.getElementById('speler-scorebord-titel').textContent =
       sessie.status === 'afgelopen' ? 'Eindstand 🏆' : 'Scorebord';
     document.getElementById('speler-scorebord-goede-antwoord').textContent =
-      sessie.status === 'afgelopen' ? 'Bedankt voor het meespelen!' : 'Het goede antwoord:';
+      sessie.status === 'afgelopen' ? 'Bedankt voor het meespelen!' : (vraag.goedAntwoorden.length > 1 ? 'De goede antwoorden:' : 'Het goede antwoord:');
 
     const spelerScorebordAntwoordenEl = document.getElementById('speler-scorebord-antwoorden');
     spelerScorebordAntwoordenEl.innerHTML = '';
@@ -1084,14 +1221,14 @@ function renderSessieVoorSpeler(sessie) {
     if (sessie.status === 'scorebord') {
       const eigenAntwoordenVraag = (sessie.antwoorden && sessie.antwoorden[sessie.huidigeVraagIndex]) || {};
       const eigenAntwoordDitVraag = eigenAntwoordenVraag[huidigeSpelerId];
-      const eigenGekozenIndex = eigenAntwoordDitVraag ? eigenAntwoordDitVraag.antwoordIndex : null;
+      const eigenGekozenIndexen = eigenAntwoordDitVraag ? (eigenAntwoordDitVraag.antwoordIndexen || []) : [];
 
       vraag.antwoorden.forEach((tekst, index) => {
         const optie = document.createElement('div');
         let klasse = 'antwoord-optie';
-        if (index + 1 === vraag.goedAntwoord) {
+        if (vraag.goedAntwoorden.includes(index + 1)) {
           klasse += ' goed';
-        } else if (index + 1 === eigenGekozenIndex) {
+        } else if (eigenGekozenIndexen.includes(index + 1)) {
           klasse += ' fout';
         }
         optie.className = klasse;
