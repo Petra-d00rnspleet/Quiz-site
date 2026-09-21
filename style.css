@@ -1357,3 +1357,105 @@ h2.titel-regenboog.host-resultaat-vraag {
   font-size: 18px;
   line-height: 1;
 }
+
+
+/* ---------- Poppetje: dier + accessoires (hoeden, brillen, hartjes) ---------- */
+
+.poppetje {
+  position: relative;
+  display: inline-block;
+  line-height: 1;
+}
+
+.poppetje-dier {
+  display: block;
+}
+
+.poppetje-acc {
+  position: absolute;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Hoeden en strikjes: boven op het hoofd */
+.poppetje-acc-boven {
+  top: -0.32em;
+  left: 50%;
+  font-size: 0.62em;
+  transform: translateX(-50%) rotate(-8deg);
+}
+
+/* Brillen: op de ogen */
+.poppetje-acc-gezicht {
+  top: 0.28em;
+  left: 50%;
+  font-size: 0.55em;
+  transform: translateX(-50%);
+}
+
+/* Hartjes, sterren, bloemetjes: rechtsboven naast het hoofd */
+.poppetje-acc-hoek {
+  top: -0.12em;
+  right: -0.22em;
+  font-size: 0.5em;
+}
+
+/* Ruimte boven het grote poppetje, zodat een hoed niet tegen de tekst aanstaat */
+.speler-wachtkamer-dier {
+  padding-top: 0.3em;
+}
+
+/* Tabbladen "Dieren" en "Accessoires" in de wachtkamer */
+.kiezer-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.kiezer-tab {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 2px solid #4a3c1a;
+  background: #10152e;
+  color: #f2f2f5;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.kiezer-tab:hover {
+  border-color: #b8863c;
+}
+
+.kiezer-tab.actief {
+  border-color: #f0c04d;
+  background: #1c1a33;
+  color: #f0c04d;
+  box-shadow: 0 0 0 2px rgba(240, 192, 77, 0.3);
+}
+
+.kiezer-groep-titel {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+  font-size: 13px;
+  color: #9a97a8;
+  text-align: left;
+}
+
+.kiezer-weg-knop {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 2px solid #4a3c1a;
+  background: #10152e;
+  color: #ffb0bc;
+  font: inherit;
+  cursor: pointer;
+}
+
+.kiezer-weg-knop:hover {
+  border-color: #ff5c72;
+  background: #1c1a33;
+}
