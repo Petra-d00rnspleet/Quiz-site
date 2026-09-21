@@ -1032,7 +1032,7 @@ function laadOpenbareQuizzen() {
 //                    spelers: goed/fout met het goede antwoord eronder
 //                    (punten worden op dit moment geteld)
 //       scorebord -> alleen het scorebord, zonder vraag en antwoord
-//     spelers/<spelerId>      -> naam, score, totaleReactietijd
+//     spelers/<spelerId>      -> naam, dier (emoji), score, totaleReactietijd
 //     antwoorden/<vraagIndex>/<spelerId> -> antwoordIndexen (lijst), reactietijdMs
 //
 // Een vraag kan 2 of 4 antwoorden hebben en 1 of meerdere daarvan kunnen goed
@@ -1056,6 +1056,55 @@ let vraagGetoondOpSpeler = 0;
 let spelerHeeftGeantwoord = false;
 let spelerGeselecteerdeAntwoorden = [];
 let huidigeStatusSpeler = '';
+
+// ---------- Dieren (kies een dierenkop; staat bij het scorebord voor je naam) ----------
+const DIEREN = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯',
+                '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🦄', '🐺', '🐲'];
+
+function willekeurigDier() {
+  return DIEREN[Math.floor(Math.random() * DIEREN.length)];
+}
+
+// Geeft het dier terug als het een geldig dier uit de lijst is, anders ''.
+function geldigDier(dier) {
+  return DIEREN.indexOf(dier) !== -1 ? dier : '';
+}
+
+// Bouwt eenmalig de knoppen waarmee een speler in de wachtkamer een dier kiest.
+function bouwDierenKiezer() {
+  const kiezerEl = document.getElementById('dieren-kiezer');
+  kiezerEl.innerHTML = '';
+  DIEREN.forEach(dier => {
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'dier-knop';
+    knop.textContent = dier;
+    knop.dataset.dier = dier;
+    knop.setAttribute('aria-label', 'Kies ' + dier);
+    knop.addEventListener('click', () => kiesDier(dier));
+    kiezerEl.appendChild(knop);
+  });
+}
+
+// Markeert het gekozen dier (en toont het groot boven de tekst).
+function toonGekozenDier(dier) {
+  const gekozen = geldigDier(dier);
+  document.getElementById('speler-wachtkamer-dier').textContent = gekozen;
+  document.querySelectorAll('#dieren-kiezer .dier-knop').forEach(knop => {
+    knop.classList.toggle('gekozen', knop.dataset.dier === gekozen);
+  });
+}
+
+// De speler kiest een dier: opslaan bij de speler in de sessie.
+function kiesDier(dier) {
+  // Alleen in de wachtkamer (en alleen als je nog meedoet), anders zou een
+  // verwijderde speler per ongeluk weer verschijnen.
+  if (huidigeRol !== 'speler' || huidigeStatusSpeler !== 'wachtkamer') return;
+  if (!huidigeSessieCode || !huidigeSpelerId || !geldigDier(dier)) return;
+
+  toonGekozenDier(dier);
+  db.ref('sessies/' + huidigeSessieCode + '/spelers/' + huidigeSpelerId + '/dier').set(dier);
+}
 
 // Toont de foto van een vraag (of verbergt het plaatje als er geen foto is).
 function toonVraagFoto(imgId, url) {
@@ -1143,7 +1192,14 @@ function renderScorebordLijst(containerId, spelers, eigenSpelerId) {
     score.className = 'scorebord-score';
     score.textContent = (speler.score || 0) + ' pt';
 
-    rij.appendChild(plek);
+    rij.appendChild(plek); // 1e, 2e, 3e plek enz. blijven gewoon staan
+    const dier = geldigDier(speler.dier);
+    if (dier) {
+      const dierEl = document.createElement('div');
+      dierEl.className = 'scorebord-dier';
+      dierEl.textContent = dier;
+      rij.appendChild(dierEl);
+    }
     rij.appendChild(naam);
     rij.appendChild(score);
     lijstEl.appendChild(rij);
@@ -1201,7 +1257,21 @@ function renderSessieVoorHost(sessie) {
       const chip = document.createElement('div');
       chip.className = 'speler-chip';
       chip.title = 'Klik om ' + speler.naam + ' te verwijderen';
-      chip.innerHTML = '<span class="speler-chip-naam">' + speler.naam + '</span><span class="speler-chip-kruis">&times;</span>';
+      const chipDier = geldigDier(speler.dier);
+      if (chipDier) {
+        const chipDierEl = document.createElement('span');
+        chipDierEl.className = 'speler-chip-dier';
+        chipDierEl.textContent = chipDier;
+        chip.appendChild(chipDierEl);
+      }
+      const chipNaamEl = document.createElement('span');
+      chipNaamEl.className = 'speler-chip-naam';
+      chipNaamEl.textContent = speler.naam;
+      chip.appendChild(chipNaamEl);
+      const chipKruisEl = document.createElement('span');
+      chipKruisEl.className = 'speler-chip-kruis';
+      chipKruisEl.innerHTML = '&times;';
+      chip.appendChild(chipKruisEl);
       chip.addEventListener('click', () => {
         db.ref('sessies/' + huidigeSessieCode + '/spelers/' + spelerId).remove();
         db.ref('sessies/' + huidigeSessieCode + '/antwoorden').once('value').then(antwoordenSnapshot => {
@@ -1440,9 +1510,14 @@ document.getElementById('btn-ga-naar-quiz').addEventListener('click', () => {
         huidigeSpelerId = 'speler-' + Math.random().toString(36).slice(2, 10);
         laatstGetoondeVraagIndexSpeler = -1;
 
+        // Iedereen begint met een willekeurig dier; in de wachtkamer kun je een ander kiezen.
+        const startDier = willekeurigDier();
+
         return db.ref('sessies/' + code + '/spelers/' + huidigeSpelerId)
-          .set({ naam: naam, score: 0, totaleReactietijd: 0 })
+          .set({ naam: naam, dier: startDier, score: 0, totaleReactietijd: 0 })
           .then(() => {
+            huidigeStatusSpeler = 'wachtkamer';
+            toonGekozenDier(startDier);
             document.getElementById('speler-wachtkamer-naam').textContent = naam;
             document.getElementById('input-code').value = '';
             toonScherm('scherm-speler-wachtkamer');
@@ -1491,6 +1566,7 @@ function renderSessieVoorSpeler(sessie) {
   }
 
   if (sessie.status === 'wachtkamer') {
+    toonGekozenDier((spelers[huidigeSpelerId] || {}).dier);
     toonScherm('scherm-speler-wachtkamer');
   }
 
@@ -1871,6 +1947,8 @@ document.getElementById('btn-solo-opnieuw').addEventListener('click', () => {
   soloAantalGoed = 0;
   toonSoloVraag();
 });
+
+bouwDierenKiezer();
 
 // ---------- Bij het openen van de site: naam bij eigen quizzen zetten ----------
 koppelMakerNaamAanEigenQuizzen();
