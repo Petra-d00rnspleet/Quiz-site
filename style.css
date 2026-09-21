@@ -1304,3 +1304,56 @@ h2.titel-regenboog.host-resultaat-vraag {
   font-size: 13px;
   color: #9a97a8;
 }
+
+
+/* ---------- Dieren: kiezen in de wachtkamer + tonen bij de naam ---------- */
+
+.speler-wachtkamer-dier {
+  font-size: 72px;
+  line-height: 1;
+  text-align: center;
+  min-height: 72px;
+}
+
+.dieren-kiezer {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 380px;
+  margin: 0 auto;
+}
+
+.dier-knop {
+  font-size: 30px;
+  line-height: 1;
+  padding: 10px 0;
+  border-radius: 14px;
+  border: 2px solid #4a3c1a;
+  background: #10152e;
+  cursor: pointer;
+}
+
+.dier-knop:hover {
+  border-color: #b8863c;
+  background: #1c1a33;
+}
+
+.dier-knop.gekozen {
+  border-color: #f0c04d;
+  background: #1c1a33;
+  box-shadow: 0 0 0 2px rgba(240, 192, 77, 0.4), 0 0 16px rgba(240, 192, 77, 0.25);
+}
+
+.scorebord-dier {
+  font-size: 26px;
+  line-height: 1;
+  width: 34px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.speler-chip-dier {
+  font-size: 18px;
+  line-height: 1;
+}
