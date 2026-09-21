@@ -744,9 +744,84 @@ function laadEigenQuizzen() {
 
 // ---------- Speelbare quizzen tonen (openbaar gemaakt door anderen) ----------
 
+// Alleen voor sitebeheer: overzicht van ALLE quizmakers (dus ook van quizzen
+// die niet openbaar zijn of door sitebeheer bij openbaar zijn weggehaald).
+function toonSitebeheerMakersOverzicht() {
+  const lijstEl = document.getElementById('lijst-openbare-quizzen');
+  let overzichtEl = document.getElementById('sitebeheer-makers-overzicht');
+
+  if (!sitebeheerActief) {
+    if (overzichtEl) overzichtEl.remove();
+    return;
+  }
+
+  if (!overzichtEl) {
+    overzichtEl = document.createElement('div');
+    overzichtEl.id = 'sitebeheer-makers-overzicht';
+    overzichtEl.className = 'sitebeheer-makers';
+    lijstEl.parentNode.insertBefore(overzichtEl, lijstEl);
+  }
+  overzichtEl.innerHTML = '<p class="voortgang">Quizmakers laden...</p>';
+
+  db.ref('quizzen').once('value')
+    .then(snapshot => {
+      if (!sitebeheerActief) {
+        overzichtEl.remove();
+        return;
+      }
+
+      const data = snapshot.val() || {};
+      const groepen = {};
+
+      Object.entries(data).forEach(([code, quiz]) => {
+        const naam = ((quiz && quiz.makerNaam) || '').trim();
+        const sleutel = naam.toLowerCase(); // 'Sam' en 'sam' tellen als dezelfde maker
+        if (!groepen[sleutel]) {
+          groepen[sleutel] = { naam: naam, quizzen: [] };
+        }
+        groepen[sleutel].quizzen.push({
+          code: code,
+          titel: (quiz && quiz.titel) || '(zonder titel)',
+          openbaar: !!(quiz && quiz.openbaar),
+          weggehaald: !!(quiz && quiz.doorBeheerVerwijderd)
+        });
+      });
+
+      const makers = Object.values(groepen).sort((a, b) => {
+        if (!a.naam) return 1;   // "naam onbekend" altijd onderaan
+        if (!b.naam) return -1;
+        return a.naam.localeCompare(b.naam, 'nl');
+      });
+
+      if (makers.length === 0) {
+        overzichtEl.innerHTML = '<h3>Alle quizmakers</h3><p class="voortgang">Er zijn nog geen quizzen gemaakt.</p>';
+        return;
+      }
+
+      const rijen = makers.map(maker => {
+        const aantalOpenbaar = maker.quizzen.filter(q => q.openbaar).length;
+        const titels = maker.quizzen.map(q => {
+          const status = q.openbaar ? 'openbaar' : (q.weggehaald ? 'weggehaald' : 'niet openbaar');
+          return '<li>' + escapeHtml(q.titel) + ' <span class="sitebeheer-maker-code">' + escapeHtml(q.code) + ' · ' + status + '</span></li>';
+        }).join('');
+        return '<div class="sitebeheer-maker-rij">' +
+          '<strong>' + (maker.naam ? escapeHtml(maker.naam) : 'Naam onbekend') + '</strong>' +
+          '<span class="sitebeheer-maker-telling">' + maker.quizzen.length + ' quiz/quizzen · ' + aantalOpenbaar + ' openbaar</span>' +
+          '<ul>' + titels + '</ul>' +
+          '</div>';
+      }).join('');
+
+      overzichtEl.innerHTML = '<h3>Alle quizmakers (' + makers.length + ')</h3>' + rijen;
+    })
+    .catch(err => {
+      overzichtEl.innerHTML = '<p class="foutmelding">Laden van quizmakers mislukt: ' + escapeHtml(err.message) + '</p>';
+    });
+}
+
 function laadOpenbareQuizzen() {
   const lijstEl = document.getElementById('lijst-openbare-quizzen');
   lijstEl.innerHTML = '<p>Bezig met laden...</p>';
+  toonSitebeheerMakersOverzicht();
 
   koppelMakerNaamAanEigenQuizzen()
     .then(() => db.ref('quizzen').orderByChild('openbaar').equalTo(true).once('value'))
@@ -775,7 +850,11 @@ function laadOpenbareQuizzen() {
         info.className = 'quiz-item-info';
         const aantalVragen = (quiz.vragen || []).length;
         const makerNaam = quiz.makerNaam || '';
-        info.innerHTML = `<strong>${escapeHtml(quiz.titel)}</strong><span>${aantalVragen} vraag/vragen${makerNaam ? ' · Door ' + escapeHtml(makerNaam) : ''}</span>`;
+        const doorTekst = makerNaam
+          ? ' · Door ' + escapeHtml(makerNaam)
+          : (sitebeheerActief ? ' · Door: naam onbekend' : '');
+        const codeTekst = sitebeheerActief ? ' · Code ' + escapeHtml(code) : '';
+        info.innerHTML = `<strong>${escapeHtml(quiz.titel)}</strong><span>${aantalVragen} vraag/vragen${doorTekst}${codeTekst}</span>`;
 
         const knoppen = document.createElement('div');
         knoppen.className = 'quiz-item-knoppen';
