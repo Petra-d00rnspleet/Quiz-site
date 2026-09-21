@@ -93,14 +93,18 @@ auth.onAuthStateChanged(gebruiker => {
   if (document.getElementById('scherm-speelbare-quizzen').classList.contains('actief')) {
     laadOpenbareQuizzen();
   }
+  if (document.getElementById('scherm-quizmaken').classList.contains('actief')) {
+    laadEigenQuizzen();
+  }
 });
 
 // ---------- Naam van de quizmaker (verplicht, eenmalig, niet meer te wijzigen) ----------
 //
 // Voordat iemand een quiz kan maken, moet die zijn/haar naam invullen. Deze
 // naam wordt lokaal onthouden (localStorage) en bij elke quiz die diegene
-// maakt als "makerNaam" opgeslagen in Firebase. Zodra een quiz openbaar
-// staat, is die naam voor iedereen zichtbaar bij "Speelbare quizzen".
+// maakt als "makerNaam" opgeslagen in Firebase. Uit privacy wordt de naam
+// op de site NIET getoond aan gewone bezoekers; alleen sitebeheer (ingelogd)
+// ziet bij Speelbare quizzen wie een quiz heeft gemaakt.
 // Er is bewust geen manier om de naam later te wijzigen.
 
 const MAKER_NAAM_SLEUTEL = 'makerNaam';
@@ -117,6 +121,13 @@ function escapeHtml(tekst) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+// Tekst " · Door <naam>" achter een quiz. Uit privacy alleen voor sitebeheer;
+// voor gewone bezoekers is dit altijd leeg.
+function doorTekstVoorMaker(makerNaam) {
+  if (!sitebeheerActief) return '';
+  return makerNaam ? ' · Door ' + escapeHtml(makerNaam) : ' · Door: naam onbekend';
 }
 
 // Zet de naam van de maker automatisch bij ALLE quizzen die op dit apparaat
@@ -764,7 +775,7 @@ function laadEigenQuizzen() {
 
       const info = document.createElement('div');
       info.className = 'quiz-item-info';
-      info.innerHTML = `<strong>${escapeHtml(quiz.titel)}</strong><span>${quiz.aantalVragen} vraag/vragen${makerNaam ? ' · Door ' + escapeHtml(makerNaam) : ''}${actueelOpenbaar ? ' · Openbaar' : ''}</span>`;
+      info.innerHTML = `<strong>${escapeHtml(quiz.titel)}</strong><span>${quiz.aantalVragen} vraag/vragen${doorTekstVoorMaker(makerNaam)}${actueelOpenbaar ? ' · Openbaar' : ''}</span>`;
 
       const knoppen = document.createElement('div');
       knoppen.className = 'quiz-item-knoppen';
@@ -819,6 +830,9 @@ function laadEigenQuizzen() {
 
 // ---------- Speelbare quizzen tonen (openbaar gemaakt door anderen) ----------
 
+// Onthoudt of het overzicht open of ingeklapt staat (ook na opnieuw laden van de lijst).
+let makersOverzichtOpen = true;
+
 // Alleen voor sitebeheer: overzicht van ALLE quizmakers (dus ook van quizzen
 // die niet openbaar zijn of door sitebeheer bij openbaar zijn weggehaald).
 function toonSitebeheerMakersOverzicht() {
@@ -868,12 +882,9 @@ function toonSitebeheerMakersOverzicht() {
         return a.naam.localeCompare(b.naam, 'nl');
       });
 
-      if (makers.length === 0) {
-        overzichtEl.innerHTML = '<h3>Alle quizmakers</h3><p class="voortgang">Er zijn nog geen quizzen gemaakt.</p>';
-        return;
-      }
-
-      const rijen = makers.map(maker => {
+      const rijen = makers.length === 0
+        ? '<p class="voortgang">Er zijn nog geen quizzen gemaakt.</p>'
+        : makers.map(maker => {
         const aantalOpenbaar = maker.quizzen.filter(q => q.openbaar).length;
         const titels = maker.quizzen.map(q => {
           const status = q.openbaar ? 'openbaar' : (q.weggehaald ? 'weggehaald' : 'niet openbaar');
@@ -886,7 +897,17 @@ function toonSitebeheerMakersOverzicht() {
           '</div>';
       }).join('');
 
-      overzichtEl.innerHTML = '<h3>Alle quizmakers (' + makers.length + ')</h3>' + rijen;
+      // <details> = inklapbaar venster: klik op de titel om in of uit te klappen.
+      overzichtEl.innerHTML =
+        '<details class="sitebeheer-makers-details"' + (makersOverzichtOpen ? ' open' : '') + '>' +
+        '<summary>Alle quizmakers (' + makers.length + ')</summary>' +
+        rijen +
+        '</details>';
+
+      const detailsEl = overzichtEl.querySelector('details');
+      detailsEl.addEventListener('toggle', () => {
+        makersOverzichtOpen = detailsEl.open;
+      });
     })
     .catch(err => {
       overzichtEl.innerHTML = '<p class="foutmelding">Laden van quizmakers mislukt: ' + escapeHtml(err.message) + '</p>';
@@ -925,9 +946,7 @@ function laadOpenbareQuizzen() {
         info.className = 'quiz-item-info';
         const aantalVragen = (quiz.vragen || []).length;
         const makerNaam = quiz.makerNaam || '';
-        const doorTekst = makerNaam
-          ? ' · Door ' + escapeHtml(makerNaam)
-          : (sitebeheerActief ? ' · Door: naam onbekend' : '');
+        const doorTekst = doorTekstVoorMaker(makerNaam);
         const codeTekst = sitebeheerActief ? ' · Code ' + escapeHtml(code) : '';
         info.innerHTML = `<strong>${escapeHtml(quiz.titel)}</strong><span>${aantalVragen} vraag/vragen${doorTekst}${codeTekst}</span>`;
 
