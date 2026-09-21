@@ -1035,7 +1035,7 @@ function toonVraagFoto(imgId, url) {
 // prefix is 'host' of 'speler' (bepaalt welke elementen gevuld worden).
 function renderGroteAntwoorden(prefix, vraag) {
   document.getElementById(prefix + '-antwoord-label').textContent =
-    vraag.goedAntwoorden.length > 1 ? 'De goede antwoorden:' : 'Het goede antwoord:';
+    vraag.goedAntwoorden.length > 1 ? 'De goede antwoorden' : 'Het goede antwoord';
 
   const containerEl = document.getElementById(prefix + '-antwoord-groot');
   containerEl.innerHTML = '';
@@ -1211,14 +1211,47 @@ function renderSessieVoorHost(sessie) {
   if (sessie.status === 'resultaat') {
     const vraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
     const antwoordenVoorVraag = (sessie.antwoorden && sessie.antwoorden[sessie.huidigeVraagIndex]) || {};
-    const aantalGoed = Object.values(antwoordenVoorVraag)
-      .filter(a => setsGelijk(a.antwoordIndexen || [], vraag.goedAntwoorden)).length;
+    const gegeven = Object.entries(antwoordenVoorVraag).filter(([spelerId]) => spelers[spelerId]);
+    const aantalGeantwoord = gegeven.length;
+    const aantalGoed = gegeven
+      .filter(([, a]) => setsGelijk(a.antwoordIndexen || [], vraag.goedAntwoorden)).length;
+    const aantalFout = aantalGeantwoord - aantalGoed;
+    const aantalGeen = Math.max(0, aantalSpelers - aantalGeantwoord);
 
     document.getElementById('host-resultaat-voortgang').textContent =
       'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length;
     document.getElementById('host-resultaat-vraag').textContent = vraag.vraag;
+
+    // Kop met een passende reactie
+    let kop;
+    if (aantalSpelers > 0 && aantalGoed === aantalSpelers) {
+      kop = aantalSpelers === 1 ? '🎉 Goed gedaan!' : '🎉 Iedereen had het goed!';
+    } else if (aantalGoed === 0) {
+      kop = '😬 Niemand had het goed';
+    } else if (aantalGoed * 2 >= aantalSpelers) {
+      kop = '👏 Best goed gedaan!';
+    } else {
+      kop = '🤔 Dat was een lastige!';
+    }
+    document.getElementById('host-resultaat-kop').textContent = kop;
+
+    // Ring: hoeveel van de spelers het goed had
+    const OMTREK = 377; // 2 * pi * 60 (zelfde als stroke-dasharray in de CSS)
+    const fractie = aantalSpelers > 0 ? aantalGoed / aantalSpelers : 0;
+    const ringEl = document.getElementById('host-resultaat-ring');
+    ringEl.style.setProperty('--doel', String(Math.round(OMTREK * (1 - fractie))));
+    ringEl.classList.toggle('leeg', aantalGoed === 0);
+
+    document.getElementById('host-resultaat-aantal').textContent = aantalGoed + '/' + aantalSpelers;
     document.getElementById('host-resultaat-telling').textContent =
-      aantalGoed + ' van ' + aantalSpelers + ' spelers hadden het goed';
+      aantalGoed + ' van ' + aantalSpelers + (aantalSpelers === 1 ? ' speler' : ' spelers') +
+      (aantalGoed === 1 ? ' had' : ' hadden') + ' het goed';
+
+    document.getElementById('host-resultaat-chip-goed').textContent = '✔ ' + aantalGoed + ' goed';
+    document.getElementById('host-resultaat-chip-fout').textContent = '✗ ' + aantalFout + ' fout';
+    const geenChipEl = document.getElementById('host-resultaat-chip-geen');
+    geenChipEl.textContent = '⏳ ' + aantalGeen + ' niet geantwoord';
+    geenChipEl.hidden = aantalGeen === 0;
 
     toonScherm('scherm-host-resultaat');
   }
