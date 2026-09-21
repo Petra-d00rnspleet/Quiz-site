@@ -66,14 +66,9 @@
       <div class="laad-spinner-groot" role="status" aria-label="Wachten op de quizmaster"></div>
     </section>
 
-    <!-- SCHERM: SPELER RESULTAAT (alleen: goed of fout) -->
+    <!-- SCHERM: SPELER RESULTAAT (goed of fout, met daaronder het goede antwoord) -->
     <section id="scherm-speler-resultaat" class="scherm scherm-gecentreerd">
       <div id="speler-resultaat-tekst" class="groot-resultaat"></div>
-    </section>
-
-    <!-- SCHERM: SPELER ANTWOORD (het goede antwoord in het groot) -->
-    <section id="scherm-speler-antwoord" class="scherm scherm-gecentreerd">
-      <div class="antwoord-vinkje" aria-hidden="true">✔</div>
       <p id="speler-antwoord-label" class="antwoord-kop"></p>
       <div id="speler-antwoord-groot" class="antwoorden-lijst"></div>
     </section>
@@ -184,41 +179,38 @@
       <button class="btn btn-primary" id="btn-host-toon-resultaat">Doorgaan</button>
     </section>
 
-    <!-- SCHERM: HOST RESULTAAT (spelers zien nu of ze het goed hebben) -->
+    <!-- SCHERM: HOST RESULTAAT (het goede antwoord + hoeveel spelers het goed hadden) -->
     <section id="scherm-host-resultaat" class="scherm scherm-gecentreerd">
       <p id="host-resultaat-voortgang" class="voortgang"></p>
       <h2 id="host-resultaat-vraag" class="titel-regenboog host-resultaat-vraag"></h2>
 
-      <p id="host-resultaat-kop" class="resultaat-kop"></p>
+      <p id="host-antwoord-label" class="antwoord-kop"></p>
+      <div id="host-antwoord-groot" class="antwoorden-lijst"></div>
 
-      <div class="resultaat-ring-wrap">
-        <svg class="resultaat-ring" viewBox="0 0 140 140" aria-hidden="true">
-          <circle class="resultaat-ring-baan" cx="70" cy="70" r="60"></circle>
-          <circle class="resultaat-ring-vulling" id="host-resultaat-ring" cx="70" cy="70" r="60" transform="rotate(-90 70 70)"></circle>
-        </svg>
-        <div class="resultaat-ring-midden">
-          <span id="host-resultaat-aantal" class="resultaat-aantal"></span>
-          <span class="resultaat-aantal-label">had het goed</span>
+      <div class="resultaat-onder">
+        <div class="resultaat-ring-wrap">
+          <svg class="resultaat-ring" viewBox="0 0 140 140" aria-hidden="true">
+            <circle class="resultaat-ring-baan" cx="70" cy="70" r="60"></circle>
+            <circle class="resultaat-ring-vulling" id="host-resultaat-ring" cx="70" cy="70" r="60" transform="rotate(-90 70 70)"></circle>
+          </svg>
+          <div class="resultaat-ring-midden">
+            <span id="host-resultaat-aantal" class="resultaat-aantal"></span>
+            <span class="resultaat-aantal-label">had het goed</span>
+          </div>
+        </div>
+
+        <div class="resultaat-tekstkolom">
+          <p id="host-resultaat-kop" class="resultaat-kop"></p>
+          <p id="host-resultaat-telling" class="groot-label"></p>
+          <div class="resultaat-chips">
+            <span class="resultaat-chip goed" id="host-resultaat-chip-goed"></span>
+            <span class="resultaat-chip fout" id="host-resultaat-chip-fout"></span>
+            <span class="resultaat-chip geen" id="host-resultaat-chip-geen"></span>
+          </div>
         </div>
       </div>
 
-      <p id="host-resultaat-telling" class="groot-label"></p>
-
-      <div class="resultaat-chips">
-        <span class="resultaat-chip goed" id="host-resultaat-chip-goed"></span>
-        <span class="resultaat-chip fout" id="host-resultaat-chip-fout"></span>
-        <span class="resultaat-chip geen" id="host-resultaat-chip-geen"></span>
-      </div>
-
-      <p class="voortgang">De spelers zien nu of ze het goed of fout hadden.</p>
-      <button class="btn btn-primary" id="btn-host-toon-antwoord">Doorgaan</button>
-    </section>
-
-    <!-- SCHERM: HOST ANTWOORD (het goede antwoord in het groot) -->
-    <section id="scherm-host-antwoord" class="scherm scherm-gecentreerd">
-      <div class="antwoord-vinkje" aria-hidden="true">✔</div>
-      <p id="host-antwoord-label" class="antwoord-kop"></p>
-      <div id="host-antwoord-groot" class="antwoorden-lijst"></div>
+      <p class="voortgang">De spelers zien nu of ze het goed of fout hadden, met het goede antwoord.</p>
       <button class="btn btn-primary" id="btn-host-naar-scorebord">Doorgaan</button>
     </section>
 
