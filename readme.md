@@ -4,6 +4,7 @@
 - `index.html` — alle schermen (algemeen, quiz maken, nieuwe quiz, meedoen, wachtkamers, live vraag, scorebord)
 - `style.css` — styling
 - `app.js` — alle logica (navigatie, opslaan in Firebase, hosten, meedoen, scorebord)
+- `poppetjes.js` — de getekende dieren, hoeden, brillen en hartjes (SVG) en hoe die op elkaar passen
 - `firebase-config.js` — hier vul je jouw eigen Firebase-gegevens in (ongewijzigd)
 
 ## Stap 1: Firebase instellen
@@ -35,7 +36,7 @@ Open `index.html` gewoon in je browser (of gebruik een simpele lokale server, bi
 
 ## Stap 3: Op GitHub zetten
 1. Maak een nieuwe repository op GitHub.
-2. Zet deze bestanden erin (`index.html`, `style.css`, `app.js`, `firebase-config.js`).
+2. Zet deze bestanden erin (`index.html`, `style.css`, `app.js`, `poppetjes.js`, `firebase-config.js`).
 3. Ga naar **Settings → Pages** in je repository, kies de `main` branch en map `/root`.
 4. Na een minuut is je site live op `https://jouwgebruikersnaam.github.io/repositorynaam/`.
 
@@ -84,12 +85,18 @@ Bij elke vraag kun je (niet verplicht) een **foto uploaden**. De foto wordt verk
 
 ### Poppetje kiezen: dieren en accessoires (nieuw)
 Zodra je meedoet aan een quiz, krijg je een willekeurig dier. In de wachtkamer staan twee tabbladen:
-- **Dieren** — kies een ander dier (🐶🐱🦊🐼🦁 enz.).
-- **Accessoires** — kies een hoed (🎩👑🎓 …), een bril (🕶️👓) en/of een hartje of iets anders (❤️💖⭐🌸 …). Per soort kun je er één dragen, dus een hoed, een bril en een hartje tegelijk kan. Nog eens op een gekozen accessoire tikken haalt het weer weg, en met "Alle accessoires weghalen" ben je ze allemaal kwijt.
+- **Dieren** — kies een ander dier (20 stuks).
+- **Accessoires** — kies een hoed (hoge hoed, kroon, afstudeerhoed, pet, cowboyhoed, strohoed, kerstmuts, strik), een bril (zonnebril, gewone bril) en/of een hartje of iets anders (hartjes in 5 kleuren, glitterhartje, ster, glitters, bloem, vuurtje, diamant, klavertje). Per soort kun je er één dragen, dus een hoed, een bril en een hartje tegelijk kan. In het menu zie je bij elk accessoire meteen hoe het op jóuw dier staat. Nog eens op een gekozen accessoire tikken haalt het weer weg, en met "Alle accessoires weghalen" ben je ze allemaal kwijt.
+
+**Alles past precies op het dier.** De dieren zijn zelf getekend (geen emoji-lettertype, want dat ziet er op elk apparaat anders uit), met vaste ankerpunten per dier voor de hoed en de bril. Zo gaat de hoge hoed bij het konijn tussen de oren (de oren staan ervoor), zit de pet tussen de ogen van de kikker, staat de kroon op de manen van de leeuw en zit de bril precies voor de ogen, ook bij de kikker met zijn ogen bovenop het hoofd.
 
 Het poppetje (dier + accessoires) staat bij het scorebord (ook bij de eindstand) **voor je naam**, en bij de host in de wachtkamer. De plekken (#1, #2, #3 …) blijven gewoon links staan. Nadat de quiz is begonnen kun je je poppetje niet meer wijzigen.
 
-Nieuwe accessoires toevoegen? Zet ze in `ACCESSOIRE_GROEPEN` bovenaan het poppetje-blok in `app.js`. In Firebase staan ze bij de speler onder `accessoires/<plek>`; de bestaande regels voor `sessies` hoeven niet te veranderen.
+**Aanpassen of uitbreiden** kan allemaal in `poppetjes.js`:
+- Zit een hoed bij één dier net verkeerd? Pas bij dat dier `kruin` (positie en breedte van de hoed) of `ogen` (bril) aan.
+- Nieuw accessoire? Voeg het toe aan `ACCESSOIRES` en aan `ACCESSOIRE_GROEPEN`.
+- Nieuw dier? Voeg een tekening toe aan `DIER_TEKENINGEN`.
+In Firebase staan de keuzes bij de speler onder `dier` en `accessoires/<plek>`; de bestaande regels voor `sessies` hoeven niet te veranderen.
 
 ### Puntentelling en scorebord (nieuw)
 - Een goed antwoord levert **1000 punten** op.
