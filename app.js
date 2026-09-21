@@ -527,6 +527,14 @@ document.getElementById('btn-vraag-toevoegen').addEventListener('click', () => {
   voegVraagBlokToe();
 });
 
+// De keuze "mag alleen gespeeld worden" hoort bij het openbaar maken: pas zichtbaar
+// als "Deze quiz openbaar maken" aan staat.
+function werkSoloOptieZichtbaarheidBij() {
+  document.getElementById('solo-optie-rij').hidden = !document.getElementById('input-openbaar').checked;
+}
+
+document.getElementById('input-openbaar').addEventListener('change', werkSoloOptieZichtbaarheidBij);
+
 document.getElementById('btn-toevoegen-quiz').addEventListener('click', () => {
   huidigeBewerkCode = null;
   huidigeBewerkTerugScherm = 'scherm-quizmaken';
@@ -536,6 +544,8 @@ document.getElementById('btn-toevoegen-quiz').addEventListener('click', () => {
   document.getElementById('nieuwe-quiz-titel-kop').textContent = 'Nieuwe quiz';
   document.getElementById('btn-quiz-opslaan').textContent = 'Quiz opslaan';
   document.getElementById('input-openbaar').checked = false;
+  document.getElementById('input-solo-toegestaan').checked = true;
+  werkSoloOptieZichtbaarheidBij();
   bouwOmslagGalerij(STANDAARD_OMSLAGEN[0].url);
   toonOmslagPreview(STANDAARD_OMSLAGEN[0].url);
   voegVraagBlokToe();
@@ -556,6 +566,9 @@ function startBewerkenVanQuiz(code, terugScherm) {
     vragenContainer.innerHTML = '';
     document.getElementById('quizmaken-foutmelding').textContent = '';
     document.getElementById('input-openbaar').checked = !!quizData.openbaar;
+    // Oudere quizzen hebben deze keuze nog niet: die tellen als "alleen spelen mag".
+    document.getElementById('input-solo-toegestaan').checked = quizData.soloToegestaan !== false;
+    werkSoloOptieZichtbaarheidBij();
     const huidigeOmslag = quizData.afbeelding || STANDAARD_OMSLAGEN[0].url;
     bouwOmslagGalerij(huidigeOmslag);
     toonOmslagPreview(huidigeOmslag);
@@ -626,13 +639,14 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
   }
 
   const isOpenbaar = document.getElementById('input-openbaar').checked;
+  const soloToegestaan = document.getElementById('input-solo-toegestaan').checked;
 
   if (huidigeBewerkCode) {
     // Bestaande quiz bijwerken: zelfde code, alleen titel + vragen + omslag + openbaar overschrijven.
     const code = huidigeBewerkCode;
     const terugScherm = huidigeBewerkTerugScherm;
 
-    const updateData = { titel: titel, vragen: vragen, afbeelding: geselecteerdeOmslagUrl, openbaar: isOpenbaar, doorBeheerVerwijderd: false };
+    const updateData = { titel: titel, vragen: vragen, afbeelding: geselecteerdeOmslagUrl, openbaar: isOpenbaar, soloToegestaan: soloToegestaan, doorBeheerVerwijderd: false };
 
     // Is dit jouw eigen quiz? Dan zorgen we dat jouw naam erbij staat.
     // (Bij sitebeheer die andermans quiz aanpast blijft de naam van de maker staan.)
@@ -671,6 +685,7 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
     vragen: vragen,
     afbeelding: geselecteerdeOmslagUrl,
     openbaar: isOpenbaar,
+    soloToegestaan: soloToegestaan,
     makerNaam: huidigeMakerNaam() || '',
     aangemaaktOp: Date.now()
   };
@@ -784,7 +799,8 @@ function laadEigenQuizzen() {
       speelKnop.className = 'btn-spelen';
       speelKnop.textContent = 'Spelen';
       speelKnop.addEventListener('click', () => {
-        startHostenVanQuiz(quiz.code);
+        // Je eigen quiz mag je altijd ook alleen spelen.
+        toonSpeelKeuze(quiz.code, quiz.titel, true, 'scherm-quizmaken');
       });
 
       const aanpassenKnop = document.createElement('button');
@@ -957,7 +973,9 @@ function laadOpenbareQuizzen() {
         speelKnop.className = 'btn-spelen';
         speelKnop.textContent = 'Spelen';
         speelKnop.addEventListener('click', () => {
-          startHostenVanQuiz(code);
+          // Alleen spelen mag als de maker dat heeft toegestaan (of als het je eigen quiz is).
+          const soloMag = quiz.soloToegestaan !== false || isEigenQuizCode(code);
+          toonSpeelKeuze(code, quiz.titel, soloMag, 'scherm-speelbare-quizzen');
         });
 
         knoppen.appendChild(speelKnop);
@@ -1615,6 +1633,244 @@ function renderSessieVoorSpeler(sessie) {
     toonScherm('scherm-speler-scorebord');
   }
 }
+
+// ================================================================
+//  SPELEN: met mensen (live, met quizmaster) of zonder mensen (alleen)
+// ================================================================
+
+function isEigenQuizCode(code) {
+  try {
+    return JSON.parse(localStorage.getItem('eigenQuizzen') || '[]').some(q => q.code === code);
+  } catch (e) {
+    return false;
+  }
+}
+
+const speelKeuzeOverlayEl = document.getElementById('speelkeuze-overlay');
+const btnSpeelKeuzeAlleenEl = document.getElementById('btn-speelkeuze-alleen');
+const speelKeuzeAlleenUitlegEl = document.getElementById('speelkeuze-alleen-uitleg');
+const SPEELKEUZE_ALLEEN_STANDAARD_UITLEG = 'Speel de quiz zelf, zonder quizmaster.';
+
+let speelKeuze = null; // { code, terugScherm }
+
+function toonSpeelKeuze(code, titel, soloToegestaan, terugScherm) {
+  speelKeuze = { code: code, terugScherm: terugScherm };
+  document.getElementById('speelkeuze-quiztitel').textContent = titel || '';
+
+  btnSpeelKeuzeAlleenEl.disabled = !soloToegestaan;
+  speelKeuzeAlleenUitlegEl.textContent = soloToegestaan
+    ? SPEELKEUZE_ALLEEN_STANDAARD_UITLEG
+    : 'De maker heeft niet toegestaan dat je deze quiz alleen speelt.';
+
+  speelKeuzeOverlayEl.classList.add('actief');
+}
+
+function sluitSpeelKeuze() {
+  speelKeuzeOverlayEl.classList.remove('actief');
+}
+
+document.getElementById('btn-speelkeuze-mensen').addEventListener('click', () => {
+  if (!speelKeuze) return;
+  const code = speelKeuze.code;
+  sluitSpeelKeuze();
+  startHostenVanQuiz(code);
+});
+
+btnSpeelKeuzeAlleenEl.addEventListener('click', () => {
+  if (!speelKeuze || btnSpeelKeuzeAlleenEl.disabled) return;
+  const { code, terugScherm } = speelKeuze;
+  sluitSpeelKeuze();
+  startSoloVanQuiz(code, terugScherm);
+});
+
+document.getElementById('btn-speelkeuze-annuleren').addEventListener('click', sluitSpeelKeuze);
+
+// Klik naast het venster (op de donkere achtergrond) sluit het ook.
+speelKeuzeOverlayEl.addEventListener('click', (e) => {
+  if (e.target === speelKeuzeOverlayEl) sluitSpeelKeuze();
+});
+
+// ---------- Alleen spelen (zonder quizmaster, niets hiervan gaat via Firebase-sessies) ----------
+
+let soloCode = null;
+let soloTitel = '';
+let soloVragen = [];
+let soloIndex = 0;
+let soloAantalGoed = 0;
+let soloTerugScherm = 'scherm-speelbare-quizzen';
+let soloHeeftGeantwoord = false;
+let soloGeselecteerdeAntwoorden = [];
+
+function startSoloVanQuiz(code, terugScherm) {
+  db.ref('quizzen/' + code).once('value').then(snapshot => {
+    const quizData = snapshot.val();
+    if (!quizData) {
+      alert('Deze quiz kon niet gevonden worden (misschien is hij verwijderd).');
+      return;
+    }
+    // Nog een keer controleren (de maker kan het net hebben uitgezet).
+    if (quizData.soloToegestaan === false && !isEigenQuizCode(code)) {
+      alert('De maker heeft niet toegestaan dat deze quiz alleen gespeeld wordt.');
+      return;
+    }
+
+    const vragen = (quizData.vragen || []).map(normaliseerVraag);
+    if (vragen.length === 0) {
+      alert('Deze quiz heeft geen vragen.');
+      return;
+    }
+
+    soloCode = code;
+    soloTitel = quizData.titel || '';
+    soloVragen = vragen;
+    soloIndex = 0;
+    soloAantalGoed = 0;
+    soloTerugScherm = terugScherm || 'scherm-speelbare-quizzen';
+    toonSoloVraag();
+  }).catch(err => {
+    alert('Quiz starten mislukt: ' + err.message);
+  });
+}
+
+function toonSoloVraag() {
+  const vraag = soloVragen[soloIndex];
+  soloHeeftGeantwoord = false;
+  soloGeselecteerdeAntwoorden = [];
+
+  document.getElementById('solo-voortgang').textContent =
+    'Vraag ' + (soloIndex + 1) + ' van ' + soloVragen.length;
+  document.getElementById('solo-vraag-weergave').textContent = vraag.vraag;
+  toonVraagFoto('solo-vraag-foto', vraag.afbeelding);
+
+  const meerdereGoedMogelijk = vraag.goedAntwoorden.length > 1;
+  const verstuurKnop = document.getElementById('btn-solo-antwoord-versturen');
+  const instructieEl = document.getElementById('solo-vraag-instructie');
+  const antwoordenEl = document.getElementById('solo-antwoorden-weergave');
+  antwoordenEl.innerHTML = '';
+
+  if (meerdereGoedMogelijk) {
+    instructieEl.textContent = 'Tik op alle antwoorden die je goed denkt dat zijn en klik daarna op "Antwoord versturen".';
+    verstuurKnop.style.display = '';
+    verstuurKnop.disabled = true;
+
+    vraag.antwoorden.forEach((tekst, index) => {
+      const antwoordIndex = index + 1;
+      const optie = document.createElement('div');
+      optie.className = 'antwoord-optie';
+      optie.textContent = tekst;
+      optie.addEventListener('click', () => {
+        if (soloHeeftGeantwoord) return;
+        const positie = soloGeselecteerdeAntwoorden.indexOf(antwoordIndex);
+        if (positie === -1) {
+          soloGeselecteerdeAntwoorden.push(antwoordIndex);
+        } else {
+          soloGeselecteerdeAntwoorden.splice(positie, 1);
+        }
+        optie.classList.toggle('geselecteerd');
+        verstuurKnop.disabled = soloGeselecteerdeAntwoorden.length === 0;
+      });
+      antwoordenEl.appendChild(optie);
+    });
+
+    verstuurKnop.onclick = () => {
+      if (soloGeselecteerdeAntwoorden.length === 0) return;
+      verstuurSoloAntwoord(soloGeselecteerdeAntwoorden.slice());
+    };
+  } else {
+    instructieEl.textContent = 'Tik op het antwoord dat je goed denkt dat is.';
+    verstuurKnop.style.display = 'none';
+    verstuurKnop.onclick = null;
+
+    vraag.antwoorden.forEach((tekst, index) => {
+      const optie = document.createElement('div');
+      optie.className = 'antwoord-optie';
+      optie.textContent = tekst;
+      optie.addEventListener('click', () => {
+        verstuurSoloAntwoord([index + 1]);
+      });
+      antwoordenEl.appendChild(optie);
+    });
+  }
+
+  toonScherm('scherm-solo-vraag');
+}
+
+function verstuurSoloAntwoord(indexen) {
+  if (soloHeeftGeantwoord) return;
+  soloHeeftGeantwoord = true;
+
+  const vraag = soloVragen[soloIndex];
+  const goed = setsGelijk(indexen, vraag.goedAntwoorden);
+  if (goed) soloAantalGoed++;
+
+  const resultaatEl = document.getElementById('solo-resultaat-tekst');
+  resultaatEl.className = 'groot-resultaat ' + (goed ? 'goed' : 'fout');
+  resultaatEl.textContent = goed ? 'Goed! ✔' : 'Fout ✗';
+  renderGroteAntwoorden('solo', vraag);
+
+  const isLaatsteVraag = soloIndex + 1 >= soloVragen.length;
+  document.getElementById('btn-solo-volgende').textContent =
+    isLaatsteVraag ? 'Bekijk resultaat' : 'Volgende vraag';
+
+  toonScherm('scherm-solo-resultaat');
+}
+
+document.getElementById('btn-solo-volgende').addEventListener('click', () => {
+  if (soloIndex + 1 < soloVragen.length) {
+    soloIndex++;
+    toonSoloVraag();
+  } else {
+    toonSoloEinde();
+  }
+});
+
+function toonSoloEinde() {
+  const totaal = soloVragen.length;
+  const OMTREK = 377; // zelfde als stroke-dasharray in de CSS
+  const fractie = totaal > 0 ? soloAantalGoed / totaal : 0;
+
+  document.getElementById('solo-einde-titel').textContent = soloTitel;
+
+  let kop;
+  if (soloAantalGoed === totaal) {
+    kop = '🏆 Perfect!';
+  } else if (soloAantalGoed * 2 >= totaal) {
+    kop = '👏 Goed gedaan!';
+  } else {
+    kop = '💪 Blijf oefenen!';
+  }
+  document.getElementById('solo-einde-kop').textContent = kop;
+
+  const ringEl = document.getElementById('solo-einde-ring');
+  ringEl.style.setProperty('--doel', String(Math.round(OMTREK * (1 - fractie))));
+  ringEl.classList.toggle('leeg', soloAantalGoed === 0);
+
+  document.getElementById('solo-einde-aantal').textContent = soloAantalGoed + '/' + totaal;
+  document.getElementById('solo-einde-tekst').textContent =
+    'Je had ' + soloAantalGoed + ' van de ' + totaal + (totaal === 1 ? ' vraag' : ' vragen') + ' goed';
+
+  toonScherm('scherm-solo-einde');
+}
+
+function verlaatSoloQuiz() {
+  const terug = soloTerugScherm;
+  soloVragen = [];
+  toonScherm(terug);
+  if (terug === 'scherm-quizmaken') {
+    laadEigenQuizzen();
+  } else {
+    laadOpenbareQuizzen();
+  }
+}
+
+document.getElementById('btn-solo-stoppen').addEventListener('click', verlaatSoloQuiz);
+document.getElementById('btn-solo-terug').addEventListener('click', verlaatSoloQuiz);
+
+document.getElementById('btn-solo-opnieuw').addEventListener('click', () => {
+  soloIndex = 0;
+  soloAantalGoed = 0;
+  toonSoloVraag();
+});
 
 // ---------- Bij het openen van de site: naam bij eigen quizzen zetten ----------
 koppelMakerNaamAanEigenQuizzen();
