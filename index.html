@@ -128,6 +128,11 @@
         Deze quiz openbaar maken (zichtbaar voor iedereen bij "Speelbare quizzen")
       </label>
 
+      <label class="openbaar-optie" id="solo-optie-rij" hidden>
+        <input type="checkbox" id="input-solo-toegestaan" checked>
+        Spelers mogen deze quiz ook alleen spelen (zonder quizmaster)
+      </label>
+
       <label>Omslagfoto</label>
       <div class="omslag-kiezer">
         <div class="omslag-preview" id="omslag-preview">
@@ -222,8 +227,74 @@
       <button class="btn btn-secondary" id="btn-host-afronden">Terug naar start</button>
     </section>
 
+    <!-- SCHERM: SOLO VRAAG (alleen spelen, zonder quizmaster) -->
+    <section id="scherm-solo-vraag" class="scherm">
+      <button class="btn-terug" id="btn-solo-stoppen" type="button">&larr; Stoppen</button>
+      <p id="solo-voortgang" class="voortgang"></p>
+      <h2 id="solo-vraag-weergave" class="titel-regenboog"></h2>
+      <img id="solo-vraag-foto" class="vraag-foto" alt="Foto bij de vraag" hidden>
+      <p id="solo-vraag-instructie" class="subtitel"></p>
+      <div id="solo-antwoorden-weergave" class="antwoorden-lijst"></div>
+      <button class="btn btn-primary" id="btn-solo-antwoord-versturen" disabled>Antwoord versturen</button>
+    </section>
+
+    <!-- SCHERM: SOLO RESULTAAT (goed of fout, met het goede antwoord eronder) -->
+    <section id="scherm-solo-resultaat" class="scherm scherm-gecentreerd">
+      <div id="solo-resultaat-tekst" class="groot-resultaat"></div>
+      <p id="solo-antwoord-label" class="antwoord-kop"></p>
+      <div id="solo-antwoord-groot" class="antwoorden-lijst"></div>
+      <button class="btn btn-primary" id="btn-solo-volgende">Volgende vraag</button>
+    </section>
+
+    <!-- SCHERM: SOLO EINDE -->
+    <section id="scherm-solo-einde" class="scherm scherm-gecentreerd">
+      <h2 id="solo-einde-titel" class="titel-regenboog host-resultaat-vraag"></h2>
+      <p id="solo-einde-kop" class="resultaat-kop"></p>
+      <div class="resultaat-ring-wrap">
+        <svg class="resultaat-ring" viewBox="0 0 140 140" aria-hidden="true">
+          <circle class="resultaat-ring-baan" cx="70" cy="70" r="60"></circle>
+          <circle class="resultaat-ring-vulling" id="solo-einde-ring" cx="70" cy="70" r="60" transform="rotate(-90 70 70)"></circle>
+        </svg>
+        <div class="resultaat-ring-midden">
+          <span id="solo-einde-aantal" class="resultaat-aantal"></span>
+          <span class="resultaat-aantal-label">goed</span>
+        </div>
+      </div>
+      <p id="solo-einde-tekst" class="groot-label"></p>
+      <button class="btn btn-primary" id="btn-solo-opnieuw">Opnieuw spelen</button>
+      <button class="btn btn-secondary" id="btn-solo-terug">Terug</button>
+    </section>
+
     <button class="btn-sitebeheer" id="btn-sitebeheer" type="button">⚙ Sitebeheer</button>
 
+  </div>
+
+  <!-- SPEELKEUZE: met mensen of alleen spelen -->
+  <div id="speelkeuze-overlay" class="sitebeheer-overlay">
+    <div class="sitebeheer-venster speelkeuze-venster">
+      <h3>Hoe wil je spelen?</h3>
+      <p id="speelkeuze-quiztitel"></p>
+
+      <button class="speelkeuze-optie" id="btn-speelkeuze-mensen" type="button">
+        <span class="speelkeuze-icoon">👥</span>
+        <span class="speelkeuze-tekst">
+          <strong>Met mensen</strong>
+          <small>Jij bent de quizmaster. Anderen doen mee met een code.</small>
+        </span>
+      </button>
+
+      <button class="speelkeuze-optie" id="btn-speelkeuze-alleen" type="button">
+        <span class="speelkeuze-icoon">🧍</span>
+        <span class="speelkeuze-tekst">
+          <strong>Zonder mensen</strong>
+          <small id="speelkeuze-alleen-uitleg">Speel de quiz zelf, zonder quizmaster.</small>
+        </span>
+      </button>
+
+      <div class="sitebeheer-knoppen">
+        <button class="btn btn-secondary" id="btn-speelkeuze-annuleren" type="button">Annuleren</button>
+      </div>
+    </div>
   </div>
 
   <!-- SITEBEHEER: wachtwoord-overlay -->
