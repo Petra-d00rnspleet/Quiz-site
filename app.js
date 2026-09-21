@@ -1058,17 +1058,8 @@ let spelerGeselecteerdeAntwoorden = [];
 let huidigeStatusSpeler = '';
 
 // ---------- Poppetje: een dier + accessoires (hoeden, brillen, hartjes, ...) ----------
-const DIEREN = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯',
-                '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🦄', '🐺', '🐲'];
-
-// Accessoires zijn verdeeld in plekken. Per plek kun je er 1 dragen, dus een hoed,
-// een bril en een hartje tegelijk kan wel. Een nieuwe plek toevoegen? Zet hem hier
-// in de lijst en geef hem een stijl .poppetje-acc-<plek> in style.css.
-const ACCESSOIRE_GROEPEN = [
-  { plek: 'boven',   titel: 'Hoeden',          items: ['🎩', '👑', '🎓', '🧢', '🤠', '👒', '🎅', '🎀'] },
-  { plek: 'gezicht', titel: 'Brillen',         items: ['🕶️', '👓'] },
-  { plek: 'hoek',    titel: 'Hartjes en meer', items: ['❤️', '💖', '💙', '💚', '💛', '💜', '⭐', '✨', '🌸', '🔥', '💎', '🍀'] }
-];
+// De tekeningen zelf (dieren, hoeden, brillen, ...) staan in poppetjes.js. Dat bestand
+// levert DIEREN, ACCESSOIRE_GROEPEN, geldigeAccessoires() en poppetjeSvg().
 
 let kiezerTab = 'dieren'; // 'dieren' of 'accessoires' (welk tabblad open staat in de wachtkamer)
 let huidigePoppetje = { dier: '', accessoires: {} }; // wat deze speler nu heeft gekozen
@@ -1082,35 +1073,12 @@ function geldigDier(dier) {
   return DIEREN.indexOf(dier) !== -1 ? dier : '';
 }
 
-// Geeft alleen de geldige accessoires terug, als { plek: emoji }.
-function geldigeAccessoires(accessoires) {
-  const resultaat = {};
-  if (!accessoires || typeof accessoires !== 'object') return resultaat;
-  ACCESSOIRE_GROEPEN.forEach(groep => {
-    const emoji = accessoires[groep.plek];
-    if (groep.items.indexOf(emoji) !== -1) resultaat[groep.plek] = emoji;
-  });
-  return resultaat;
-}
-
-// Maakt het poppetje: het dier met de accessoires er (via CSS) op geplaatst.
+// Maakt het poppetje: het getekende dier met de accessoires er passend op.
 // De grootte volgt de lettergrootte van het element waar hij in komt te staan.
 function maakPoppetje(dier, accessoires) {
   const poppetje = document.createElement('span');
   poppetje.className = 'poppetje';
-
-  const dierEl = document.createElement('span');
-  dierEl.className = 'poppetje-dier';
-  dierEl.textContent = geldigDier(dier);
-  poppetje.appendChild(dierEl);
-
-  const acc = geldigeAccessoires(accessoires);
-  Object.keys(acc).forEach(plek => {
-    const accEl = document.createElement('span');
-    accEl.className = 'poppetje-acc poppetje-acc-' + plek;
-    accEl.textContent = acc[plek];
-    poppetje.appendChild(accEl);
-  });
+  poppetje.innerHTML = poppetjeSvg(geldigDier(dier), accessoires);
   return poppetje;
 }
 
@@ -1120,6 +1088,7 @@ function bouwKiezer() {
   kiezerEl.innerHTML = '';
 
   const opDieren = kiezerTab === 'dieren';
+  kiezerEl.classList.toggle('accessoires', !opDieren);
   document.getElementById('tab-dieren').classList.toggle('actief', opDieren);
   document.getElementById('tab-dieren').setAttribute('aria-selected', String(opDieren));
   document.getElementById('tab-accessoires').classList.toggle('actief', !opDieren);
@@ -1130,13 +1099,15 @@ function bouwKiezer() {
       const knop = document.createElement('button');
       knop.type = 'button';
       knop.className = 'dier-knop';
-      knop.textContent = dier;
+      knop.innerHTML = poppetjeSvg(dier, {});
       knop.dataset.dier = dier;
       knop.setAttribute('aria-label', 'Kies ' + dier);
       knop.addEventListener('click', () => kiesDier(dier));
       kiezerEl.appendChild(knop);
     });
   } else {
+    // Bij elk accessoire zie je meteen hoe het op jouw dier staat.
+    const voorbeeldDier = huidigePoppetje.dier || DIEREN[0];
     ACCESSOIRE_GROEPEN.forEach(groep => {
       const kop = document.createElement('div');
       kop.className = 'kiezer-groep-titel';
@@ -1144,13 +1115,15 @@ function bouwKiezer() {
       kiezerEl.appendChild(kop);
 
       groep.items.forEach(emoji => {
+        const voorbeeld = {};
+        voorbeeld[groep.plek] = emoji;
         const knop = document.createElement('button');
         knop.type = 'button';
         knop.className = 'dier-knop';
-        knop.textContent = emoji;
+        knop.innerHTML = poppetjeSvg(voorbeeldDier, voorbeeld);
         knop.dataset.plek = groep.plek;
         knop.dataset.acc = emoji;
-        knop.setAttribute('aria-label', 'Kies ' + emoji);
+        knop.setAttribute('aria-label', 'Kies ' + ACCESSOIRES[emoji].naam);
         knop.addEventListener('click', () => kiesAccessoire(groep.plek, emoji));
         kiezerEl.appendChild(knop);
       });
