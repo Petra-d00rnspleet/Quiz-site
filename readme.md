@@ -82,10 +82,13 @@ Bij elke vraag kun je (niet verplicht) een **foto uploaden**. De foto wordt verk
 - Spelers zien bij zo'n vraag geen directe klik-en-klaar meer: ze **vinken alle antwoorden aan die ze goed vinden** en klikken daarna op **"Antwoord versturen"**. Pas na dat klikken staat hun antwoord vast.
 - Een vraag telt alleen als **goed beantwoord** als een speler precies alle juiste antwoorden heeft aangevinkt (niet meer en niet minder).
 
+### Dierenkop kiezen (nieuw)
+Zodra je meedoet aan een quiz, krijg je een willekeurig dier. In de wachtkamer kun je een ander dier kiezen (dierenkoppen 🐶🐱🦊🐼🦁 enz.). Dat dier staat bij het scorebord (ook bij de eindstand) **voor je naam**, en bij de host in de wachtkamer. De plekken (#1, #2, #3 …) blijven gewoon links staan. Nadat de quiz is begonnen kun je je dier niet meer wijzigen.
+
 ### Puntentelling en scorebord (nieuw)
 - Een goed antwoord levert **1000 punten** op.
 - Staat het na een vraag gelijk in punten, dan wint degene die (over alle beantwoorde vragen samen) **het snelst klikte** — dus hoe eerder je op "Antwoord versturen" klikt bij een goed antwoord, hoe beter je rangschikt bij een gelijke stand.
-- Het scorebord toont iedereen gerangschikt van hoog naar laag; spelers zien hun eigen rij gemarkeerd.
+- Het scorebord toont iedereen gerangschikt van hoog naar laag, met plek, dier en naam; spelers zien hun eigen rij gemarkeerd.
 
 ### Host verlaat de quiz (nieuw)
 Zodra de quizmaster op "Terug" of "Afronden" klikt, of het tabblad sluit / de verbinding verliest (via Firebase `onDisconnect`), wordt de sessie verwijderd. Alle spelers die op dat moment meedoen, zien meteen een scherm dat de quiz gestopt is en kunnen terug naar start.
