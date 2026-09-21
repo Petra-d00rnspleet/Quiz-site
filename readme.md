@@ -54,6 +54,13 @@ Als je op een ander apparaat of in een andere browser inlogt, wordt daar opnieuw
 - **Quiz maken:** titel + per vraag de vraagtekst en de antwoorden. Per vraag kies je **2 of 4 antwoorden**, en je kunt **meer dan 1 antwoord als goed aanvinken** (in plaats van er maar 1 te kunnen kiezen). Na opslaan krijg je een unieke 6-tekens code en zie je meteen een knop **"Nu hosten"**.
 - **Mijn quizzen:** elke quiz heeft nu een knop **"Spelen"** (start de live quiz als host), **"Aanpassen"** (bewerk titel/vragen/omslag) en **"Verwijderen"** (verwijdert de quiz definitief uit Firebase, na een bevestigingsvraag).
 
+### Spelen: met mensen of zonder mensen (nieuw)
+Als je bij een quiz op **"Spelen"** klikt (bij "Mijn quizzen" of bij "Speelbare quizzen"), verschijnt eerst een keuze:
+- **Met mensen** — je bent de quizmaster en anderen doen mee met een code (zie "Live hosten" hieronder).
+- **Zonder mensen** — je speelt de quiz gewoon zelf, zonder quizmaster. Na elke vraag zie je of het goed of fout was, met het goede antwoord. Aan het eind zie je hoeveel vragen je goed had, en kun je opnieuw spelen. Hier wordt niets in Firebase-sessies opgeslagen.
+
+**Alleen spelen toestaan of niet:** bij het openbaar maken van een quiz staat een vinkje **"Spelers mogen deze quiz ook alleen spelen (zonder quizmaster)"** (standaard aan). Zet je dat uit, dan is bij die quiz de optie "Zonder mensen" uitgeschakeld voor andere spelers. Je eigen quiz kun je zelf altijd alleen spelen. Oudere quizzen die deze keuze nog niet hebben, tellen als "alleen spelen mag". Je kunt de keuze altijd wijzigen via "Aanpassen".
+
 ### Live hosten (nieuw)
 De quiz wordt nu **live gespeeld door de maker**, net als bij Kahoot:
 1. De maker klikt op **"Spelen"** → dit opent een **wachtkamer** met de code op het scherm. De maker moet dit scherm open houden op zijn/haar laptop.
