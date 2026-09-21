@@ -55,16 +55,26 @@
     <section id="scherm-speler-vraag" class="scherm">
       <p id="speler-voortgang-weergave" class="voortgang"></p>
       <h2 id="speler-vraag-weergave" class="titel-regenboog"></h2>
+      <img id="speler-vraag-foto" class="vraag-foto" alt="Foto bij de vraag" hidden>
       <p id="speler-vraag-instructie" class="subtitel"></p>
       <div id="speler-antwoorden-weergave" class="antwoorden-lijst"></div>
       <button class="btn btn-primary" id="btn-speler-antwoord-versturen" disabled>Antwoord versturen</button>
     </section>
 
-    <!-- SCHERM: SPELER ANTWOORD VERZONDEN (tussenscherm, wachten op andere spelers) -->
-    <section id="scherm-speler-antwoord-verzonden" class="scherm">
-      <h2 id="speler-antwoord-verzonden-titel" class="titel-regenboog"></h2>
-      <p id="speler-antwoord-verzonden-tekst" class="subtitel"></p>
-      <p class="voortgang laad-rij"><span class="laad-spinner"></span>Wacht op de andere spelers...</p>
+    <!-- SCHERM: SPELER ANTWOORD VERZONDEN (alleen een groot laadteken; je ziet nog niet of het goed was) -->
+    <section id="scherm-speler-antwoord-verzonden" class="scherm scherm-gecentreerd">
+      <div class="laad-spinner-groot" role="status" aria-label="Wachten op de quizmaster"></div>
+    </section>
+
+    <!-- SCHERM: SPELER RESULTAAT (alleen: goed of fout) -->
+    <section id="scherm-speler-resultaat" class="scherm scherm-gecentreerd">
+      <div id="speler-resultaat-tekst" class="groot-resultaat"></div>
+    </section>
+
+    <!-- SCHERM: SPELER ANTWOORD (het goede antwoord in het groot) -->
+    <section id="scherm-speler-antwoord" class="scherm scherm-gecentreerd">
+      <p id="speler-antwoord-label" class="groot-label"></p>
+      <div id="speler-antwoord-groot" class="antwoorden-lijst"></div>
     </section>
 
     <!-- SCHERM: SPELER VERWIJDERD -->
@@ -84,8 +94,7 @@
     <!-- SCHERM: SPELER SCOREBORD -->
     <section id="scherm-speler-scorebord" class="scherm">
       <h2 id="speler-scorebord-titel" class="titel-regenboog">Scorebord</h2>
-      <p id="speler-scorebord-goede-antwoord" class="voortgang"></p>
-      <div id="speler-scorebord-antwoorden" class="antwoorden-lijst"></div>
+      <p id="speler-scorebord-bericht" class="voortgang"></p>
       <div id="speler-scorebord-lijst" class="scorebord-lijst"></div>
       <p id="speler-scorebord-status" class="voortgang">Wacht tot de quizmaster verdergaat...</p>
       <button class="btn btn-secondary" id="btn-speler-terug-naar-start" style="display:none;">Terug naar start</button>
@@ -168,16 +177,31 @@
     <section id="scherm-host-vraag" class="scherm">
       <p id="host-voortgang-weergave" class="voortgang"></p>
       <h2 id="host-vraag-weergave" class="titel-regenboog"></h2>
+      <img id="host-vraag-foto" class="vraag-foto" alt="Foto bij de vraag" hidden>
       <div id="host-antwoorden-weergave" class="antwoorden-lijst"></div>
       <p id="host-antwoord-teller" class="voortgang"></p>
-      <button class="btn btn-primary" id="btn-host-toon-scorebord">Bekijk scorebord</button>
+      <button class="btn btn-primary" id="btn-host-toon-resultaat">Doorgaan</button>
+    </section>
+
+    <!-- SCHERM: HOST RESULTAAT (spelers zien nu of ze het goed hebben) -->
+    <section id="scherm-host-resultaat" class="scherm">
+      <p id="host-resultaat-voortgang" class="voortgang"></p>
+      <h2 id="host-resultaat-vraag" class="titel-regenboog"></h2>
+      <p class="subtitel">Spelers zien nu of ze het goed of fout hadden.</p>
+      <p id="host-resultaat-telling" class="groot-label"></p>
+      <button class="btn btn-primary" id="btn-host-toon-antwoord">Doorgaan</button>
+    </section>
+
+    <!-- SCHERM: HOST ANTWOORD (het goede antwoord in het groot) -->
+    <section id="scherm-host-antwoord" class="scherm scherm-gecentreerd">
+      <p id="host-antwoord-label" class="groot-label"></p>
+      <div id="host-antwoord-groot" class="antwoorden-lijst"></div>
+      <button class="btn btn-primary" id="btn-host-naar-scorebord">Doorgaan</button>
     </section>
 
     <!-- SCHERM: HOST SCOREBORD -->
     <section id="scherm-host-scorebord" class="scherm">
       <h2 id="host-scorebord-titel" class="titel-regenboog">Scorebord</h2>
-      <p id="host-scorebord-goede-antwoord" class="voortgang"></p>
-      <div id="host-scorebord-antwoorden" class="antwoorden-lijst"></div>
       <div id="host-scorebord-lijst" class="scorebord-lijst"></div>
       <button class="btn btn-primary" id="btn-host-volgende-vraag">Volgende vraag</button>
       <button class="btn btn-secondary" id="btn-host-afronden">Terug naar start</button>
@@ -218,6 +242,16 @@
 
       <label>Vraag</label>
       <input type="text" class="veld-vraag" placeholder="Typ hier de vraag">
+
+      <label>Foto bij deze vraag (niet verplicht)</label>
+      <div class="vraag-foto-kiezer">
+        <img class="vraag-foto-preview" alt="Gekozen foto bij de vraag" hidden>
+        <div class="vraag-foto-knoppen">
+          <button class="btn btn-secondary btn-vraag-foto-kiezen" type="button">Foto uploaden</button>
+          <button class="btn btn-secondary btn-vraag-foto-verwijderen" type="button" hidden>Foto verwijderen</button>
+        </div>
+        <input type="file" class="veld-vraag-foto-bestand" accept="image/*" style="display:none;">
+      </div>
 
       <label>Aantal antwoorden</label>
       <select class="veld-aantal-antwoorden">
