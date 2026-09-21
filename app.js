@@ -989,10 +989,11 @@ function laadOpenbareQuizzen() {
 // Structuur in Firebase:
 //   quizzen/<code>            -> titel, vragen, aangemaaktOp  (al bestond)
 //   sessies/<code>            -> status, huidigeVraagIndex, spelers, antwoorden
-//     status: 'wachtkamer' | 'vraag' | 'resultaat' | 'antwoord' | 'scorebord' | 'afgelopen'
+//     status: 'wachtkamer' | 'vraag' | 'resultaat' | 'scorebord' | 'afgelopen'
 //       vraag     -> spelers antwoorden (daarna zien ze alleen een groot laadteken)
-//       resultaat -> spelers zien alleen of ze het goed hadden (punten worden nu geteld)
-//       antwoord  -> iedereen ziet het goede antwoord in het groot
+//       resultaat -> host: het goede antwoord + hoeveel spelers het goed hadden;
+//                    spelers: goed/fout met het goede antwoord eronder
+//                    (punten worden op dit moment geteld)
 //       scorebord -> alleen het scorebord, zonder vraag en antwoord
 //     spelers/<spelerId>      -> naam, score, totaleReactietijd
 //     antwoorden/<vraagIndex>/<spelerId> -> antwoordIndexen (lijst), reactietijdMs
@@ -1221,6 +1222,7 @@ function renderSessieVoorHost(sessie) {
     document.getElementById('host-resultaat-voortgang').textContent =
       'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length;
     document.getElementById('host-resultaat-vraag').textContent = vraag.vraag;
+    renderGroteAntwoorden('host', vraag);
 
     // Kop met een passende reactie
     let kop;
@@ -1254,12 +1256,6 @@ function renderSessieVoorHost(sessie) {
     geenChipEl.hidden = aantalGeen === 0;
 
     toonScherm('scherm-host-resultaat');
-  }
-
-  if (sessie.status === 'antwoord') {
-    const vraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
-    renderGroteAntwoorden('host', vraag);
-    toonScherm('scherm-host-antwoord');
   }
 
   if (sessie.status === 'scorebord' || sessie.status === 'afgelopen') {
@@ -1323,12 +1319,7 @@ document.getElementById('btn-host-toon-resultaat').addEventListener('click', (e)
   });
 });
 
-// Stap 2: het goede antwoord in het groot tonen (bij host en spelers).
-document.getElementById('btn-host-toon-antwoord').addEventListener('click', () => {
-  db.ref('sessies/' + huidigeSessieCode).update({ status: 'antwoord' });
-});
-
-// Stap 3: het scorebord (zonder vraag en antwoord).
+// Stap 2: het scorebord (zonder vraag en antwoord).
 document.getElementById('btn-host-naar-scorebord').addEventListener('click', () => {
   db.ref('sessies/' + huidigeSessieCode).update({ status: 'scorebord' });
 });
@@ -1578,13 +1569,8 @@ function renderSessieVoorSpeler(sessie) {
       resultaatEl.textContent = 'Fout ✗';
     }
 
-    toonScherm('scherm-speler-resultaat');
-  }
-
-  if (sessie.status === 'antwoord') {
-    const vraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
     renderGroteAntwoorden('speler', vraag);
-    toonScherm('scherm-speler-antwoord');
+    toonScherm('scherm-speler-resultaat');
   }
 
   if (sessie.status === 'scorebord' || sessie.status === 'afgelopen') {
