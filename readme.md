@@ -45,7 +45,8 @@ Open `index.html` gewoon in je browser (of gebruik een simpele lokale server, bi
 Voordat je voor het eerst op "Quiz maken" klikt, vraagt de site om je naam. Die naam:
 - wordt lokaal onthouden in je browser en kan daarna **niet meer gewijzigd worden**;
 - komt automatisch bij **elke quiz die je maakt** te staan (ook quizzen die je later nog toevoegt);
-- is voor **iedereen zichtbaar** zodra je een quiz openbaar zet (bij "Speelbare quizzen" staat "Door <jouw naam>" onder elke quiz).
+- is uit privacy **niet zichtbaar voor gewone bezoekers**: bij "Speelbare quizzen" en "Mijn quizzen" staat geen naam. Alleen sitebeheer (ingelogd) ziet "Door <naam>" onder een quiz;
+- wordt automatisch ook bij oudere quizzen van dit apparaat gezet die nog geen naam hadden.
 
 Als je op een ander apparaat of in een andere browser inlogt, wordt daar opnieuw om een naam gevraagd (het wordt per browser lokaal onthouden, niet gekoppeld aan een account).
 
@@ -107,6 +108,9 @@ Zonder deze index werkt alles ook gewoon, Firebase geeft dan alleen een waarschu
 Onderaan elk scherm staat een klein knopje **"Sitebeheer"**. Daar klik je op, log je in met het e-mailadres + wachtwoord van het beheerdersaccount (zie Stap 1 hierboven), en kom je terug op dezelfde pagina — alleen kun je nu bij **"Speelbare quizzen"** per quiz op **"Aanpassen"** of **"Verwijderen"** klikken:
 - **Aanpassen:** opent hetzelfde bewerkformulier als bij "Mijn quizzen", zodat sitebeheer de titel, vragen, antwoorden en omslagfoto van elke openbare quiz kan wijzigen — ook van quizzen die door iemand anders zijn gemaakt. Na opslaan (of op "Terug" klikken) kom je weer terug bij "Speelbare quizzen".
 - **Verwijderen:** haalt de quiz uit die lijst (hij wordt "niet-openbaar" gezet); de quiz zelf blijft gewoon bestaan voor de maker.
+
+- **Namen zichtbaar:** alleen als je bent ingelogd zie je bij elke quiz "Door <naam>" (of "naam onbekend"). Uitgelogd zie je nergens namen.
+- **Alle quizmakers:** zolang je bent ingelogd staat bovenaan "Speelbare quizzen" een **inklapbaar venster** (klik op de titel om in of uit te klappen) met een overzicht van álle makers, ook van quizzen die niet openbaar zijn of zijn weggehaald. Per maker zie je de quizzen, codes en status. Quizzen zonder naam staan onder "Naam onbekend".
 
 Nogmaals op "Sitebeheer" klikken logt je weer uit.
 
