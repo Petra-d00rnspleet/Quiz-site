@@ -1032,7 +1032,7 @@ function laadOpenbareQuizzen() {
 //                    spelers: goed/fout met het goede antwoord eronder
 //                    (punten worden op dit moment geteld)
 //       scorebord -> alleen het scorebord, zonder vraag en antwoord
-//     spelers/<spelerId>      -> naam, dier (emoji), score, totaleReactietijd
+//     spelers/<spelerId>      -> naam, dier (emoji), accessoires (boven/gezicht/hoek), score, totaleReactietijd
 //     antwoorden/<vraagIndex>/<spelerId> -> antwoordIndexen (lijst), reactietijdMs
 //
 // Een vraag kan 2 of 4 antwoorden hebben en 1 of meerdere daarvan kunnen goed
@@ -1057,9 +1057,21 @@ let spelerHeeftGeantwoord = false;
 let spelerGeselecteerdeAntwoorden = [];
 let huidigeStatusSpeler = '';
 
-// ---------- Dieren (kies een dierenkop; staat bij het scorebord voor je naam) ----------
+// ---------- Poppetje: een dier + accessoires (hoeden, brillen, hartjes, ...) ----------
 const DIEREN = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯',
                 '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🦄', '🐺', '🐲'];
+
+// Accessoires zijn verdeeld in plekken. Per plek kun je er 1 dragen, dus een hoed,
+// een bril en een hartje tegelijk kan wel. Een nieuwe plek toevoegen? Zet hem hier
+// in de lijst en geef hem een stijl .poppetje-acc-<plek> in style.css.
+const ACCESSOIRE_GROEPEN = [
+  { plek: 'boven',   titel: 'Hoeden',          items: ['🎩', '👑', '🎓', '🧢', '🤠', '👒', '🎅', '🎀'] },
+  { plek: 'gezicht', titel: 'Brillen',         items: ['🕶️', '👓'] },
+  { plek: 'hoek',    titel: 'Hartjes en meer', items: ['❤️', '💖', '💙', '💚', '💛', '💜', '⭐', '✨', '🌸', '🔥', '💎', '🍀'] }
+];
+
+let kiezerTab = 'dieren'; // 'dieren' of 'accessoires' (welk tabblad open staat in de wachtkamer)
+let huidigePoppetje = { dier: '', accessoires: {} }; // wat deze speler nu heeft gekozen
 
 function willekeurigDier() {
   return DIEREN[Math.floor(Math.random() * DIEREN.length)];
@@ -1070,40 +1082,163 @@ function geldigDier(dier) {
   return DIEREN.indexOf(dier) !== -1 ? dier : '';
 }
 
-// Bouwt eenmalig de knoppen waarmee een speler in de wachtkamer een dier kiest.
-function bouwDierenKiezer() {
+// Geeft alleen de geldige accessoires terug, als { plek: emoji }.
+function geldigeAccessoires(accessoires) {
+  const resultaat = {};
+  if (!accessoires || typeof accessoires !== 'object') return resultaat;
+  ACCESSOIRE_GROEPEN.forEach(groep => {
+    const emoji = accessoires[groep.plek];
+    if (groep.items.indexOf(emoji) !== -1) resultaat[groep.plek] = emoji;
+  });
+  return resultaat;
+}
+
+// Maakt het poppetje: het dier met de accessoires er (via CSS) op geplaatst.
+// De grootte volgt de lettergrootte van het element waar hij in komt te staan.
+function maakPoppetje(dier, accessoires) {
+  const poppetje = document.createElement('span');
+  poppetje.className = 'poppetje';
+
+  const dierEl = document.createElement('span');
+  dierEl.className = 'poppetje-dier';
+  dierEl.textContent = geldigDier(dier);
+  poppetje.appendChild(dierEl);
+
+  const acc = geldigeAccessoires(accessoires);
+  Object.keys(acc).forEach(plek => {
+    const accEl = document.createElement('span');
+    accEl.className = 'poppetje-acc poppetje-acc-' + plek;
+    accEl.textContent = acc[plek];
+    poppetje.appendChild(accEl);
+  });
+  return poppetje;
+}
+
+// Bouwt de knoppen in de wachtkamer, afhankelijk van het open tabblad.
+function bouwKiezer() {
   const kiezerEl = document.getElementById('dieren-kiezer');
   kiezerEl.innerHTML = '';
-  DIEREN.forEach(dier => {
-    const knop = document.createElement('button');
-    knop.type = 'button';
-    knop.className = 'dier-knop';
-    knop.textContent = dier;
-    knop.dataset.dier = dier;
-    knop.setAttribute('aria-label', 'Kies ' + dier);
-    knop.addEventListener('click', () => kiesDier(dier));
-    kiezerEl.appendChild(knop);
+
+  const opDieren = kiezerTab === 'dieren';
+  document.getElementById('tab-dieren').classList.toggle('actief', opDieren);
+  document.getElementById('tab-dieren').setAttribute('aria-selected', String(opDieren));
+  document.getElementById('tab-accessoires').classList.toggle('actief', !opDieren);
+  document.getElementById('tab-accessoires').setAttribute('aria-selected', String(!opDieren));
+
+  if (opDieren) {
+    DIEREN.forEach(dier => {
+      const knop = document.createElement('button');
+      knop.type = 'button';
+      knop.className = 'dier-knop';
+      knop.textContent = dier;
+      knop.dataset.dier = dier;
+      knop.setAttribute('aria-label', 'Kies ' + dier);
+      knop.addEventListener('click', () => kiesDier(dier));
+      kiezerEl.appendChild(knop);
+    });
+  } else {
+    ACCESSOIRE_GROEPEN.forEach(groep => {
+      const kop = document.createElement('div');
+      kop.className = 'kiezer-groep-titel';
+      kop.textContent = groep.titel;
+      kiezerEl.appendChild(kop);
+
+      groep.items.forEach(emoji => {
+        const knop = document.createElement('button');
+        knop.type = 'button';
+        knop.className = 'dier-knop';
+        knop.textContent = emoji;
+        knop.dataset.plek = groep.plek;
+        knop.dataset.acc = emoji;
+        knop.setAttribute('aria-label', 'Kies ' + emoji);
+        knop.addEventListener('click', () => kiesAccessoire(groep.plek, emoji));
+        kiezerEl.appendChild(knop);
+      });
+    });
+
+    const wegKnop = document.createElement('button');
+    wegKnop.type = 'button';
+    wegKnop.className = 'kiezer-weg-knop';
+    wegKnop.textContent = 'Alle accessoires weghalen';
+    wegKnop.addEventListener('click', verwijderAlleAccessoires);
+    kiezerEl.appendChild(wegKnop);
+  }
+
+  toonGekozenPoppetje(huidigePoppetje);
+}
+
+document.getElementById('tab-dieren').addEventListener('click', () => {
+  kiezerTab = 'dieren';
+  bouwKiezer();
+});
+document.getElementById('tab-accessoires').addEventListener('click', () => {
+  kiezerTab = 'accessoires';
+  bouwKiezer();
+});
+
+// Toont het gekozen poppetje groot boven de tekst en markeert de gekozen knoppen.
+// `speler` is het speler-object uit de sessie (met dier en accessoires).
+function toonGekozenPoppetje(speler) {
+  speler = speler || {};
+  const dier = geldigDier(speler.dier);
+  const acc = geldigeAccessoires(speler.accessoires);
+  huidigePoppetje = { dier: dier, accessoires: acc };
+
+  const grootEl = document.getElementById('speler-wachtkamer-dier');
+  grootEl.innerHTML = '';
+  if (dier) grootEl.appendChild(maakPoppetje(dier, acc));
+
+  document.querySelectorAll('#dieren-kiezer .dier-knop').forEach(knop => {
+    if (knop.dataset.dier) {
+      knop.classList.toggle('gekozen', knop.dataset.dier === dier);
+    } else if (knop.dataset.acc) {
+      knop.classList.toggle('gekozen', acc[knop.dataset.plek] === knop.dataset.acc);
+    }
   });
 }
 
-// Markeert het gekozen dier (en toont het groot boven de tekst).
-function toonGekozenDier(dier) {
-  const gekozen = geldigDier(dier);
-  document.getElementById('speler-wachtkamer-dier').textContent = gekozen;
-  document.querySelectorAll('#dieren-kiezer .dier-knop').forEach(knop => {
-    knop.classList.toggle('gekozen', knop.dataset.dier === gekozen);
-  });
+// Mag deze speler nu nog iets aan zijn poppetje veranderen?
+// Alleen in de wachtkamer (en alleen als je nog meedoet), anders zou een
+// verwijderde speler per ongeluk weer verschijnen.
+function magPoppetjeWijzigen() {
+  return huidigeRol === 'speler' && huidigeStatusSpeler === 'wachtkamer' &&
+    !!huidigeSessieCode && !!huidigeSpelerId;
+}
+
+function spelerRef() {
+  return db.ref('sessies/' + huidigeSessieCode + '/spelers/' + huidigeSpelerId);
 }
 
 // De speler kiest een dier: opslaan bij de speler in de sessie.
 function kiesDier(dier) {
-  // Alleen in de wachtkamer (en alleen als je nog meedoet), anders zou een
-  // verwijderde speler per ongeluk weer verschijnen.
-  if (huidigeRol !== 'speler' || huidigeStatusSpeler !== 'wachtkamer') return;
-  if (!huidigeSessieCode || !huidigeSpelerId || !geldigDier(dier)) return;
+  if (!magPoppetjeWijzigen() || !geldigDier(dier)) return;
 
-  toonGekozenDier(dier);
-  db.ref('sessies/' + huidigeSessieCode + '/spelers/' + huidigeSpelerId + '/dier').set(dier);
+  toonGekozenPoppetje({ dier: dier, accessoires: huidigePoppetje.accessoires });
+  spelerRef().child('dier').set(dier);
+}
+
+// De speler kiest een accessoire. Nog eens op hetzelfde tikken haalt het weer weg.
+function kiesAccessoire(plek, emoji) {
+  if (!magPoppetjeWijzigen()) return;
+  const groep = ACCESSOIRE_GROEPEN.find(g => g.plek === plek);
+  if (!groep || groep.items.indexOf(emoji) === -1) return;
+
+  const acc = Object.assign({}, huidigePoppetje.accessoires);
+  const ref = spelerRef().child('accessoires').child(plek);
+  if (acc[plek] === emoji) {
+    delete acc[plek];
+    ref.remove();
+  } else {
+    acc[plek] = emoji;
+    ref.set(emoji);
+  }
+  toonGekozenPoppetje({ dier: huidigePoppetje.dier, accessoires: acc });
+}
+
+function verwijderAlleAccessoires() {
+  if (!magPoppetjeWijzigen()) return;
+  toonGekozenPoppetje({ dier: huidigePoppetje.dier, accessoires: {} });
+  spelerRef().child('accessoires').remove();
 }
 
 // Toont de foto van een vraag (of verbergt het plaatje als er geen foto is).
@@ -1197,7 +1332,7 @@ function renderScorebordLijst(containerId, spelers, eigenSpelerId) {
     if (dier) {
       const dierEl = document.createElement('div');
       dierEl.className = 'scorebord-dier';
-      dierEl.textContent = dier;
+      dierEl.appendChild(maakPoppetje(dier, speler.accessoires));
       rij.appendChild(dierEl);
     }
     rij.appendChild(naam);
@@ -1261,7 +1396,7 @@ function renderSessieVoorHost(sessie) {
       if (chipDier) {
         const chipDierEl = document.createElement('span');
         chipDierEl.className = 'speler-chip-dier';
-        chipDierEl.textContent = chipDier;
+        chipDierEl.appendChild(maakPoppetje(chipDier, speler.accessoires));
         chip.appendChild(chipDierEl);
       }
       const chipNaamEl = document.createElement('span');
@@ -1517,7 +1652,9 @@ document.getElementById('btn-ga-naar-quiz').addEventListener('click', () => {
           .set({ naam: naam, dier: startDier, score: 0, totaleReactietijd: 0 })
           .then(() => {
             huidigeStatusSpeler = 'wachtkamer';
-            toonGekozenDier(startDier);
+            kiezerTab = 'dieren';
+            bouwKiezer();
+            toonGekozenPoppetje({ dier: startDier });
             document.getElementById('speler-wachtkamer-naam').textContent = naam;
             document.getElementById('input-code').value = '';
             toonScherm('scherm-speler-wachtkamer');
@@ -1566,7 +1703,7 @@ function renderSessieVoorSpeler(sessie) {
   }
 
   if (sessie.status === 'wachtkamer') {
-    toonGekozenDier((spelers[huidigeSpelerId] || {}).dier);
+    toonGekozenPoppetje(spelers[huidigeSpelerId]);
     toonScherm('scherm-speler-wachtkamer');
   }
 
@@ -1948,7 +2085,7 @@ document.getElementById('btn-solo-opnieuw').addEventListener('click', () => {
   toonSoloVraag();
 });
 
-bouwDierenKiezer();
+bouwKiezer();
 
 // ---------- Bij het openen van de site: naam bij eigen quizzen zetten ----------
 koppelMakerNaamAanEigenQuizzen();
