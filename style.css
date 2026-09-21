@@ -360,6 +360,17 @@ label {
   min-height: 18px;
 }
 
+.quiz-geblokkeerd-melding {
+  background: #34131a;
+  border: 1px solid #ff5c72;
+  color: #ffb0bc;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin: 0;
+}
+
 .code-weergave {
   font-size: 34px;
   font-weight: 800;
@@ -772,6 +783,57 @@ label {
   border-color: #ff5c72;
 }
 
+.btn-blokkeren-quiz {
+  background: #2a1e10;
+  color: #ffb066;
+  border: 1px solid #4a361a;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-blokkeren-quiz:hover {
+  border-color: #ffb066;
+}
+
+.btn-blokkeren-quiz.is-geblokkeerd {
+  background: #10152e;
+  color: #8fe0a8;
+  border-color: #1f4a30;
+}
+
+.btn-blokkeren-quiz.is-geblokkeerd:hover {
+  border-color: #8fe0a8;
+}
+
+.btn-overzicht-blokkeren {
+  background: none;
+  border: 1px solid #4a361a;
+  color: #ffb066;
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+.btn-overzicht-blokkeren:hover {
+  border-color: #ffb066;
+}
+
+.btn-overzicht-blokkeren.is-geblokkeerd {
+  border-color: #1f4a30;
+  color: #8fe0a8;
+}
+
+.btn-overzicht-blokkeren.is-geblokkeerd:hover {
+  border-color: #8fe0a8;
+}
+
 /* ---------- Sitebeheer (inlogknopje + inlogvenster) ---------- */
 
 .btn-sitebeheer {
@@ -907,6 +969,13 @@ label {
 .quiz-beheer-melding-sluiten:hover {
   background: #ff5c72;
   color: #2a0910;
+}
+
+.quiz-beheer-melding-geblokkeerd {
+  background: #2a1e10;
+  border-bottom: 1px solid #ffb066;
+  color: #ffd8a8;
+  justify-content: flex-start;
 }
 
 /* ---------- Sitebeheer: overzicht van alle quizmakers ---------- */
