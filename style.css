@@ -1309,10 +1309,10 @@ h2.titel-regenboog.host-resultaat-vraag {
 /* ---------- Dieren: kiezen in de wachtkamer + tonen bij de naam ---------- */
 
 .speler-wachtkamer-dier {
-  font-size: 72px;
+  font-size: 110px;
   line-height: 1;
   text-align: center;
-  min-height: 72px;
+  min-height: 115px;
 }
 
 .dieren-kiezer {
@@ -1325,13 +1325,22 @@ h2.titel-regenboog.host-resultaat-vraag {
 }
 
 .dier-knop {
-  font-size: 30px;
+  font-size: 50px;
   line-height: 1;
-  padding: 10px 0;
+  padding: 6px 0;
   border-radius: 14px;
   border: 2px solid #4a3c1a;
   background: #10152e;
   cursor: pointer;
+}
+
+/* In het accessoires-tabblad iets grotere knoppen, zodat je goed ziet hoe het staat */
+.dieren-kiezer.accessoires {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.dieren-kiezer.accessoires .dier-knop {
+  font-size: 68px;
 }
 
 .dier-knop:hover {
@@ -1346,63 +1355,37 @@ h2.titel-regenboog.host-resultaat-vraag {
 }
 
 .scorebord-dier {
-  font-size: 26px;
+  font-size: 48px;
   line-height: 1;
-  width: 34px;
+  width: 52px;
   text-align: center;
   flex-shrink: 0;
 }
 
 .speler-chip-dier {
-  font-size: 18px;
+  font-size: 36px;
   line-height: 1;
 }
 
 
-/* ---------- Poppetje: dier + accessoires (hoeden, brillen, hartjes) ---------- */
+/* ---------- Poppetje: getekend dier + accessoires (SVG, zie poppetjes.js) ---------- */
 
+/* De grootte van het poppetje volgt de lettergrootte van de plek waar hij staat. */
 .poppetje {
-  position: relative;
   display: inline-block;
-  line-height: 1;
+  line-height: 0;
+  vertical-align: middle;
 }
 
-.poppetje-dier {
+.dier-knop .poppetje-svg {
+  margin: 0 auto;
+}
+
+.poppetje-svg {
   display: block;
-}
-
-.poppetje-acc {
-  position: absolute;
-  line-height: 1;
-  pointer-events: none;
-}
-
-/* Hoeden en strikjes: boven op het hoofd */
-.poppetje-acc-boven {
-  top: -0.32em;
-  left: 50%;
-  font-size: 0.62em;
-  transform: translateX(-50%) rotate(-8deg);
-}
-
-/* Brillen: op de ogen */
-.poppetje-acc-gezicht {
-  top: 0.28em;
-  left: 50%;
-  font-size: 0.55em;
-  transform: translateX(-50%);
-}
-
-/* Hartjes, sterren, bloemetjes: rechtsboven naast het hoofd */
-.poppetje-acc-hoek {
-  top: -0.12em;
-  right: -0.22em;
-  font-size: 0.5em;
-}
-
-/* Ruimte boven het grote poppetje, zodat een hoed niet tegen de tekst aanstaat */
-.speler-wachtkamer-dier {
-  padding-top: 0.3em;
+  width: 1em;
+  height: 1.05em;
+  overflow: visible;
 }
 
 /* Tabbladen "Dieren" en "Accessoires" in de wachtkamer */
