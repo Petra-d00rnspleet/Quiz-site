@@ -6,14 +6,6 @@
 // ingelogd zijn automatisch, dus na een herlaadbeurt blijft de beheerder
 // ingelogd tot er bewust wordt uitgelogd.
 
-let sitebeheerActief = false;// ---------- Sitebeheer (echt inloggen via Firebase Authentication) ----------
-//
-// De beheerder logt in met een e-mailadres + wachtwoord dat in de Firebase
-// Console staat (Authentication -> Users), niet in deze broncode. Zie de
-// readme voor hoe je dat account daar aanmaakt. Firebase onthoudt het
-// ingelogd zijn automatisch, dus na een herlaadbeurt blijft de beheerder
-// ingelogd tot er bewust wordt uitgelogd.
-
 let sitebeheerActief = false;
 
 const sitebeheerOverlayEl = document.getElementById('sitebeheer-overlay');
