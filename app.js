@@ -363,7 +363,8 @@ function normaliseerVraag(vraag) {
   return {
     vraag: vraag.vraag,
     antwoorden: vraag.antwoorden || [],
-    goedAntwoorden: goedAntwoorden
+    goedAntwoorden: goedAntwoorden,
+    afbeelding: vraag.afbeelding || ''
   };
 }
 
@@ -389,6 +390,52 @@ function werkAantalAntwoordenZichtbaarheidBij(blokEl, aantal) {
       rij.querySelector('.veld-goed-vinkje').checked = false;
     }
   });
+}
+
+// Foto bij een vraag: verhouding blijft behouden (niet bijsnijden), maximaal
+// 800 px breed/hoog zodat de quiz niet te zwaar wordt in Firebase.
+function leesEnVerkleinVraagFoto(bestand) {
+  return new Promise((resolve, reject) => {
+    const lezer = new FileReader();
+    lezer.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxAfmeting = 800;
+        const schaal = Math.min(1, maxAfmeting / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * schaal));
+        canvas.height = Math.max(1, Math.round(img.height * schaal));
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff'; // doorzichtige png's krijgen een witte achtergrond
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.75));
+      };
+      img.onerror = () => reject(new Error('Kon de afbeelding niet lezen.'));
+      img.src = lezer.result;
+    };
+    lezer.onerror = () => reject(new Error('Kon het bestand niet lezen.'));
+    lezer.readAsDataURL(bestand);
+  });
+}
+
+// Zet (of verwijdert, bij lege url) de foto van één vraagblok in het formulier.
+function zetVraagFoto(blokEl, url) {
+  blokEl._afbeelding = url || '';
+  const previewEl = blokEl.querySelector('.vraag-foto-preview');
+  const verwijderKnop = blokEl.querySelector('.btn-vraag-foto-verwijderen');
+  const kiesKnop = blokEl.querySelector('.btn-vraag-foto-kiezen');
+  if (url) {
+    previewEl.src = url;
+    previewEl.hidden = false;
+    verwijderKnop.hidden = false;
+    kiesKnop.textContent = 'Andere foto uploaden';
+  } else {
+    previewEl.removeAttribute('src');
+    previewEl.hidden = true;
+    verwijderKnop.hidden = true;
+    kiesKnop.textContent = 'Foto uploaden';
+  }
 }
 
 function vernummerVraagBlokken() {
@@ -419,9 +466,33 @@ function voegVraagBlokToe(vraagData) {
     });
 
     werkAantalAntwoordenZichtbaarheidBij(blokEl, aantalAntwoorden);
+    zetVraagFoto(blokEl, genormaliseerd.afbeelding);
   } else {
     werkAantalAntwoordenZichtbaarheidBij(blokEl, 4);
+    zetVraagFoto(blokEl, '');
   }
+
+  const vraagFotoBestandEl = blokEl.querySelector('.veld-vraag-foto-bestand');
+  blokEl.querySelector('.btn-vraag-foto-kiezen').addEventListener('click', () => {
+    vraagFotoBestandEl.click();
+  });
+  blokEl.querySelector('.btn-vraag-foto-verwijderen').addEventListener('click', () => {
+    zetVraagFoto(blokEl, '');
+  });
+  vraagFotoBestandEl.addEventListener('change', (e) => {
+    const bestand = e.target.files[0];
+    if (!bestand) return;
+    leesEnVerkleinVraagFoto(bestand)
+      .then(dataUrl => {
+        zetVraagFoto(blokEl, dataUrl);
+      })
+      .catch(err => {
+        document.getElementById('quizmaken-foutmelding').textContent = 'Foto uploaden mislukt: ' + err.message;
+      })
+      .finally(() => {
+        e.target.value = '';
+      });
+  });
 
   blokEl.querySelector('.veld-aantal-antwoorden').addEventListener('change', (e) => {
     werkAantalAntwoordenZichtbaarheidBij(blokEl, parseInt(e.target.value, 10));
@@ -532,11 +603,15 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
       return;
     }
 
-    vragen.push({
+    const vraagData = {
       vraag: vraagTekst,
       antwoorden: antwoorden,
       goedAntwoorden: goedAntwoorden
-    });
+    };
+    if (blok._afbeelding) {
+      vraagData.afbeelding = blok._afbeelding;
+    }
+    vragen.push(vraagData);
   }
 
   const isOpenbaar = document.getElementById('input-openbaar').checked;
@@ -914,7 +989,11 @@ function laadOpenbareQuizzen() {
 // Structuur in Firebase:
 //   quizzen/<code>            -> titel, vragen, aangemaaktOp  (al bestond)
 //   sessies/<code>            -> status, huidigeVraagIndex, spelers, antwoorden
-//     status: 'wachtkamer' | 'vraag' | 'scorebord' | 'afgelopen'
+//     status: 'wachtkamer' | 'vraag' | 'resultaat' | 'antwoord' | 'scorebord' | 'afgelopen'
+//       vraag     -> spelers antwoorden (daarna zien ze alleen een groot laadteken)
+//       resultaat -> spelers zien alleen of ze het goed hadden (punten worden nu geteld)
+//       antwoord  -> iedereen ziet het goede antwoord in het groot
+//       scorebord -> alleen het scorebord, zonder vraag en antwoord
 //     spelers/<spelerId>      -> naam, score, totaleReactietijd
 //     antwoorden/<vraagIndex>/<spelerId> -> antwoordIndexen (lijst), reactietijdMs
 //
@@ -938,6 +1017,35 @@ let laatstGetoondeVraagIndexSpeler = -1;
 let vraagGetoondOpSpeler = 0;
 let spelerHeeftGeantwoord = false;
 let spelerGeselecteerdeAntwoorden = [];
+let huidigeStatusSpeler = '';
+
+// Toont de foto van een vraag (of verbergt het plaatje als er geen foto is).
+function toonVraagFoto(imgId, url) {
+  const imgEl = document.getElementById(imgId);
+  if (url) {
+    imgEl.src = url;
+    imgEl.hidden = false;
+  } else {
+    imgEl.removeAttribute('src');
+    imgEl.hidden = true;
+  }
+}
+
+// Zet het/de goede antwoord(en) in het groot op het scherm.
+// prefix is 'host' of 'speler' (bepaalt welke elementen gevuld worden).
+function renderGroteAntwoorden(prefix, vraag) {
+  document.getElementById(prefix + '-antwoord-label').textContent =
+    vraag.goedAntwoorden.length > 1 ? 'De goede antwoorden:' : 'Het goede antwoord:';
+
+  const containerEl = document.getElementById(prefix + '-antwoord-groot');
+  containerEl.innerHTML = '';
+  vraag.goedAntwoorden.forEach(nummer => {
+    const optie = document.createElement('div');
+    optie.className = 'antwoord-optie goed antwoord-groot';
+    optie.textContent = vraag.antwoorden[nummer - 1];
+    containerEl.appendChild(optie);
+  });
+}
 
 function stopSessieListener() {
   if (huidigeSessieRef) {
@@ -1079,6 +1187,7 @@ function renderSessieVoorHost(sessie) {
     document.getElementById('host-voortgang-weergave').textContent =
       'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length;
     document.getElementById('host-vraag-weergave').textContent = vraag.vraag;
+    toonVraagFoto('host-vraag-foto', vraag.afbeelding);
 
     const antwoordenEl = document.getElementById('host-antwoorden-weergave');
     antwoordenEl.innerHTML = '';
@@ -1099,27 +1208,30 @@ function renderSessieVoorHost(sessie) {
     toonScherm('scherm-host-vraag');
   }
 
-  if (sessie.status === 'scorebord' || sessie.status === 'afgelopen') {
+  if (sessie.status === 'resultaat') {
     const vraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
+    const antwoordenVoorVraag = (sessie.antwoorden && sessie.antwoorden[sessie.huidigeVraagIndex]) || {};
+    const aantalGoed = Object.values(antwoordenVoorVraag)
+      .filter(a => setsGelijk(a.antwoordIndexen || [], vraag.goedAntwoorden)).length;
 
+    document.getElementById('host-resultaat-voortgang').textContent =
+      'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length;
+    document.getElementById('host-resultaat-vraag').textContent = vraag.vraag;
+    document.getElementById('host-resultaat-telling').textContent =
+      aantalGoed + ' van ' + aantalSpelers + ' spelers hadden het goed';
+
+    toonScherm('scherm-host-resultaat');
+  }
+
+  if (sessie.status === 'antwoord') {
+    const vraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
+    renderGroteAntwoorden('host', vraag);
+    toonScherm('scherm-host-antwoord');
+  }
+
+  if (sessie.status === 'scorebord' || sessie.status === 'afgelopen') {
     document.getElementById('host-scorebord-titel').textContent =
       sessie.status === 'afgelopen' ? 'Eindstand 🏆' : 'Scorebord';
-
-    const hostScorebordAntwoordenEl = document.getElementById('host-scorebord-antwoorden');
-    hostScorebordAntwoordenEl.innerHTML = '';
-
-    if (sessie.status === 'afgelopen') {
-      document.getElementById('host-scorebord-goede-antwoord').textContent = '';
-    } else {
-      document.getElementById('host-scorebord-goede-antwoord').textContent =
-        vraag.goedAntwoorden.length > 1 ? 'De goede antwoorden:' : 'Het goede antwoord:';
-      vraag.antwoorden.forEach((tekst, index) => {
-        const optie = document.createElement('div');
-        optie.className = 'antwoord-optie' + (vraag.goedAntwoorden.includes(index + 1) ? ' goed' : '');
-        optie.textContent = tekst;
-        hostScorebordAntwoordenEl.appendChild(optie);
-      });
-    }
 
     renderScorebordLijst('host-scorebord-lijst', spelers, null);
 
@@ -1140,10 +1252,14 @@ document.getElementById('btn-host-start-quiz').addEventListener('click', () => {
   });
 });
 
-function berekenEnToonScorebord() {
+// Stap 1 (na de vraag): punten tellen en de spelers laten zien of ze het goed hadden.
+function berekenScoresEnToonResultaat() {
   const sessieRef = db.ref('sessies/' + huidigeSessieCode);
   return sessieRef.once('value').then(snapshot => {
     const sessie = snapshot.val();
+    // Alleen tellen zolang de vraag nog loopt (voorkomt dubbel punten geven).
+    if (!sessie || sessie.status !== 'vraag') return;
+
     const vraagIndex = sessie.huidigeVraagIndex;
     const vraag = huidigeQuizVragen[vraagIndex];
     const antwoordenVoorVraag = (sessie.antwoorden && sessie.antwoorden[vraagIndex]) || {};
@@ -1151,26 +1267,37 @@ function berekenEnToonScorebord() {
 
     const updates = {};
     Object.keys(antwoordenVoorVraag).forEach(spelerId => {
+      if (!spelers[spelerId]) return; // speler is inmiddels weg
       const antwoord = antwoordenVoorVraag[spelerId];
       const gekozenIndexen = antwoord.antwoordIndexen || [];
       if (setsGelijk(gekozenIndexen, vraag.goedAntwoorden)) {
-        const huidigeScore = (spelers[spelerId] && spelers[spelerId].score) || 0;
-        const huidigeTijd = (spelers[spelerId] && spelers[spelerId].totaleReactietijd) || 0;
+        const huidigeScore = spelers[spelerId].score || 0;
+        const huidigeTijd = spelers[spelerId].totaleReactietijd || 0;
         updates['spelers/' + spelerId + '/score'] = huidigeScore + 1000;
         updates['spelers/' + spelerId + '/totaleReactietijd'] = huidigeTijd + (antwoord.reactietijdMs || 0);
       }
     });
-    updates['status'] = 'scorebord';
+    updates['status'] = 'resultaat';
 
     return sessieRef.update(updates);
   });
 }
 
-document.getElementById('btn-host-toon-scorebord').addEventListener('click', (e) => {
+document.getElementById('btn-host-toon-resultaat').addEventListener('click', (e) => {
   e.target.disabled = true;
-  berekenEnToonScorebord().finally(() => {
+  berekenScoresEnToonResultaat().finally(() => {
     e.target.disabled = false;
   });
+});
+
+// Stap 2: het goede antwoord in het groot tonen (bij host en spelers).
+document.getElementById('btn-host-toon-antwoord').addEventListener('click', () => {
+  db.ref('sessies/' + huidigeSessieCode).update({ status: 'antwoord' });
+});
+
+// Stap 3: het scorebord (zonder vraag en antwoord).
+document.getElementById('btn-host-naar-scorebord').addEventListener('click', () => {
+  db.ref('sessies/' + huidigeSessieCode).update({ status: 'scorebord' });
 });
 
 document.getElementById('btn-host-volgende-vraag').addEventListener('click', () => {
@@ -1292,6 +1419,7 @@ document.getElementById('btn-speler-host-weg-terug').addEventListener('click', (
 
 function renderSessieVoorSpeler(sessie) {
   const spelers = sessie.spelers || {};
+  huidigeStatusSpeler = sessie.status;
 
   if (huidigeSpelerId && !spelers[huidigeSpelerId]) {
     // De host heeft deze speler uit de sessie verwijderd.
@@ -1318,27 +1446,14 @@ function renderSessieVoorSpeler(sessie) {
     const eigenAntwoord = eigenAntwoorden[huidigeSpelerId];
 
     if (eigenAntwoord) {
-      // Al geantwoord op deze vraag: apart tussenscherm, niet de vraag zelf.
-      const gekozenIndexen = eigenAntwoord.antwoordIndexen || [];
-      const goedGeantwoord = setsGelijk(gekozenIndexen, vraag.goedAntwoorden);
-      document.getElementById('speler-antwoord-verzonden-titel').textContent =
-        goedGeantwoord ? 'Goed! ✔' : 'Helaas ✗';
-
-      if (goedGeantwoord) {
-        document.getElementById('speler-antwoord-verzonden-tekst').textContent = 'Dat was het juiste antwoord.';
-      } else {
-        const goedeTeksten = vraag.goedAntwoorden.map(i => vraag.antwoorden[i - 1]);
-        document.getElementById('speler-antwoord-verzonden-tekst').textContent =
-          goedeTeksten.length > 1
-            ? 'Dat was niet (helemaal) juist. De juiste antwoorden waren: ' + goedeTeksten.join(', ')
-            : 'Dat was niet het juiste antwoord. Het juiste antwoord was: ' + goedeTeksten[0];
-      }
-
+      // Al geantwoord: alleen een groot laadteken. Of het goed was, ziet de
+      // speler pas als de quizmaster doorklikt (status 'resultaat').
       toonScherm('scherm-speler-antwoord-verzonden');
     } else {
       document.getElementById('speler-voortgang-weergave').textContent =
         'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length;
       document.getElementById('speler-vraag-weergave').textContent = vraag.vraag;
+      toonVraagFoto('speler-vraag-foto', vraag.afbeelding);
 
       // Bij precies 1 goed antwoord werkt het net als vroeger: 1 tik = meteen
       // versturen. Alleen als er meerdere antwoorden goed kunnen zijn, moet de
@@ -1352,7 +1467,7 @@ function renderSessieVoorSpeler(sessie) {
       antwoordenEl.innerHTML = '';
 
       const verstuurAntwoord = (indexen) => {
-        if (spelerHeeftGeantwoord) return;
+        if (spelerHeeftGeantwoord || huidigeStatusSpeler !== 'vraag') return;
         spelerHeeftGeantwoord = true;
         const reactietijdMs = Date.now() - vraagGetoondOpSpeler;
         db.ref('sessies/' + huidigeSessieCode + '/antwoorden/' + sessie.huidigeVraagIndex + '/' + huidigeSpelerId)
@@ -1413,35 +1528,37 @@ function renderSessieVoorSpeler(sessie) {
     }
   }
 
-  if (sessie.status === 'scorebord' || sessie.status === 'afgelopen') {
+  if (sessie.status === 'resultaat') {
     const vraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
+    const antwoordenVraag = (sessie.antwoorden && sessie.antwoorden[sessie.huidigeVraagIndex]) || {};
+    const eigenAntwoord = antwoordenVraag[huidigeSpelerId];
+    const resultaatEl = document.getElementById('speler-resultaat-tekst');
 
+    if (!eigenAntwoord) {
+      resultaatEl.className = 'groot-resultaat fout';
+      resultaatEl.textContent = 'Geen antwoord ✗';
+    } else if (setsGelijk(eigenAntwoord.antwoordIndexen || [], vraag.goedAntwoorden)) {
+      resultaatEl.className = 'groot-resultaat goed';
+      resultaatEl.textContent = 'Goed! ✔';
+    } else {
+      resultaatEl.className = 'groot-resultaat fout';
+      resultaatEl.textContent = 'Fout ✗';
+    }
+
+    toonScherm('scherm-speler-resultaat');
+  }
+
+  if (sessie.status === 'antwoord') {
+    const vraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
+    renderGroteAntwoorden('speler', vraag);
+    toonScherm('scherm-speler-antwoord');
+  }
+
+  if (sessie.status === 'scorebord' || sessie.status === 'afgelopen') {
     document.getElementById('speler-scorebord-titel').textContent =
       sessie.status === 'afgelopen' ? 'Eindstand 🏆' : 'Scorebord';
-    document.getElementById('speler-scorebord-goede-antwoord').textContent =
-      sessie.status === 'afgelopen' ? 'Bedankt voor het meespelen!' : (vraag.goedAntwoorden.length > 1 ? 'De goede antwoorden:' : 'Het goede antwoord:');
-
-    const spelerScorebordAntwoordenEl = document.getElementById('speler-scorebord-antwoorden');
-    spelerScorebordAntwoordenEl.innerHTML = '';
-
-    if (sessie.status === 'scorebord') {
-      const eigenAntwoordenVraag = (sessie.antwoorden && sessie.antwoorden[sessie.huidigeVraagIndex]) || {};
-      const eigenAntwoordDitVraag = eigenAntwoordenVraag[huidigeSpelerId];
-      const eigenGekozenIndexen = eigenAntwoordDitVraag ? (eigenAntwoordDitVraag.antwoordIndexen || []) : [];
-
-      vraag.antwoorden.forEach((tekst, index) => {
-        const optie = document.createElement('div');
-        let klasse = 'antwoord-optie';
-        if (vraag.goedAntwoorden.includes(index + 1)) {
-          klasse += ' goed';
-        } else if (eigenGekozenIndexen.includes(index + 1)) {
-          klasse += ' fout';
-        }
-        optie.className = klasse;
-        optie.textContent = tekst;
-        spelerScorebordAntwoordenEl.appendChild(optie);
-      });
-    }
+    document.getElementById('speler-scorebord-bericht').textContent =
+      sessie.status === 'afgelopen' ? 'Bedankt voor het meespelen!' : '';
 
     renderScorebordLijst('speler-scorebord-lijst', spelers, huidigeSpelerId);
 
