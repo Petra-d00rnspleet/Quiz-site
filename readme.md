@@ -59,10 +59,9 @@ De quiz wordt nu **live gespeeld door de maker**, net als bij Kahoot:
 2. Spelers gaan naar "Meedoen aan quiz", vullen de code + hun naam in, en verschijnen live in de wachtkamer van de host.
 3. De host klikt op **"Start quiz"**. Iedereen ziet nu tegelijk dezelfde vraag.
 4. Spelers klikken een antwoord aan; de host ziet live hoeveel spelers al geantwoord hebben. Een speler die heeft geantwoord ziet alleen een **groot laadteken** — nog niet of het goed was.
-5. De host klikt op **"Doorgaan"** → alle spelers zien nu **alleen of ze het goed of fout hadden** (de host ziet hoeveel spelers het goed hadden). Op dit moment worden ook de punten geteld.
-6. De host klikt op **"Doorgaan"** → iedereen ziet **het goede antwoord in het groot**.
-7. De host klikt op **"Doorgaan"** → het **scorebord** verschijnt, zonder de vraag en het antwoord erboven.
-8. De host klikt op **"Volgende vraag"** tot de laatste vraag, en daarna verschijnt de **eindstand**.
+5. De host klikt op **"Doorgaan"** → er verschijnt één resultaatscherm. De **host** ziet daar het **goede antwoord** in het groot, met een ring en het aantal spelers dat het goed had (bijv. "1 van 1 speler had het goed"). Elke **speler** ziet **goed of fout**, met het goede antwoord eronder. Op dit moment worden ook de punten geteld.
+6. De host klikt op **"Doorgaan"** → het **scorebord** verschijnt, zonder de vraag en het antwoord erboven.
+7. De host klikt op **"Volgende vraag"** tot de laatste vraag, en daarna verschijnt de **eindstand**.
 
 Als een speler een code invoert terwijl de host nog niet op "Spelen" heeft geklikt, krijgt die speler een duidelijke foutmelding dat de quiz nog niet gestart is.
 
