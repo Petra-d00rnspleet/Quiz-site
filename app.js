@@ -109,6 +109,44 @@ function huidigeMakerNaam() {
   return localStorage.getItem(MAKER_NAAM_SLEUTEL);
 }
 
+// Tekst veilig in innerHTML zetten (namen en titels komen van gebruikers).
+function escapeHtml(tekst) {
+  return String(tekst == null ? '' : tekst)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Zet de naam van de maker automatisch bij ALLE quizzen die op dit apparaat
+// zijn gemaakt en nog geen naam hebben (bijv. quizzen van vóórdat de naam werd
+// ingevuld). Zo staat de naam ook bij oudere quizzen in "Speelbare quizzen".
+// Deze functie geeft altijd een Promise terug die nooit faalt.
+function koppelMakerNaamAanEigenQuizzen() {
+  const naam = huidigeMakerNaam();
+  if (!naam) return Promise.resolve();
+
+  let eigenQuizzen = [];
+  try {
+    eigenQuizzen = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]');
+  } catch (e) {
+    return Promise.resolve();
+  }
+
+  return Promise.all(
+    eigenQuizzen.map(q =>
+      db.ref('quizzen/' + q.code).once('value').then(snapshot => {
+        // Alleen bijwerken als de quiz nog bestaat en nog geen naam heeft
+        // (anders zouden we een verwijderde quiz per ongeluk opnieuw aanmaken).
+        if (snapshot.child('titel').exists() && !snapshot.child('makerNaam').val()) {
+          return db.ref('quizzen/' + q.code + '/makerNaam').set(naam);
+        }
+      }).catch(() => {})
+    )
+  ).catch(() => {});
+}
+
 const inputMakerNaamEl = document.getElementById('input-maker-naam');
 const naamInvullenFoutmeldingEl = document.getElementById('naam-invullen-foutmelding');
 
@@ -120,7 +158,8 @@ function bevestigMakerNaam() {
   }
   localStorage.setItem(MAKER_NAAM_SLEUTEL, naam);
   toonScherm('scherm-quizmaken');
-  laadEigenQuizzen();
+  // Eerst de naam bij bestaande quizzen zetten, dan pas het overzicht laden.
+  koppelMakerNaamAanEigenQuizzen().then(() => laadEigenQuizzen());
 }
 
 document.getElementById('btn-naam-bevestigen').addEventListener('click', bevestigMakerNaam);
@@ -507,7 +546,16 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
     const code = huidigeBewerkCode;
     const terugScherm = huidigeBewerkTerugScherm;
 
-    db.ref('quizzen/' + code).update({ titel: titel, vragen: vragen, afbeelding: geselecteerdeOmslagUrl, openbaar: isOpenbaar, doorBeheerVerwijderd: false })
+    const updateData = { titel: titel, vragen: vragen, afbeelding: geselecteerdeOmslagUrl, openbaar: isOpenbaar, doorBeheerVerwijderd: false };
+
+    // Is dit jouw eigen quiz? Dan zorgen we dat jouw naam erbij staat.
+    // (Bij sitebeheer die andermans quiz aanpast blijft de naam van de maker staan.)
+    const isEigenQuiz = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]').some(q => q.code === code);
+    if (isEigenQuiz && huidigeMakerNaam()) {
+      updateData.makerNaam = huidigeMakerNaam();
+    }
+
+    db.ref('quizzen/' + code).update(updateData)
       .then(() => {
         const eigenQuizzen = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]');
         const bijgewerkteLijst = eigenQuizzen.map(q =>
@@ -577,14 +625,14 @@ function laadEigenQuizzen() {
 
   // Voor elke eigen quiz de actuele gegevens uit Firebase ophalen, zodat we
   // weten of de quiz nog "openbaar" is en of sitebeheer hem heeft weggehaald.
-  Promise.all(
+  koppelMakerNaamAanEigenQuizzen().then(() => Promise.all(
     eigenQuizzen.map(quiz =>
       db.ref('quizzen/' + quiz.code).once('value').then(snapshot => ({
         quiz: quiz,
         liveData: snapshot.val()
       }))
     )
-  ).then(resultaten => {
+  )).then(resultaten => {
     lijstEl.innerHTML = '';
 
     // Lokale lijst bijwerken als de "openbaar"-status inmiddels afwijkt
@@ -641,7 +689,7 @@ function laadEigenQuizzen() {
 
       const info = document.createElement('div');
       info.className = 'quiz-item-info';
-      info.innerHTML = `<strong>${quiz.titel}</strong><span>${quiz.aantalVragen} vraag/vragen${makerNaam ? ' · Door ' + makerNaam : ''}${actueelOpenbaar ? ' · Openbaar' : ''}</span>`;
+      info.innerHTML = `<strong>${escapeHtml(quiz.titel)}</strong><span>${quiz.aantalVragen} vraag/vragen${makerNaam ? ' · Door ' + escapeHtml(makerNaam) : ''}${actueelOpenbaar ? ' · Openbaar' : ''}</span>`;
 
       const knoppen = document.createElement('div');
       knoppen.className = 'quiz-item-knoppen';
@@ -700,7 +748,8 @@ function laadOpenbareQuizzen() {
   const lijstEl = document.getElementById('lijst-openbare-quizzen');
   lijstEl.innerHTML = '<p>Bezig met laden...</p>';
 
-  db.ref('quizzen').orderByChild('openbaar').equalTo(true).once('value')
+  koppelMakerNaamAanEigenQuizzen()
+    .then(() => db.ref('quizzen').orderByChild('openbaar').equalTo(true).once('value'))
     .then(snapshot => {
       lijstEl.innerHTML = '';
       const data = snapshot.val();
@@ -726,7 +775,7 @@ function laadOpenbareQuizzen() {
         info.className = 'quiz-item-info';
         const aantalVragen = (quiz.vragen || []).length;
         const makerNaam = quiz.makerNaam || '';
-        info.innerHTML = `<strong>${quiz.titel}</strong><span>${aantalVragen} vraag/vragen${makerNaam ? ' · Door ' + makerNaam : ''}</span>`;
+        info.innerHTML = `<strong>${escapeHtml(quiz.titel)}</strong><span>${aantalVragen} vraag/vragen${makerNaam ? ' · Door ' + escapeHtml(makerNaam) : ''}</span>`;
 
         const knoppen = document.createElement('div');
         knoppen.className = 'quiz-item-knoppen';
@@ -1332,3 +1381,6 @@ function renderSessieVoorSpeler(sessie) {
     toonScherm('scherm-speler-scorebord');
   }
 }
+
+// ---------- Bij het openen van de site: naam bij eigen quizzen zetten ----------
+koppelMakerNaamAanEigenQuizzen();
