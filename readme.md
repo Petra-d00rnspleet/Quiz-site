@@ -58,11 +58,16 @@ De quiz wordt nu **live gespeeld door de maker**, net als bij Kahoot:
 1. De maker klikt op **"Spelen"** → dit opent een **wachtkamer** met de code op het scherm. De maker moet dit scherm open houden op zijn/haar laptop.
 2. Spelers gaan naar "Meedoen aan quiz", vullen de code + hun naam in, en verschijnen live in de wachtkamer van de host.
 3. De host klikt op **"Start quiz"**. Iedereen ziet nu tegelijk dezelfde vraag.
-4. Spelers klikken een antwoord aan; de host ziet live hoeveel spelers al geantwoord hebben.
-5. De host klikt op **"Bekijk scorebord"** → na élke vraag verschijnt een scorebord bij zowel de host als alle spelers.
-6. De host klikt op **"Volgende vraag"** tot de laatste vraag, en daarna verschijnt de **eindstand**.
+4. Spelers klikken een antwoord aan; de host ziet live hoeveel spelers al geantwoord hebben. Een speler die heeft geantwoord ziet alleen een **groot laadteken** — nog niet of het goed was.
+5. De host klikt op **"Doorgaan"** → alle spelers zien nu **alleen of ze het goed of fout hadden** (de host ziet hoeveel spelers het goed hadden). Op dit moment worden ook de punten geteld.
+6. De host klikt op **"Doorgaan"** → iedereen ziet **het goede antwoord in het groot**.
+7. De host klikt op **"Doorgaan"** → het **scorebord** verschijnt, zonder de vraag en het antwoord erboven.
+8. De host klikt op **"Volgende vraag"** tot de laatste vraag, en daarna verschijnt de **eindstand**.
 
 Als een speler een code invoert terwijl de host nog niet op "Spelen" heeft geklikt, krijgt die speler een duidelijke foutmelding dat de quiz nog niet gestart is.
+
+### Foto bij een vraag (nieuw)
+Bij elke vraag kun je (niet verplicht) een **foto uploaden**. De foto wordt verkleind (max. 800 px) en opgeslagen bij de quiz. Tijdens de quiz staat de foto onder de vraag, bij zowel de host als de spelers. Met "Foto verwijderen" haal je hem weer weg; bij "Aanpassen" kun je foto's toevoegen, vervangen of verwijderen.
 
 ### Antwoorden: 2 of 4 opties, en meerdere goede antwoorden mogelijk (nieuw)
 - Bij het maken van een vraag kies je bij **"Aantal antwoorden"** voor **2** (bijv. waar/niet waar) of **4** antwoorden.
@@ -103,8 +108,6 @@ Zonder deze index werkt alles ook gewoon, Firebase geeft dan alleen een waarschu
 Onderaan elk scherm staat een klein knopje **"Sitebeheer"**. Daar klik je op, log je in met het e-mailadres + wachtwoord van het beheerdersaccount (zie Stap 1 hierboven), en kom je terug op dezelfde pagina — alleen kun je nu bij **"Speelbare quizzen"** per quiz op **"Aanpassen"** of **"Verwijderen"** klikken:
 - **Aanpassen:** opent hetzelfde bewerkformulier als bij "Mijn quizzen", zodat sitebeheer de titel, vragen, antwoorden en omslagfoto van elke openbare quiz kan wijzigen — ook van quizzen die door iemand anders zijn gemaakt. Na opslaan (of op "Terug" klikken) kom je weer terug bij "Speelbare quizzen".
 - **Verwijderen:** haalt de quiz uit die lijst (hij wordt "niet-openbaar" gezet); de quiz zelf blijft gewoon bestaan voor de maker.
-
-- **Alle quizmakers:** zolang je bent ingelogd staat bovenaan "Speelbare quizzen" een overzicht van álle makers (ook van quizzen die niet openbaar zijn of zijn weggehaald), met per maker de quizzen, codes en status. Quizzen zonder naam staan onder "Naam onbekend". In de lijst zelf zie je bij elke quiz ook de code.
 
 Nogmaals op "Sitebeheer" klikken logt je weer uit.
 
