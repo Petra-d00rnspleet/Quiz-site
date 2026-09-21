@@ -82,8 +82,14 @@ Bij elke vraag kun je (niet verplicht) een **foto uploaden**. De foto wordt verk
 - Spelers zien bij zo'n vraag geen directe klik-en-klaar meer: ze **vinken alle antwoorden aan die ze goed vinden** en klikken daarna op **"Antwoord versturen"**. Pas na dat klikken staat hun antwoord vast.
 - Een vraag telt alleen als **goed beantwoord** als een speler precies alle juiste antwoorden heeft aangevinkt (niet meer en niet minder).
 
-### Dierenkop kiezen (nieuw)
-Zodra je meedoet aan een quiz, krijg je een willekeurig dier. In de wachtkamer kun je een ander dier kiezen (dierenkoppen 🐶🐱🦊🐼🦁 enz.). Dat dier staat bij het scorebord (ook bij de eindstand) **voor je naam**, en bij de host in de wachtkamer. De plekken (#1, #2, #3 …) blijven gewoon links staan. Nadat de quiz is begonnen kun je je dier niet meer wijzigen.
+### Poppetje kiezen: dieren en accessoires (nieuw)
+Zodra je meedoet aan een quiz, krijg je een willekeurig dier. In de wachtkamer staan twee tabbladen:
+- **Dieren** — kies een ander dier (🐶🐱🦊🐼🦁 enz.).
+- **Accessoires** — kies een hoed (🎩👑🎓 …), een bril (🕶️👓) en/of een hartje of iets anders (❤️💖⭐🌸 …). Per soort kun je er één dragen, dus een hoed, een bril en een hartje tegelijk kan. Nog eens op een gekozen accessoire tikken haalt het weer weg, en met "Alle accessoires weghalen" ben je ze allemaal kwijt.
+
+Het poppetje (dier + accessoires) staat bij het scorebord (ook bij de eindstand) **voor je naam**, en bij de host in de wachtkamer. De plekken (#1, #2, #3 …) blijven gewoon links staan. Nadat de quiz is begonnen kun je je poppetje niet meer wijzigen.
+
+Nieuwe accessoires toevoegen? Zet ze in `ACCESSOIRE_GROEPEN` bovenaan het poppetje-blok in `app.js`. In Firebase staan ze bij de speler onder `accessoires/<plek>`; de bestaande regels voor `sessies` hoeven niet te veranderen.
 
 ### Puntentelling en scorebord (nieuw)
 - Een goed antwoord levert **1000 punten** op.
