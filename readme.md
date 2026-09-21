@@ -143,6 +143,17 @@ Let op: dit account beschermt alleen de knop in de website zelf. De Firebase-reg
 
 Zodra een quiz zo wordt weggehaald, ziet de maker (op zijn/haar eigen apparaat, onder "Mijn quizzen") bovenaan die quiz een rode melding: "Uw quiz is weggehaald bij openbaar." Met de knop "OK" bij die melding gaat hij weer weg.
 
+### Quiz blokkeren (nieuw)
+Naast "Verwijderen" (die een quiz alleen uit de lijst haalt) kan sitebeheer een quiz nu ook **blokkeren**. Een geblokkeerde quiz:
+- gaat direct offline (staat niet meer bij "Speelbare quizzen");
+- kan door de maker **niet meer openbaar gezet worden** — in het bewerkformulier staat het vinkje "Deze quiz openbaar maken" uitgezet en op slot, met een duidelijke melding erbij, totdat sitebeheer de quiz weer deblokkeert.
+
+Twee plekken om te blokkeren/deblokkeren:
+- Bij **"Speelbare quizzen"** staat, naast "Aanpassen" en "Verwijderen", nu ook een knop **"Blokkeren"** (voor quizzen die op dat moment openbaar staan).
+- In het inklapbare overzicht **"Alle quizmakers"** (bovenaan "Speelbare quizzen") staat bij élke quiz — ook niet-openbare — een klein knopje **"Blokkeren"** of **"Deblokkeren"**. Dit is de plek om een quiz te blokkeren die nog niet (of niet meer) openbaar staat, zodat hij ook in de toekomst niet openbaar gezet kan worden.
+
+De maker zelf ziet bij "Mijn quizzen" een gele melding op een geblokkeerde quiz ("Deze quiz is geblokkeerd door sitebeheer en kan niet openbaar gezet worden.") en kan gewoon spelen/hosten, maar niet meer op "openbaar" zetten.
+
 ## Mogelijke volgende stappen
 - Firebase-regels aanscherpen zodat mensen niet zomaar andermans quiz of sessie kunnen overschrijven.
 - Punten laten afnemen naarmate je langzamer antwoordt (in plaats van altijd vlak 1000 punten).
