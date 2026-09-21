@@ -104,6 +104,8 @@ Onderaan elk scherm staat een klein knopje **"Sitebeheer"**. Daar klik je op, lo
 - **Aanpassen:** opent hetzelfde bewerkformulier als bij "Mijn quizzen", zodat sitebeheer de titel, vragen, antwoorden en omslagfoto van elke openbare quiz kan wijzigen — ook van quizzen die door iemand anders zijn gemaakt. Na opslaan (of op "Terug" klikken) kom je weer terug bij "Speelbare quizzen".
 - **Verwijderen:** haalt de quiz uit die lijst (hij wordt "niet-openbaar" gezet); de quiz zelf blijft gewoon bestaan voor de maker.
 
+- **Alle quizmakers:** zolang je bent ingelogd staat bovenaan "Speelbare quizzen" een overzicht van álle makers (ook van quizzen die niet openbaar zijn of zijn weggehaald), met per maker de quizzen, codes en status. Quizzen zonder naam staan onder "Naam onbekend". In de lijst zelf zie je bij elke quiz ook de code.
+
 Nogmaals op "Sitebeheer" klikken logt je weer uit.
 
 Dit inloggen verloopt via **Firebase Authentication**, niet via een wachtwoord in de broncode: de inloggegevens staan alleen in de Firebase Console, dus niemand kan ze terugvinden door in de bestanden van de site te kijken. Firebase onthoudt bovendien dat je bent ingelogd, dus na het herladen van de pagina blijf je ingelogd totdat je bewust uitlogt. Wil je meerdere mensen sitebeheerder maken? Voeg dan in Firebase Console → Authentication → Users gewoon nog een gebruiker toe.
