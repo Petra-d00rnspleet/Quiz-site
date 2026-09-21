@@ -919,9 +919,39 @@ label {
   margin: 16px 0;
 }
 
-.sitebeheer-makers h3 {
-  margin: 0 0 10px;
+.sitebeheer-makers summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 800;
   color: #f0c04d;
+  user-select: none;
+}
+
+.sitebeheer-makers summary::-webkit-details-marker {
+  display: none;
+}
+
+.sitebeheer-makers summary::after {
+  content: '▸';
+  font-size: 20px;
+  color: #e6cd8f;
+}
+
+.sitebeheer-makers details[open] summary::after {
+  content: '▾';
+}
+
+.sitebeheer-makers summary:hover {
+  filter: brightness(1.15);
+}
+
+.sitebeheer-makers details[open] summary {
+  margin-bottom: 8px;
 }
 
 .sitebeheer-maker-rij {
