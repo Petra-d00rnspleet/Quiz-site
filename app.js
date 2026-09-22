@@ -362,6 +362,11 @@ let huidigeBewerkTerugScherm = 'scherm-quizmaken';
 // "openbaar" niet aangevinkt worden totdat sitebeheer de quiz deblokkeert.
 let huidigeBewerkGeblokkeerd = false;
 
+// Tijd per vraag bij live hosten (wekker), in seconden. De keuzeopties (10/15/
+// 20/25/30) staan in de <select id="input-tijdslimiet"> in index.html. Oudere
+// quizzen zonder dit veld gebruiken de standaardwaarde hieronder.
+const TIJDSLIMIET_STANDAARD = 20;
+
 // ---------- Hulpfuncties voor vragen (meerdere goede antwoorden, 2 of 4 opties) ----------
 //
 // Een vraag wordt overal in de app in dit formaat gebruikt:
@@ -563,6 +568,7 @@ document.getElementById('btn-toevoegen-quiz').addEventListener('click', () => {
   document.getElementById('btn-quiz-opslaan').textContent = 'Quiz opslaan';
   document.getElementById('input-openbaar').checked = false;
   document.getElementById('input-solo-toegestaan').checked = true;
+  document.getElementById('input-tijdslimiet').value = String(TIJDSLIMIET_STANDAARD);
   werkGeblokkeerdZichtbaarheidBij();
   bouwOmslagGalerij(STANDAARD_OMSLAGEN[0].url);
   toonOmslagPreview(STANDAARD_OMSLAGEN[0].url);
@@ -587,6 +593,8 @@ function startBewerkenVanQuiz(code, terugScherm) {
     document.getElementById('input-openbaar').checked = !!quizData.openbaar;
     // Oudere quizzen hebben deze keuze nog niet: die tellen als "alleen spelen mag".
     document.getElementById('input-solo-toegestaan').checked = quizData.soloToegestaan !== false;
+    // Oudere quizzen hebben nog geen tijdslimiet: die vallen terug op de standaardwaarde.
+    document.getElementById('input-tijdslimiet').value = String(quizData.tijdslimiet || TIJDSLIMIET_STANDAARD);
     werkGeblokkeerdZichtbaarheidBij();
     const huidigeOmslag = quizData.afbeelding || STANDAARD_OMSLAGEN[0].url;
     bouwOmslagGalerij(huidigeOmslag);
@@ -661,13 +669,14 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
   // vinkje via de browser (buiten het formulier om) toch aan zou staan.
   const isOpenbaar = huidigeBewerkGeblokkeerd ? false : document.getElementById('input-openbaar').checked;
   const soloToegestaan = document.getElementById('input-solo-toegestaan').checked;
+  const tijdslimiet = parseInt(document.getElementById('input-tijdslimiet').value, 10) || TIJDSLIMIET_STANDAARD;
 
   if (huidigeBewerkCode) {
     // Bestaande quiz bijwerken: zelfde code, alleen titel + vragen + omslag + openbaar overschrijven.
     const code = huidigeBewerkCode;
     const terugScherm = huidigeBewerkTerugScherm;
 
-    const updateData = { titel: titel, vragen: vragen, afbeelding: geselecteerdeOmslagUrl, openbaar: isOpenbaar, soloToegestaan: soloToegestaan, doorBeheerVerwijderd: false, geblokkeerd: huidigeBewerkGeblokkeerd };
+    const updateData = { titel: titel, vragen: vragen, afbeelding: geselecteerdeOmslagUrl, openbaar: isOpenbaar, soloToegestaan: soloToegestaan, tijdslimiet: tijdslimiet, doorBeheerVerwijderd: false, geblokkeerd: huidigeBewerkGeblokkeerd };
 
     // Is dit jouw eigen quiz? Dan zorgen we dat jouw naam erbij staat.
     // (Bij sitebeheer die andermans quiz aanpast blijft de naam van de maker staan.)
@@ -707,6 +716,7 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
     afbeelding: geselecteerdeOmslagUrl,
     openbaar: isOpenbaar,
     soloToegestaan: soloToegestaan,
+    tijdslimiet: tijdslimiet,
     geblokkeerd: false,
     makerNaam: huidigeMakerNaam() || '',
     aangemaaktOp: Date.now()
@@ -1126,8 +1136,16 @@ let huidigeRol = null; // 'host' of 'speler'
 let huidigeSessieCode = null;
 let huidigeQuizVragen = [];
 let huidigeQuizTitel = '';
+let huidigeQuizTijdslimiet = TIJDSLIMIET_STANDAARD;
 let huidigeVraagIndexHost = -1;
 let huidigeSpelerId = null;
+
+// Wekker per vraag (alleen zichtbaar bij de quizmaster tijdens live hosten).
+// Loopt de tijd af, dan gaat de host automatisch door naar het resultaat
+// (hetzelfde als zelf op "Doorgaan" klikken).
+let hostTimerInterval = null;
+let hostTimerVoorVraagGestartOp = null;
+let resultaatWordtBerekend = false;
 
 let laatstGetoondeVraagIndexSpeler = -1;
 let vraagGetoondOpSpeler = 0;
@@ -1325,6 +1343,7 @@ function stopSessieListener() {
     huidigeSessieRef.off();
     huidigeSessieRef = null;
   }
+  stopHostTimer();
 }
 
 function luisterNaarSessie(code) {
@@ -1404,6 +1423,7 @@ function startHostenVanQuiz(code) {
 
     huidigeQuizVragen = (quizData.vragen || []).map(normaliseerVraag);
     huidigeQuizTitel = quizData.titel;
+    huidigeQuizTijdslimiet = quizData.tijdslimiet || TIJDSLIMIET_STANDAARD;
     huidigeSessieCode = code;
     huidigeRol = 'host';
     huidigeVraagIndexHost = -1;
@@ -1429,10 +1449,68 @@ function startHostenVanQuiz(code) {
   });
 }
 
+// ---------- Wekker per vraag (alleen bij de quizmaster) ----------
+//
+// `vraagGestartOp` staat al in de sessie (wordt gezet zodra een vraag begint).
+// De host telt daarvandaan zelf af; zo blijft de klok kloppen ook als het
+// scherm om een andere reden opnieuw tekent (bijv. een speler antwoordt).
+// Loopt de tijd af, dan gaat de host automatisch door naar het resultaat —
+// hetzelfde als zelf op "Doorgaan" klikken, wat ook eerder mag.
+
+function stopHostTimer() {
+  if (hostTimerInterval) {
+    clearInterval(hostTimerInterval);
+    hostTimerInterval = null;
+  }
+  hostTimerVoorVraagGestartOp = null;
+  const timerEl = document.getElementById('host-vraag-timer');
+  if (timerEl) timerEl.hidden = true;
+}
+
+function werkHostTimerWeergaveBij(secondenOver) {
+  const OMTREK = 283; // 2 * pi * 45 (zelfde als stroke-dasharray in de CSS)
+  const fractie = huidigeQuizTijdslimiet > 0 ? secondenOver / huidigeQuizTijdslimiet : 0;
+  document.getElementById('host-vraag-timer-getal').textContent = String(secondenOver);
+  document.getElementById('host-vraag-timer-vulling')
+    .style.setProperty('--doel', String(Math.round(OMTREK * (1 - fractie))));
+  document.getElementById('host-vraag-timer').classList.toggle('bijna-om', secondenOver <= 5);
+}
+
+function startHostTimerAlsNodig(sessie) {
+  const gestartOp = sessie.vraagGestartOp;
+  if (!huidigeQuizTijdslimiet || !gestartOp) {
+    stopHostTimer();
+    return;
+  }
+  // Loopt de klok al voor deze vraag? Dan niet opnieuw beginnen bij elke
+  // hertekening (bijv. omdat een speler net geantwoord heeft).
+  if (hostTimerVoorVraagGestartOp === gestartOp) return;
+
+  stopHostTimer();
+  hostTimerVoorVraagGestartOp = gestartOp;
+  document.getElementById('host-vraag-timer').hidden = false;
+
+  const tick = () => {
+    const verstrekenMs = Date.now() - gestartOp;
+    const secondenOver = Math.max(0, Math.ceil((huidigeQuizTijdslimiet * 1000 - verstrekenMs) / 1000));
+    werkHostTimerWeergaveBij(secondenOver);
+    if (secondenOver <= 0) {
+      stopHostTimer();
+      berekenScoresEnToonResultaat();
+    }
+  };
+
+  tick();
+  hostTimerInterval = setInterval(tick, 250);
+}
+
 function renderSessieVoorHost(sessie) {
   huidigeVraagIndexHost = sessie.huidigeVraagIndex;
   const spelers = sessie.spelers || {};
   const aantalSpelers = Object.keys(spelers).length;
+
+  // De wekker loopt alleen tijdens een vraag; bij elke andere status stoppen.
+  if (sessie.status !== 'vraag') stopHostTimer();
 
   if (sessie.status === 'wachtkamer') {
     document.getElementById('host-wachtkamer-aantal').textContent = aantalSpelers + ' speler(s) aanwezig';
@@ -1500,6 +1578,7 @@ function renderSessieVoorHost(sessie) {
       aantalGeantwoord + ' van ' + aantalSpelers + ' spelers hebben geantwoord';
 
     toonScherm('scherm-host-vraag');
+    startHostTimerAlsNodig(sessie);
   }
 
   if (sessie.status === 'resultaat') {
@@ -1575,7 +1654,12 @@ document.getElementById('btn-host-start-quiz').addEventListener('click', () => {
 });
 
 // Stap 1 (na de vraag): punten tellen en de spelers laten zien of ze het goed hadden.
+// Kan zowel door de host (knop "Doorgaan") als automatisch door de wekker
+// aangeroepen worden; de vergrendeling voorkomt dat punten dubbel geteld
+// worden als dat toevallig tegelijk gebeurt.
 function berekenScoresEnToonResultaat() {
+  if (resultaatWordtBerekend) return Promise.resolve();
+  resultaatWordtBerekend = true;
   const sessieRef = db.ref('sessies/' + huidigeSessieCode);
   return sessieRef.once('value').then(snapshot => {
     const sessie = snapshot.val();
@@ -1602,6 +1686,8 @@ function berekenScoresEnToonResultaat() {
     updates['status'] = 'resultaat';
 
     return sessieRef.update(updates);
+  }).finally(() => {
+    resultaatWordtBerekend = false;
   });
 }
 
