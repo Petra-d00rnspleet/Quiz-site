@@ -1621,7 +1621,17 @@ function renderSessieVoorHost(sessie) {
       aantalGeantwoord + ' van ' + aantalSpelers + ' spelers hebben geantwoord';
 
     toonScherm('scherm-host-vraag');
-    startHostTimerAlsNodig(sessie);
+
+    // Heeft iedereen al geantwoord? Dan hoeft er niet meer gewacht te worden
+    // op de wekker: automatisch door naar het resultaat (geen knop meer nodig
+    // bij de vraag zelf). Zonder spelers (bijv. net allemaal verwijderd) wacht
+    // de vraag gewoon op de wekker, in plaats van meteen door te schieten.
+    if (aantalSpelers > 0 && aantalGeantwoord >= aantalSpelers) {
+      stopHostTimer();
+      berekenScoresEnToonResultaat();
+    } else {
+      startHostTimerAlsNodig(sessie);
+    }
   }
 
   if (sessie.status === 'resultaat') {
@@ -1697,9 +1707,10 @@ document.getElementById('btn-host-start-quiz').addEventListener('click', () => {
 });
 
 // Stap 1 (na de vraag): punten tellen en de spelers laten zien of ze het goed hadden.
-// Kan zowel door de host (knop "Doorgaan") als automatisch door de wekker
-// aangeroepen worden; de vergrendeling voorkomt dat punten dubbel geteld
-// worden als dat toevallig tegelijk gebeurt.
+// Gebeurt automatisch — er is geen "Doorgaan"-knop meer bij de vraag zelf:
+// zodra iedereen geantwoord heeft (zie renderSessieVoorHost) of zodra de
+// wekker afloopt (zie startHostTimerAlsNodig). De vergrendeling voorkomt dat
+// punten dubbel geteld worden als dat toevallig tegelijk gebeurt.
 function berekenScoresEnToonResultaat() {
   if (resultaatWordtBerekend) return Promise.resolve();
   resultaatWordtBerekend = true;
@@ -1733,13 +1744,6 @@ function berekenScoresEnToonResultaat() {
     resultaatWordtBerekend = false;
   });
 }
-
-document.getElementById('btn-host-toon-resultaat').addEventListener('click', (e) => {
-  e.target.disabled = true;
-  berekenScoresEnToonResultaat().finally(() => {
-    e.target.disabled = false;
-  });
-});
 
 // Stap 2: het scorebord (zonder vraag en antwoord).
 document.getElementById('btn-host-naar-scorebord').addEventListener('click', () => {
