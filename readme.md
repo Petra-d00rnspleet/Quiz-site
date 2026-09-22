@@ -62,6 +62,9 @@ Als je bij een quiz op **"Spelen"** klikt (bij "Mijn quizzen" of bij "Speelbare 
 
 **Alleen spelen toestaan of niet:** bij het openbaar maken van een quiz staat een vinkje **"Spelers mogen deze quiz ook alleen spelen (zonder quizmaster)"** (standaard aan). Zet je dat uit, dan is bij die quiz de optie "Zonder mensen" uitgeschakeld voor andere spelers. Je eigen quiz kun je zelf altijd alleen spelen. Oudere quizzen die deze keuze nog niet hebben, tellen als "alleen spelen mag". Je kunt de keuze altijd wijzigen via "Aanpassen".
 
+### Tijd per vraag / wekker (nieuw)
+Bij het maken (of aanpassen) van een quiz kies je bij **"Tijd per vraag (bij live hosten)"** een tijd: 10, 15, 20, 25 of 30 seconden (standaard 20). Tijdens **live hosten** ("Met mensen") telt op het scherm van de quizmaster een klokje af zodra een vraag begint. Loopt de tijd af, dan gaat de host automatisch door naar het resultaatscherm — precies zoals bij zelf op "Doorgaan" klikken. De quizmaster mag ook altijd eerder op "Doorgaan" klikken. Spelers zien deze klok niet, alleen de quizmaster. Oudere quizzen zonder deze instelling gebruiken 20 seconden. Bij **"Zonder mensen"** (solo spelen) is er geen tijdslimiet; daar kun je rustig nadenken.
+
 ### Live hosten (nieuw)
 De quiz wordt nu **live gespeeld door de maker**, net als bij Kahoot:
 1. De maker klikt op **"Spelen"** → dit opent een **wachtkamer** met de code op het scherm. De maker moet dit scherm open houden op zijn/haar laptop.
