@@ -1082,12 +1082,40 @@ label {
   border-top: none;
 }
 
+.sitebeheer-maker-naam-rij {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
 .sitebeheer-maker-rij strong {
   color: #f0c04d;
 }
 
+.btn-overzicht-naam-wijzigen {
+  background: none;
+  border: 1px solid #33304a;
+  color: #c9c6d8;
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-overzicht-naam-wijzigen:hover {
+  border-color: #f0c04d;
+  color: #f0c04d;
+}
+
+.btn-overzicht-naam-wijzigen:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .sitebeheer-maker-telling {
-  margin-left: 8px;
   font-size: 13px;
   color: #9a97a8;
 }
