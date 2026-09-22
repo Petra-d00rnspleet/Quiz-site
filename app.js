@@ -105,7 +105,8 @@ auth.onAuthStateChanged(gebruiker => {
 // maakt als "makerNaam" opgeslagen in Firebase. Uit privacy wordt de naam
 // op de site NIET getoond aan gewone bezoekers; alleen sitebeheer (ingelogd)
 // ziet bij Speelbare quizzen wie een quiz heeft gemaakt.
-// Er is bewust geen manier om de naam later te wijzigen.
+// De maker zelf kan zijn/haar naam achteraf niet wijzigen. Sitebeheer kan dat
+// wel, via "Naam wijzigen" bij "Alle quizmakers" (zie toonSitebeheerMakersOverzicht).
 
 const MAKER_NAAM_SLEUTEL = 'makerNaam';
 
@@ -910,27 +911,65 @@ function toonSitebeheerMakersOverzicht() {
     // toont ALLE quizzen (ook niet-openbare), dus hier kan sitebeheer élke quiz
     // blokkeren, niet alleen quizzen die nu in "Speelbare quizzen" staan.
     overzichtEl.addEventListener('click', (e) => {
-      const knop = e.target.closest('.btn-overzicht-blokkeren');
-      if (!knop) return;
+      const blokkeerKnop = e.target.closest('.btn-overzicht-blokkeren');
+      if (blokkeerKnop) {
+        const code = blokkeerKnop.dataset.code;
+        const isNuGeblokkeerd = blokkeerKnop.dataset.geblokkeerd === '1';
+        const bevestiging = isNuGeblokkeerd
+          ? 'Weet je zeker dat je deze quiz wilt deblokkeren? De maker kan hem daarna weer openbaar zetten.'
+          : 'Weet je zeker dat je deze quiz wilt blokkeren? Hij gaat direct offline (als hij openbaar stond) en kan niet meer openbaar gezet worden totdat je hem weer deblokkeert.';
+        if (!confirm(bevestiging)) return;
 
-      const code = knop.dataset.code;
-      const isNuGeblokkeerd = knop.dataset.geblokkeerd === '1';
-      const bevestiging = isNuGeblokkeerd
-        ? 'Weet je zeker dat je deze quiz wilt deblokkeren? De maker kan hem daarna weer openbaar zetten.'
-        : 'Weet je zeker dat je deze quiz wilt blokkeren? Hij gaat direct offline (als hij openbaar stond) en kan niet meer openbaar gezet worden totdat je hem weer deblokkeert.';
-      if (!confirm(bevestiging)) return;
+        const updateData = isNuGeblokkeerd
+          ? { geblokkeerd: false }
+          : { geblokkeerd: true, openbaar: false };
 
-      const updateData = isNuGeblokkeerd
-        ? { geblokkeerd: false }
-        : { geblokkeerd: true, openbaar: false };
+        db.ref('quizzen/' + code).update(updateData)
+          .then(() => {
+            laadOpenbareQuizzen();
+          })
+          .catch(err => {
+            alert('Bijwerken mislukt: ' + err.message);
+          });
+        return;
+      }
 
-      db.ref('quizzen/' + code).update(updateData)
-        .then(() => {
-          laadOpenbareQuizzen();
-        })
-        .catch(err => {
-          alert('Bijwerken mislukt: ' + err.message);
+      const naamKnop = e.target.closest('.btn-overzicht-naam-wijzigen');
+      if (naamKnop) {
+        const codes = (naamKnop.dataset.codes || '').split(',').filter(Boolean);
+        if (codes.length === 0) return;
+        const huidigeNaam = naamKnop.dataset.naam || '';
+
+        const nieuweNaam = prompt(
+          'Nieuwe naam voor deze quizmaker (geldt voor al ' + (codes.length === 1 ? 'zijn/haar quiz' : 'zijn/haar ' + codes.length + ' quizzen') + '):',
+          huidigeNaam
+        );
+        if (nieuweNaam === null) return; // geannuleerd
+        const schoneNaam = nieuweNaam.trim();
+        if (!schoneNaam) {
+          alert('Vul een naam in.');
+          return;
+        }
+        if (schoneNaam === huidigeNaam) return; // niets veranderd
+
+        // Eén update met alle quizzen van deze maker tegelijk (voorkomt dat de
+        // groep halverwege in twee stukken uiteenvalt als één update mislukt).
+        const updates = {};
+        codes.forEach(code => {
+          updates[code + '/makerNaam'] = schoneNaam;
         });
+
+        naamKnop.disabled = true;
+        db.ref('quizzen').update(updates)
+          .then(() => {
+            laadOpenbareQuizzen();
+          })
+          .catch(err => {
+            alert('Naam wijzigen mislukt: ' + err.message);
+            naamKnop.disabled = false;
+          });
+        return;
+      }
     });
   }
   overzichtEl.innerHTML = '<p class="voortgang">Quizmakers laden...</p>';
@@ -978,8 +1017,12 @@ function toonSitebeheerMakersOverzicht() {
           return '<li>' + escapeHtml(q.titel) + ' <span class="sitebeheer-maker-code">' + escapeHtml(q.code) + ' · ' + status + '</span>' + knop + '</li>';
         }).join('');
         return '<div class="sitebeheer-maker-rij">' +
+          '<div class="sitebeheer-maker-naam-rij">' +
           '<strong>' + (maker.naam ? escapeHtml(maker.naam) : 'Naam onbekend') + '</strong>' +
+          '<button type="button" class="btn-overzicht-naam-wijzigen" data-naam="' + escapeHtml(maker.naam) +
+          '" data-codes="' + maker.quizzen.map(q => escapeHtml(q.code)).join(',') + '">Naam wijzigen</button>' +
           '<span class="sitebeheer-maker-telling">' + maker.quizzen.length + ' quiz/quizzen · ' + aantalOpenbaar + ' openbaar</span>' +
+          '</div>' +
           '<ul>' + titels + '</ul>' +
           '</div>';
       }).join('');
