@@ -130,6 +130,15 @@
       <label for="input-titel">Titel van de quiz</label>
       <input type="text" id="input-titel" placeholder="Bijv. Algemene kennis">
 
+      <label for="input-tijdslimiet">Tijd per vraag (bij live hosten)</label>
+      <select id="input-tijdslimiet">
+        <option value="10">10 seconden</option>
+        <option value="15">15 seconden</option>
+        <option value="20" selected>20 seconden</option>
+        <option value="25">25 seconden</option>
+        <option value="30">30 seconden</option>
+      </select>
+
       <p id="geblokkeerd-melding" class="quiz-geblokkeerd-melding" hidden>
         🔒 Deze quiz is geblokkeerd door sitebeheer en kan niet openbaar gezet worden totdat hij weer gedeblokkeerd wordt.
       </p>
@@ -189,6 +198,13 @@
     <section id="scherm-host-vraag" class="scherm">
       <p id="host-voortgang-weergave" class="voortgang"></p>
       <h2 id="host-vraag-weergave" class="titel-regenboog"></h2>
+      <div id="host-vraag-timer" class="vraag-timer" hidden>
+        <svg class="vraag-timer-ring" viewBox="0 0 100 100" aria-hidden="true">
+          <circle class="vraag-timer-ring-baan" cx="50" cy="50" r="45"></circle>
+          <circle class="vraag-timer-ring-vulling" id="host-vraag-timer-vulling" cx="50" cy="50" r="45" transform="rotate(-90 50 50)"></circle>
+        </svg>
+        <span id="host-vraag-timer-getal" class="vraag-timer-getal"></span>
+      </div>
       <img id="host-vraag-foto" class="vraag-foto" alt="Foto bij de vraag" hidden>
       <div id="host-antwoorden-weergave" class="antwoorden-lijst"></div>
       <p id="host-antwoord-teller" class="voortgang"></p>
