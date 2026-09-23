@@ -888,7 +888,50 @@ function laadEigenQuizzen() {
 // ---------- Speelbare quizzen tonen (openbaar gemaakt door anderen) ----------
 
 // Onthoudt of het overzicht open of ingeklapt staat (ook na opnieuw laden van de lijst).
-let makersOverzichtOpen = true;
+// Staat standaard ingeklapt; wordt automatisch opengeklapt zodra je in de zoekbalk typt.
+let makersOverzichtOpen = false;
+
+// Onthoudt de laatst opgehaalde makers (zodat de zoekbalk kan filteren zonder
+// steeds opnieuw bij Firebase te hoeven ophalen) en de huidige zoekterm.
+let laatsteMakersLijst = [];
+let makersZoekterm = '';
+
+// Bouwt de HTML voor de rijen in het makersoverzicht, gefilterd op zoekterm
+// (zoekt in de naam van de quizmaker, hoofdletterongevoelig, op elk deel van de naam).
+function bouwMakersRijenHtml(makers, zoekterm) {
+  if (makers.length === 0) {
+    return '<p class="voortgang">Er zijn nog geen quizzen gemaakt.</p>';
+  }
+
+  const term = zoekterm.trim().toLowerCase();
+  const gefilterd = term
+    ? makers.filter(maker => (maker.naam || 'naam onbekend').toLowerCase().includes(term))
+    : makers;
+
+  if (gefilterd.length === 0) {
+    return '<p class="sitebeheer-makers-leeg">Geen quizmakers gevonden voor "' + escapeHtml(zoekterm.trim()) + '".</p>';
+  }
+
+  return gefilterd.map(maker => {
+    const aantalOpenbaar = maker.quizzen.filter(q => q.openbaar).length;
+    const titels = maker.quizzen.map(q => {
+      const status = q.geblokkeerd ? 'geblokkeerd' : (q.openbaar ? 'openbaar' : (q.weggehaald ? 'weggehaald' : 'niet openbaar'));
+      const knopKlasse = 'btn-overzicht-blokkeren' + (q.geblokkeerd ? ' is-geblokkeerd' : '');
+      const knopTekst = q.geblokkeerd ? 'Deblokkeren' : 'Blokkeren';
+      const knop = '<button type="button" class="' + knopKlasse + '" data-code="' + escapeHtml(q.code) + '" data-geblokkeerd="' + (q.geblokkeerd ? '1' : '0') + '">' + knopTekst + '</button>';
+      return '<li>' + escapeHtml(q.titel) + ' <span class="sitebeheer-maker-code">' + escapeHtml(q.code) + ' · ' + status + '</span>' + knop + '</li>';
+    }).join('');
+    return '<div class="sitebeheer-maker-rij">' +
+      '<div class="sitebeheer-maker-naam-rij">' +
+      '<strong>' + (maker.naam ? escapeHtml(maker.naam) : 'Naam onbekend') + '</strong>' +
+      '<button type="button" class="btn-overzicht-naam-wijzigen" data-naam="' + escapeHtml(maker.naam) +
+      '" data-codes="' + maker.quizzen.map(q => escapeHtml(q.code)).join(',') + '">Naam wijzigen</button>' +
+      '<span class="sitebeheer-maker-telling">' + maker.quizzen.length + ' quiz/quizzen · ' + aantalOpenbaar + ' openbaar</span>' +
+      '</div>' +
+      '<ul>' + titels + '</ul>' +
+      '</div>';
+  }).join('');
+}
 
 // Alleen voor sitebeheer: overzicht van ALLE quizmakers (dus ook van quizzen
 // die niet openbaar zijn of door sitebeheer bij openbaar zijn weggehaald).
@@ -971,6 +1014,21 @@ function toonSitebeheerMakersOverzicht() {
         return;
       }
     });
+
+    // Eén keer een input-listener voor de zoekbalk: filtert alleen de rijen
+    // (niet de hele overzicht-HTML), zodat de zoekbalk niet zijn focus verliest
+    // terwijl je typt. Klapt het venster ook automatisch open zodra je typt.
+    overzichtEl.addEventListener('input', (e) => {
+      if (e.target.id !== 'input-zoek-makers') return;
+      makersZoekterm = e.target.value;
+      const rijenEl = overzichtEl.querySelector('#sitebeheer-makers-rijen');
+      if (rijenEl) rijenEl.innerHTML = bouwMakersRijenHtml(laatsteMakersLijst, makersZoekterm);
+      const detailsEl = overzichtEl.querySelector('details');
+      if (detailsEl && makersZoekterm.trim()) {
+        detailsEl.open = true;
+        makersOverzichtOpen = true;
+      }
+    });
   }
   overzichtEl.innerHTML = '<p class="voortgang">Quizmakers laden...</p>';
 
@@ -1005,33 +1063,19 @@ function toonSitebeheerMakersOverzicht() {
         return a.naam.localeCompare(b.naam, 'nl');
       });
 
-      const rijen = makers.length === 0
-        ? '<p class="voortgang">Er zijn nog geen quizzen gemaakt.</p>'
-        : makers.map(maker => {
-        const aantalOpenbaar = maker.quizzen.filter(q => q.openbaar).length;
-        const titels = maker.quizzen.map(q => {
-          const status = q.geblokkeerd ? 'geblokkeerd' : (q.openbaar ? 'openbaar' : (q.weggehaald ? 'weggehaald' : 'niet openbaar'));
-          const knopKlasse = 'btn-overzicht-blokkeren' + (q.geblokkeerd ? ' is-geblokkeerd' : '');
-          const knopTekst = q.geblokkeerd ? 'Deblokkeren' : 'Blokkeren';
-          const knop = '<button type="button" class="' + knopKlasse + '" data-code="' + escapeHtml(q.code) + '" data-geblokkeerd="' + (q.geblokkeerd ? '1' : '0') + '">' + knopTekst + '</button>';
-          return '<li>' + escapeHtml(q.titel) + ' <span class="sitebeheer-maker-code">' + escapeHtml(q.code) + ' · ' + status + '</span>' + knop + '</li>';
-        }).join('');
-        return '<div class="sitebeheer-maker-rij">' +
-          '<div class="sitebeheer-maker-naam-rij">' +
-          '<strong>' + (maker.naam ? escapeHtml(maker.naam) : 'Naam onbekend') + '</strong>' +
-          '<button type="button" class="btn-overzicht-naam-wijzigen" data-naam="' + escapeHtml(maker.naam) +
-          '" data-codes="' + maker.quizzen.map(q => escapeHtml(q.code)).join(',') + '">Naam wijzigen</button>' +
-          '<span class="sitebeheer-maker-telling">' + maker.quizzen.length + ' quiz/quizzen · ' + aantalOpenbaar + ' openbaar</span>' +
-          '</div>' +
-          '<ul>' + titels + '</ul>' +
-          '</div>';
-      }).join('');
+      laatsteMakersLijst = makers;
 
-      // <details> = inklapbaar venster: klik op de titel om in of uit te klappen.
+      // <details> = inklapbaar venster (staat standaard ingeklapt); klik op de
+      // titel om in of uit te klappen. De zoekbalk staat erboven, buiten het
+      // inklapbare venster, zodat je ook kunt zoeken terwijl het dicht staat
+      // (typen klapt het vanzelf open).
       overzichtEl.innerHTML =
+        '<div class="sitebeheer-makers-zoek">' +
+        '<input type="text" id="input-zoek-makers" placeholder="🔍 Zoek op naam..." value="' + escapeHtml(makersZoekterm) + '">' +
+        '</div>' +
         '<details class="sitebeheer-makers-details"' + (makersOverzichtOpen ? ' open' : '') + '>' +
         '<summary>Alle quizmakers (' + makers.length + ')</summary>' +
-        rijen +
+        '<div id="sitebeheer-makers-rijen">' + bouwMakersRijenHtml(makers, makersZoekterm) + '</div>' +
         '</details>';
 
       const detailsEl = overzichtEl.querySelector('details');
@@ -1044,23 +1088,13 @@ function toonSitebeheerMakersOverzicht() {
     });
 }
 
-function laadOpenbareQuizzen() {
-  const lijstEl = document.getElementById('lijst-openbare-quizzen');
-  lijstEl.innerHTML = '<p>Bezig met laden...</p>';
-  toonSitebeheerMakersOverzicht();
+// Onthoudt de laatst opgehaalde openbare quizzen (zodat de zoekbalk kan
+// filteren zonder steeds opnieuw bij Firebase te hoeven ophalen).
+let laatsteOpenbareQuizzenData = []; // [[code, quiz], ...]
 
-  koppelMakerNaamAanEigenQuizzen()
-    .then(() => db.ref('quizzen').orderByChild('openbaar').equalTo(true).once('value'))
-    .then(snapshot => {
-      lijstEl.innerHTML = '';
-      const data = snapshot.val();
-
-      if (!data) {
-        lijstEl.innerHTML = '<p>Er zijn nog geen openbare quizzen. Zet je eigen quiz op openbaar om hem hier te laten verschijnen.</p>';
-        return;
-      }
-
-      Object.entries(data).forEach(([code, quiz]) => {
+// Bouwt één quiz-kaartje op voor "Speelbare quizzen". Gebruikt door
+// renderOpenbareQuizzenLijst voor elke quiz die (na filteren) getoond wordt.
+function bouwOpenbareQuizItemEl(code, quiz) {
         const item = document.createElement('div');
         item.className = 'quiz-item';
 
@@ -1138,16 +1172,64 @@ function laadOpenbareQuizzen() {
           knoppen.appendChild(verwijderKnop);
         }
 
-        body.appendChild(info);
-        body.appendChild(knoppen);
-        item.appendChild(afbeelding);
-        item.appendChild(body);
-        lijstEl.appendChild(item);
-      });
+  body.appendChild(info);
+  body.appendChild(knoppen);
+  item.appendChild(afbeelding);
+  item.appendChild(body);
+  return item;
+}
+
+// Toont de huidige "laatsteOpenbareQuizzenData", gefilterd op de zoekbalk
+// (zoekt op titel, hoofdletterongevoelig, op elk deel van de titel).
+// Wordt aangeroepen na elke keer laden én bij elke toetsaanslag in de zoekbalk.
+function renderOpenbareQuizzenLijst() {
+  const lijstEl = document.getElementById('lijst-openbare-quizzen');
+  const zoekVeldEl = document.getElementById('input-zoek-speelbare-quizzen');
+  const zoekterm = ((zoekVeldEl && zoekVeldEl.value) || '').trim().toLowerCase();
+
+  lijstEl.innerHTML = '';
+
+  if (laatsteOpenbareQuizzenData.length === 0) {
+    lijstEl.innerHTML = '<p>Er zijn nog geen openbare quizzen. Zet je eigen quiz op openbaar om hem hier te laten verschijnen.</p>';
+    return;
+  }
+
+  const gefilterd = zoekterm
+    ? laatsteOpenbareQuizzenData.filter(([, quiz]) => (quiz.titel || '').toLowerCase().includes(zoekterm))
+    : laatsteOpenbareQuizzenData;
+
+  if (gefilterd.length === 0) {
+    lijstEl.innerHTML = '<p>Geen quizzen gevonden voor "' + escapeHtml((zoekVeldEl && zoekVeldEl.value.trim()) || '') + '".</p>';
+    return;
+  }
+
+  gefilterd.forEach(([code, quiz]) => {
+    lijstEl.appendChild(bouwOpenbareQuizItemEl(code, quiz));
+  });
+}
+
+function laadOpenbareQuizzen() {
+  const lijstEl = document.getElementById('lijst-openbare-quizzen');
+  lijstEl.innerHTML = '<p>Bezig met laden...</p>';
+  toonSitebeheerMakersOverzicht();
+
+  koppelMakerNaamAanEigenQuizzen()
+    .then(() => db.ref('quizzen').orderByChild('openbaar').equalTo(true).once('value'))
+    .then(snapshot => {
+      const data = snapshot.val();
+      laatsteOpenbareQuizzenData = data ? Object.entries(data) : [];
+      renderOpenbareQuizzenLijst();
     })
     .catch(err => {
       lijstEl.innerHTML = '<p>Laden van openbare quizzen mislukt: ' + err.message + '</p>';
     });
+}
+
+// Live filteren terwijl je typt (zoekt op titel, zowel als gewone bezoeker
+// als sitebeheer — de zoekbalk staat altijd boven "Speelbare quizzen").
+const inputZoekSpeelbareQuizzenEl = document.getElementById('input-zoek-speelbare-quizzen');
+if (inputZoekSpeelbareQuizzenEl) {
+  inputZoekSpeelbareQuizzenEl.addEventListener('input', renderOpenbareQuizzenLijst);
 }
 
 // ================================================================
