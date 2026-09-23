@@ -1327,6 +1327,7 @@ let vraagGetoondOpSpeler = 0;
 let spelerHeeftGeantwoord = false;
 let spelerGeselecteerdeAntwoorden = [];
 let huidigeStatusSpeler = '';
+let muntenToegekendVoorSessie = null; // sessiecode waarvoor deze speler al munten voor winnen kreeg (voorkomt dubbel toekennen)
 
 // ---------- Poppetje: een dier + accessoires (hoeden, brillen, hartjes, ...) ----------
 // De tekeningen zelf (dieren, hoeden, brillen, ...) staan in poppetjes.js. Dat bestand
@@ -1336,7 +1337,8 @@ let kiezerTab = 'dieren'; // 'dieren' of 'accessoires' (welk tabblad open staat 
 let huidigePoppetje = { dier: '', accessoires: {} }; // wat deze speler nu heeft gekozen
 
 function willekeurigDier() {
-  return DIEREN[Math.floor(Math.random() * DIEREN.length)];
+  const bezit = haalBezitDieren();
+  return bezit[Math.floor(Math.random() * bezit.length)];
 }
 
 // Geeft het dier terug als het een geldig dier uit de lijst is, anders ''.
@@ -1365,8 +1367,13 @@ function bouwKiezer() {
   document.getElementById('tab-accessoires').classList.toggle('actief', !opDieren);
   document.getElementById('tab-accessoires').setAttribute('aria-selected', String(!opDieren));
 
+  const bezitDieren = haalBezitDieren();
+  const bezitAccessoires = haalBezitAccessoires();
+  const totaalDierenCatalogus = DIEREN.length;
+  const totaalAccCatalogus = ACCESSOIRE_GROEPEN.reduce((n, g) => n + g.items.length, 0);
+
   if (opDieren) {
-    DIEREN.forEach(dier => {
+    bezitDieren.forEach(dier => {
       const knop = document.createElement('button');
       knop.type = 'button';
       knop.className = 'dier-knop';
@@ -1378,14 +1385,17 @@ function bouwKiezer() {
     });
   } else {
     // Bij elk accessoire zie je meteen hoe het op jouw dier staat.
-    const voorbeeldDier = huidigePoppetje.dier || DIEREN[0];
+    const voorbeeldDier = huidigePoppetje.dier || bezitDieren[0];
     ACCESSOIRE_GROEPEN.forEach(groep => {
+      const items = groep.items.filter(emoji => bezitAccessoires.indexOf(emoji) !== -1);
+      if (!items.length) return; // deze hele groep nog niet in bezit
+
       const kop = document.createElement('div');
       kop.className = 'kiezer-groep-titel';
       kop.textContent = groep.titel;
       kiezerEl.appendChild(kop);
 
-      groep.items.forEach(emoji => {
+      items.forEach(emoji => {
         const voorbeeld = {};
         voorbeeld[groep.plek] = emoji;
         const knop = document.createElement('button');
@@ -1406,6 +1416,13 @@ function bouwKiezer() {
     wegKnop.textContent = 'Alle accessoires weghalen';
     wegKnop.addEventListener('click', verwijderAlleAccessoires);
     kiezerEl.appendChild(wegKnop);
+  }
+
+  if (bezitDieren.length < totaalDierenCatalogus || bezitAccessoires.length < totaalAccCatalogus) {
+    const hint = document.createElement('p');
+    hint.className = 'kiezer-hint';
+    hint.textContent = '🎁 Meer dieren en accessoires vind je in de winkel (mysterieboxen)!';
+    kiezerEl.appendChild(hint);
   }
 
   toonGekozenPoppetje(huidigePoppetje);
@@ -1455,7 +1472,7 @@ function spelerRef() {
 
 // De speler kiest een dier: opslaan bij de speler in de sessie.
 function kiesDier(dier) {
-  if (!magPoppetjeWijzigen() || !geldigDier(dier)) return;
+  if (!magPoppetjeWijzigen() || !geldigDier(dier) || haalBezitDieren().indexOf(dier) === -1) return;
 
   toonGekozenPoppetje({ dier: dier, accessoires: huidigePoppetje.accessoires });
   spelerRef().child('dier').set(dier);
@@ -1465,7 +1482,7 @@ function kiesDier(dier) {
 function kiesAccessoire(plek, emoji) {
   if (!magPoppetjeWijzigen()) return;
   const groep = ACCESSOIRE_GROEPEN.find(g => g.plek === plek);
-  if (!groep || groep.items.indexOf(emoji) === -1) return;
+  if (!groep || groep.items.indexOf(emoji) === -1 || haalBezitAccessoires().indexOf(emoji) === -1) return;
 
   const acc = Object.assign({}, huidigePoppetje.accessoires);
   const ref = spelerRef().child('accessoires').child(plek);
@@ -1484,6 +1501,273 @@ function verwijderAlleAccessoires() {
   toonGekozenPoppetje({ dier: huidigePoppetje.dier, accessoires: {} });
   spelerRef().child('accessoires').remove();
 }
+
+// ================================================================
+//  MUNTEN EN MYSTERIEBOXEN (winkel)
+// ================================================================
+//
+// Er zijn geen echte accounts voor gewone spelers, dus net als de naam
+// (zie hierboven) worden munten en "bezit" (welke dieren/accessoires je
+// hebt) lokaal onthouden per browser/apparaat (localStorage). Iedereen
+// begint gratis met de hond, de kat en de zonnebril (STANDAARD_DIEREN /
+// STANDAARD_ACCESSOIRES in poppetjes.js). De rest zit verstopt in
+// mysterieboxen die sitebeheer ontwerpt (naam, prijs, inhoud) en die je met
+// munten koopt in de Winkel; alles wat erin zit krijg en houd je voorgoed.
+// Munten verdien je door een live quiz ("Met mensen") als eerste te
+// eindigen. Boxen staan in Firebase onder "mysterieboxen" — zie readme.md
+// voor de bijbehorende regel die daar nog voor toegevoegd moet worden.
+
+const MUNTEN_SLEUTEL = 'quizAppMunten';
+const BEZIT_DIEREN_SLEUTEL = 'quizAppBezitDieren';
+const BEZIT_ACCESSOIRES_SLEUTEL = 'quizAppBezitAccessoires';
+const MUNTEN_VOOR_WINNEN = 100;
+
+function haalMunten() {
+  return parseInt(localStorage.getItem(MUNTEN_SLEUTEL) || '0', 10) || 0;
+}
+
+// Werkt overal op de pagina de weergegeven munten bij (klasse "munten-aantal").
+function werkMuntenWeergaveBij() {
+  const aantal = haalMunten();
+  document.querySelectorAll('.munten-aantal').forEach(el => { el.textContent = String(aantal); });
+}
+
+function zetMunten(nieuwAantal) {
+  localStorage.setItem(MUNTEN_SLEUTEL, String(Math.max(0, nieuwAantal)));
+  werkMuntenWeergaveBij();
+}
+
+function geefMunten(aantal) {
+  zetMunten(haalMunten() + aantal);
+}
+
+function haalBezitDieren() {
+  const opgeslagen = JSON.parse(localStorage.getItem(BEZIT_DIEREN_SLEUTEL) || 'null');
+  return Array.isArray(opgeslagen) && opgeslagen.length ? opgeslagen : STANDAARD_DIEREN.slice();
+}
+
+function haalBezitAccessoires() {
+  const opgeslagen = JSON.parse(localStorage.getItem(BEZIT_ACCESSOIRES_SLEUTEL) || 'null');
+  return Array.isArray(opgeslagen) && opgeslagen.length ? opgeslagen : STANDAARD_ACCESSOIRES.slice();
+}
+
+// Voegt de inhoud van een gekochte box toe aan wat de speler al heeft (geen dubbelen).
+function voegBezitToe(dieren, accessoires) {
+  const huidigeDieren = haalBezitDieren();
+  const huidigeAccessoires = haalBezitAccessoires();
+  (dieren || []).forEach(d => { if (DIEREN.indexOf(d) !== -1 && huidigeDieren.indexOf(d) === -1) huidigeDieren.push(d); });
+  (accessoires || []).forEach(a => { if (ACCESSOIRES[a] && huidigeAccessoires.indexOf(a) === -1) huidigeAccessoires.push(a); });
+  localStorage.setItem(BEZIT_DIEREN_SLEUTEL, JSON.stringify(huidigeDieren));
+  localStorage.setItem(BEZIT_ACCESSOIRES_SLEUTEL, JSON.stringify(huidigeAccessoires));
+}
+
+document.getElementById('btn-naar-winkel').addEventListener('click', () => {
+  toonScherm('scherm-winkel');
+  laadWinkelBoxen();
+});
+
+// ---------- Mysterieboxen laden en tonen ----------
+
+function bouwBoxKaartHtml(boxId, box) {
+  const aantalItems = (box.dieren || []).length + (box.accessoires || []).length;
+  const genoegMunten = haalMunten() >= (box.prijs || 0);
+  let html = '<div class="quiz-item-body">' +
+    '<div class="quiz-item-info"><strong>🎁 ' + escapeHtml(box.naam || 'Mysteriebox') + '</strong>' +
+    '<span>' + (box.prijs || 0) + ' munten · ' + aantalItems + ' verrassing(en) erin</span></div>' +
+    '<div class="quiz-item-knoppen">' +
+    '<button class="btn btn-primary btn-koop-box" data-box="' + boxId + '"' + (genoegMunten ? '' : ' disabled') + '>' +
+    (genoegMunten ? 'Kopen' : 'Niet genoeg munten') + '</button>';
+  if (sitebeheerActief) {
+    html += '<button type="button" class="btn-aanpassen-quiz btn-aanpassen-box" data-box="' + boxId + '">Aanpassen</button>' +
+      '<button type="button" class="btn-verwijderen-quiz btn-verwijderen-box" data-box="' + boxId + '">Verwijderen</button>';
+  }
+  html += '</div></div>';
+  return html;
+}
+
+function laadWinkelBoxen() {
+  werkMuntenWeergaveBij();
+  document.getElementById('btn-winkel-nieuwe-box').style.display = sitebeheerActief ? 'block' : 'none';
+  const lijstEl = document.getElementById('winkel-boxen-lijst');
+  const geenBoxenEl = document.getElementById('winkel-geen-boxen');
+  lijstEl.innerHTML = '<p class="subtitel">Boxen laden...</p>';
+  geenBoxenEl.style.display = 'none';
+
+  db.ref('mysterieboxen').once('value').then(snapshot => {
+    const boxen = snapshot.val() || {};
+    const boxIds = Object.keys(boxen);
+    lijstEl.innerHTML = '';
+    geenBoxenEl.style.display = boxIds.length ? 'none' : 'block';
+
+    boxIds.forEach(boxId => {
+      const box = boxen[boxId];
+      const kaart = document.createElement('div');
+      kaart.className = 'quiz-item';
+      kaart.innerHTML = bouwBoxKaartHtml(boxId, box);
+      lijstEl.appendChild(kaart);
+    });
+
+    lijstEl.querySelectorAll('.btn-koop-box').forEach(knop => {
+      knop.addEventListener('click', () => koopMysteriebox(knop.dataset.box));
+    });
+    lijstEl.querySelectorAll('.btn-aanpassen-box').forEach(knop => {
+      knop.addEventListener('click', () => openBoxBewerken(knop.dataset.box, boxen[knop.dataset.box]));
+    });
+    lijstEl.querySelectorAll('.btn-verwijderen-box').forEach(knop => {
+      knop.addEventListener('click', () => verwijderMysteriebox(knop.dataset.box));
+    });
+  }).catch(() => {
+    lijstEl.innerHTML = '<p class="subtitel">De boxen konden niet geladen worden.</p>';
+  });
+}
+
+function koopMysteriebox(boxId) {
+  db.ref('mysterieboxen/' + boxId).once('value').then(snapshot => {
+    const box = snapshot.val();
+    if (!box) {
+      alert('Deze mysteriebox bestaat niet meer.');
+      laadWinkelBoxen();
+      return;
+    }
+    if (haalMunten() < (box.prijs || 0)) {
+      alert('Je hebt niet genoeg munten voor deze box.');
+      return;
+    }
+
+    zetMunten(haalMunten() - (box.prijs || 0));
+    voegBezitToe(box.dieren, box.accessoires);
+
+    const gekregenNamen = [].concat(
+      (box.dieren || []).filter(d => DIER_TEKENINGEN[d]),
+      (box.accessoires || []).filter(a => ACCESSOIRES[a]).map(a => ACCESSOIRES[a].naam)
+    );
+    alert('🎉 Je hebt "' + (box.naam || 'Mysteriebox') + '" geopend! Je hebt nu ook: ' + gekregenNamen.join(', '));
+
+    laadWinkelBoxen();
+  });
+}
+
+function verwijderMysteriebox(boxId) {
+  if (!confirm('Deze mysteriebox definitief verwijderen? Spelers die hem al gekocht hebben, houden gewoon wat ze al kregen.')) return;
+  db.ref('mysterieboxen/' + boxId).remove().then(laadWinkelBoxen);
+}
+
+document.getElementById('btn-winkel-nieuwe-box').addEventListener('click', () => openBoxBewerken(null, null));
+
+// ---------- Mysteriebox ontwerpen (alleen sitebeheer) ----------
+
+let bewerkteBoxId = null;
+let boxGeselecteerdeDieren = [];
+let boxGeselecteerdeAccessoires = [];
+
+const boxBewerkenOverlayEl = document.getElementById('box-bewerken-overlay');
+const inputBoxNaamEl = document.getElementById('input-box-naam');
+const inputBoxPrijsEl = document.getElementById('input-box-prijs');
+const boxBewerkenFoutmeldingEl = document.getElementById('box-bewerken-foutmelding');
+
+// Bouwt de kiesknoppen voor élk dier en élk accessoire uit de hele catalogus
+// (niet alleen wat de sitebeheerder zelf al bezit): sitebeheer ontwerpt hier
+// immers juist de boxen waarmee andere spelers nieuwe dingen kunnen winnen.
+function bouwBoxItemsKiezer() {
+  const dierenEl = document.getElementById('box-items-dieren');
+  dierenEl.innerHTML = '';
+  DIEREN.forEach(dier => {
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'dier-knop';
+    knop.innerHTML = poppetjeSvg(dier, {});
+    knop.classList.toggle('gekozen', boxGeselecteerdeDieren.indexOf(dier) !== -1);
+    knop.setAttribute('aria-label', 'Kies ' + dier);
+    knop.addEventListener('click', () => {
+      const i = boxGeselecteerdeDieren.indexOf(dier);
+      if (i === -1) boxGeselecteerdeDieren.push(dier); else boxGeselecteerdeDieren.splice(i, 1);
+      knop.classList.toggle('gekozen');
+    });
+    dierenEl.appendChild(knop);
+  });
+
+  const accEl = document.getElementById('box-items-accessoires');
+  accEl.innerHTML = '';
+  const voorbeeldDier = DIEREN[0];
+  ACCESSOIRE_GROEPEN.forEach(groep => {
+    groep.items.forEach(emoji => {
+      const voorbeeld = {};
+      voorbeeld[groep.plek] = emoji;
+      const knop = document.createElement('button');
+      knop.type = 'button';
+      knop.className = 'dier-knop';
+      knop.innerHTML = poppetjeSvg(voorbeeldDier, voorbeeld);
+      knop.title = ACCESSOIRES[emoji].naam;
+      knop.setAttribute('aria-label', 'Kies ' + ACCESSOIRES[emoji].naam);
+      knop.classList.toggle('gekozen', boxGeselecteerdeAccessoires.indexOf(emoji) !== -1);
+      knop.addEventListener('click', () => {
+        const i = boxGeselecteerdeAccessoires.indexOf(emoji);
+        if (i === -1) boxGeselecteerdeAccessoires.push(emoji); else boxGeselecteerdeAccessoires.splice(i, 1);
+        knop.classList.toggle('gekozen');
+      });
+      accEl.appendChild(knop);
+    });
+  });
+}
+
+function openBoxBewerken(boxId, box) {
+  bewerkteBoxId = boxId;
+  boxGeselecteerdeDieren = (box && box.dieren) ? box.dieren.slice() : [];
+  boxGeselecteerdeAccessoires = (box && box.accessoires) ? box.accessoires.slice() : [];
+
+  document.getElementById('box-bewerken-titel').textContent = boxId ? 'Mysteriebox aanpassen' : 'Nieuwe mysteriebox';
+  inputBoxNaamEl.value = box ? (box.naam || '') : '';
+  inputBoxPrijsEl.value = box ? (box.prijs || 0) : 100;
+  boxBewerkenFoutmeldingEl.textContent = '';
+  document.getElementById('btn-box-verwijderen').style.display = boxId ? 'inline-block' : 'none';
+
+  bouwBoxItemsKiezer();
+  boxBewerkenOverlayEl.classList.add('actief');
+}
+
+document.getElementById('btn-box-annuleren').addEventListener('click', () => {
+  boxBewerkenOverlayEl.classList.remove('actief');
+});
+
+document.getElementById('btn-box-verwijderen').addEventListener('click', () => {
+  if (!bewerkteBoxId) return;
+  const boxId = bewerkteBoxId;
+  boxBewerkenOverlayEl.classList.remove('actief');
+  verwijderMysteriebox(boxId);
+});
+
+document.getElementById('btn-box-opslaan').addEventListener('click', () => {
+  const naam = inputBoxNaamEl.value.trim();
+  const prijs = parseInt(inputBoxPrijsEl.value, 10) || 0;
+
+  if (!naam) {
+    boxBewerkenFoutmeldingEl.textContent = 'Vul een naam voor de box in.';
+    return;
+  }
+  if (prijs < 0) {
+    boxBewerkenFoutmeldingEl.textContent = 'De prijs kan niet negatief zijn.';
+    return;
+  }
+  if (!boxGeselecteerdeDieren.length && !boxGeselecteerdeAccessoires.length) {
+    boxBewerkenFoutmeldingEl.textContent = 'Kies minstens één dier of accessoire voor in de box.';
+    return;
+  }
+
+  const boxData = {
+    naam: naam,
+    prijs: prijs,
+    dieren: boxGeselecteerdeDieren,
+    accessoires: boxGeselecteerdeAccessoires
+  };
+
+  const ref = bewerkteBoxId ? db.ref('mysterieboxen/' + bewerkteBoxId) : db.ref('mysterieboxen').push();
+  ref.set(boxData).then(() => {
+    boxBewerkenOverlayEl.classList.remove('actief');
+    laadWinkelBoxen();
+  }).catch(() => {
+    boxBewerkenFoutmeldingEl.textContent = 'Opslaan is niet gelukt. Probeer het opnieuw.';
+  });
+});
 
 // Toont de foto van een vraag (of verbergt het plaatje als er geen foto is).
 function toonVraagFoto(imgId, url) {
@@ -1959,6 +2243,7 @@ document.getElementById('btn-ga-naar-quiz').addEventListener('click', () => {
         huidigeRol = 'speler';
         huidigeSpelerId = 'speler-' + Math.random().toString(36).slice(2, 10);
         laatstGetoondeVraagIndexSpeler = -1;
+        muntenToegekendVoorSessie = null; // nieuwe sessie: nog geen munten toegekend
 
         // Iedereen begint met een willekeurig dier; in de wachtkamer kun je een ander kiezen.
         const startDier = willekeurigDier();
@@ -2142,8 +2427,23 @@ function renderSessieVoorSpeler(sessie) {
   if (sessie.status === 'scorebord' || sessie.status === 'afgelopen') {
     document.getElementById('speler-scorebord-titel').textContent =
       sessie.status === 'afgelopen' ? 'Eindstand 🏆' : 'Scorebord';
-    document.getElementById('speler-scorebord-bericht').textContent =
-      sessie.status === 'afgelopen' ? 'Bedankt voor het meespelen!' : '';
+
+    let scorebordBericht = sessie.status === 'afgelopen' ? 'Bedankt voor het meespelen!' : '';
+
+    // Won je deze live quiz? Dan krijg je eenmalig munten (voor de winkel).
+    if (sessie.status === 'afgelopen' && muntenToegekendVoorSessie !== huidigeSessieCode) {
+      muntenToegekendVoorSessie = huidigeSessieCode;
+      const eindstand = Object.entries(spelers || {}).sort((a, b) => {
+        const scoreA = a[1].score || 0, scoreB = b[1].score || 0;
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return (a[1].totaleReactietijd || 0) - (b[1].totaleReactietijd || 0);
+      });
+      if (eindstand.length && eindstand[0][0] === huidigeSpelerId) {
+        geefMunten(MUNTEN_VOOR_WINNEN);
+        scorebordBericht = '🏆 Je hebt gewonnen: +' + MUNTEN_VOOR_WINNEN + ' munten! Bekijk de winkel voor mysterieboxen.';
+      }
+    }
+    document.getElementById('speler-scorebord-bericht').textContent = scorebordBericht;
 
     renderScorebordLijst('speler-scorebord-lijst', spelers, huidigeSpelerId);
 
@@ -2396,6 +2696,7 @@ document.getElementById('btn-solo-opnieuw').addEventListener('click', () => {
 });
 
 bouwKiezer();
+werkMuntenWeergaveBij();
 
 // ---------- Bij het openen van de site: naam bij eigen quizzen zetten ----------
 koppelMakerNaamAanEigenQuizzen();
