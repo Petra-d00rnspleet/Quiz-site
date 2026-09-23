@@ -373,7 +373,11 @@
       </select>
 
       <label>Punten voor een goed antwoord</label>
-      <input type="number" class="veld-punten" min="0" step="50" value="1000">
+      <div class="punten-stepper">
+        <button type="button" class="btn-punten-stap btn-punten-min" aria-label="50 punten minder">−</button>
+        <input type="text" inputmode="numeric" pattern="[0-9.]*" class="veld-punten" value="1.000">
+        <button type="button" class="btn-punten-stap btn-punten-plus" aria-label="50 punten meer">+</button>
+      </div>
 
       <label>Antwoorden — vink aan welk antwoord (of welke antwoorden) goed is/zijn</label>
       <div class="antwoord-invoer-rij">
