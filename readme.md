@@ -10,7 +10,7 @@
 ## Stap 1: Firebase instellen
 1. Ga naar https://console.firebase.google.com en maak een nieuw project.
 2. Ga naar **Build → Realtime Database** en maak een database aan (kies een regio, bijv. Europe).
-3. Zet de database (tijdelijk, voor testen) in testmodus, of gebruik deze regels — let op: er is nu ook een `sessies`-pad nodig naast `quizzen`:
+3. Zet de database (tijdelijk, voor testen) in testmodus, of gebruik deze regels — let op: er is nu ook een `sessies`-pad en een `mysterieboxen`-pad nodig naast `quizzen`:
    ```json
    {
      "rules": {
@@ -19,6 +19,10 @@
          ".write": true
        },
        "sessies": {
+         ".read": true,
+         ".write": true
+       },
+       "mysterieboxen": {
          ".read": true,
          ".write": true
        }
@@ -86,12 +90,14 @@ Bij elke vraag kun je (niet verplicht) een **foto uploaden**. De foto wordt verk
 - Spelers zien bij zo'n vraag geen directe klik-en-klaar meer: ze **vinken alle antwoorden aan die ze goed vinden** en klikken daarna op **"Antwoord versturen"**. Pas na dat klikken staat hun antwoord vast.
 - Een vraag telt alleen als **goed beantwoord** als een speler precies alle juiste antwoorden heeft aangevinkt (niet meer en niet minder).
 
-### Poppetje kiezen: dieren en accessoires (nieuw)
-Zodra je meedoet aan een quiz, krijg je een willekeurig dier. In de wachtkamer staan twee tabbladen:
-- **Dieren** — kies een ander dier (20 stuks).
-- **Accessoires** — kies een hoed (hoge hoed, kroon, afstudeerhoed, pet, cowboyhoed, strohoed, kerstmuts, strik), een bril (zonnebril, gewone bril) en/of een hartje of iets anders (hartjes in 5 kleuren, glitterhartje, ster, glitters, bloem, vuurtje, diamant, klavertje). Per soort kun je er één dragen, dus een hoed, een bril en een hartje tegelijk kan. In het menu zie je bij elk accessoire meteen hoe het op jóuw dier staat. Nog eens op een gekozen accessoire tikken haalt het weer weg, en met "Alle accessoires weghalen" ben je ze allemaal kwijt.
+### Poppetje kiezen: dieren en accessoires (aangepast: nu met een winkel)
+Iedereen begint gratis met maar twee dieren (**hond** en **kat**) en één accessoire (**zonnebril**). Zodra je meedoet aan een quiz, krijg je willekeurig één van je eigen dieren. In de wachtkamer staan twee tabbladen:
+- **Dieren** — kies een ander dier uit wat je zelf al bezit.
+- **Accessoires** — kies uit de accessoires die je zelf al bezit (bijv. de zonnebril). Nog eens op een gekozen accessoire tikken haalt het weer weg, en met "Alle accessoires weghalen" ben je ze allemaal kwijt.
 
-**Alles past precies op het dier.** De dieren zijn zelf getekend (geen emoji-lettertype, want dat ziet er op elk apparaat anders uit), met vaste ankerpunten per dier voor de hoed en de bril. Zo gaat de hoge hoed bij het konijn tussen de oren (de oren staan ervoor), zit de pet tussen de ogen van de kikker, staat de kroon op de manen van de leeuw en zit de bril precies voor de ogen, ook bij de kikker met zijn ogen bovenop het hoofd.
+Bezit je meer dieren of accessoires dan de standaard twee, dan staan die er gewoon ook bij. Onderaan het keuzemenu staat een hint naar de winkel zolang je nog niet alles hebt.
+
+**Alles past precies op het dier.** De dieren zijn zelf getekend (geen emoji-lettertype, want dat ziet er op elk apparaat anders uit), met vaste ankerpunten per dier voor de hoed en de bril. Zo gaat de hoge hoed bij het konijn tussen de oren (de oren staan ervoor), zit de pet tussen de ogen van de kikker, staat de kroon op de manen van de leeuw en zit de bril precies voor de ogen, ook bij de kikker met zijn ogen bovenop het hoofd. Al deze extra dieren en accessoires (18 andere dieren, 8 hoeden, een gewone bril, 12 hartjes-en-meer) bestaan nog gewoon in de code — ze zijn alleen niet meer standaard te kiezen, maar zitten klaar om door sitebeheer in mysterieboxen gestopt te worden (zie hieronder).
 
 Het poppetje (dier + accessoires) staat bij het scorebord (ook bij de eindstand) **voor je naam**, en bij de host in de wachtkamer. De plekken (#1, #2, #3 …) blijven gewoon links staan. Nadat de quiz is begonnen kun je je poppetje niet meer wijzigen.
 
@@ -106,6 +112,15 @@ In Firebase staan de keuzes bij de speler onder `dier` en `accessoires/<plek>`; 
 - Staat het na een vraag gelijk in punten, dan wint degene die (over alle beantwoorde vragen samen) **het snelst klikte** — dus hoe eerder je op "Antwoord versturen" klikt bij een goed antwoord, hoe beter je rangschikt bij een gelijke stand.
 - Het scorebord toont iedereen gerangschikt van hoog naar laag, met plek, dier en naam; spelers zien hun eigen rij gemarkeerd.
 - Bij **"Zonder mensen"** (solo spelen) is er geen puntentelling; daar zie je aan het eind gewoon hoeveel vragen je goed had.
+
+### Munten en de winkel: mysterieboxen (nieuw)
+Win je een live quiz ("Met mensen") — dus sta je bij de eindstand op #1 — dan krijg je automatisch **100 munten**. Je munten zie je bovenaan het startscherm en bovenaan de winkel; ze worden net als je naam lokaal in je browser onthouden (er is geen account voor gewone spelers).
+
+Op het startscherm staat de knop **🎁 Winkel**. Daar koop je met munten **mysterieboxen**: een box heeft een naam, een prijs en verborgen inhoud (een aantal dieren en/of accessoires). Koop je een box, dan wordt hij meteen geopend: je **krijgt en houdt voorgoed** alles wat erin zat (geen dubbelen als je iets al had), en je munten gaan met de prijs omlaag. Wat je zo wint, staat vanaf dan gewoon tussen je eigen dieren/accessoires in de wachtkamer.
+
+**Boxen ontwerpen doet sitebeheer** (zie hieronder voor inloggen): log in en ga naar de Winkel. Daar staat nu een knop **"+ Nieuwe mysteriebox maken"**, en bij elke bestaande box "Aanpassen" en "Verwijderen". In het ontwerpvenster vul je een naam en een prijs (in munten) in, en vink je aan welke dieren en/of accessoires erin moeten zitten (uit de hele catalogus van `poppetjes.js`, dus ook de 18 dieren en alle hoeden/hartjes die niet meer standaard te kiezen zijn). Een box verwijderen haalt hem uit de winkel; spelers die hem al gekocht hadden, houden gewoon wat ze kregen.
+
+Boxen staan in Firebase onder een nieuw pad `mysterieboxen` naast `quizzen` en `sessies` — zorg dat je de Firebase-regel hiervoor hebt toegevoegd (zie Stap 1 hierboven), anders kan de winkel niet laden of opslaan.
 
 ### Host verlaat de quiz (nieuw)
 Zodra de quizmaster op "Terug" of "Afronden" klikt, of het tabblad sluit / de verbinding verliest (via Firebase `onDisconnect`), wordt de sessie verwijderd. Alle spelers die op dat moment meedoen, zien meteen een scherm dat de quiz gestopt is en kunnen terug naar start.
@@ -123,6 +138,10 @@ Tip voor betere prestaties bij veel quizzen: voeg in de Firebase-regels een inde
       ".indexOn": ["openbaar"]
     },
     "sessies": {
+      ".read": true,
+      ".write": true
+    },
+    "mysterieboxen": {
       ".read": true,
       ".write": true
     }
@@ -160,5 +179,6 @@ De maker zelf ziet bij "Mijn quizzen" een gele melding op een geblokkeerde quiz 
 
 ## Mogelijke volgende stappen
 - Firebase-regels aanscherpen zodat mensen niet zomaar andermans quiz of sessie kunnen overschrijven.
+- Bij een gelijke eindstand op #1 krijgt nu maar één speler de winnaarsmunten (degene die als eerste in de sorteervolgorde staat, dus de snelste van de twee) — dat zou je kunnen veranderen naar "iedereen op #1 krijgt munten".
 - Punten laten afnemen naarmate je langzamer antwoordt (in plaats van altijd vlak 1000 punten).
 - Gedeeltelijke punten geven als een speler bij een vraag met meerdere goede antwoorden er een paar goed heeft, maar niet allemaal.
