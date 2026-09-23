@@ -1853,8 +1853,7 @@ document.getElementById('btn-host-afronden').addEventListener('click', () => {
   }
   stopSessieListener();
   huidigeRol = null;
-  toonScherm('scherm-quizmaken');
-  laadEigenQuizzen();
+  toonScherm('scherm-algemeen');
 });
 
 document.getElementById('btn-host-verlaat-wachtkamer').addEventListener('click', () => {
@@ -1863,8 +1862,7 @@ document.getElementById('btn-host-verlaat-wachtkamer').addEventListener('click',
   }
   stopSessieListener();
   huidigeRol = null;
-  toonScherm('scherm-quizmaken');
-  laadEigenQuizzen();
+  toonScherm('scherm-algemeen');
 });
 
 // ---------- Meedoen aan quiz (speler) ----------
@@ -2332,14 +2330,8 @@ function toonSoloEinde() {
 }
 
 function verlaatSoloQuiz() {
-  const terug = soloTerugScherm;
   soloVragen = [];
-  toonScherm(terug);
-  if (terug === 'scherm-quizmaken') {
-    laadEigenQuizzen();
-  } else {
-    laadOpenbareQuizzen();
-  }
+  toonScherm('scherm-algemeen');
 }
 
 document.getElementById('btn-solo-stoppen').addEventListener('click', verlaatSoloQuiz);
