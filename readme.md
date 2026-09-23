@@ -102,9 +102,10 @@ Het poppetje (dier + accessoires) staat bij het scorebord (ook bij de eindstand)
 In Firebase staan de keuzes bij de speler onder `dier` en `accessoires/<plek>`; de bestaande regels voor `sessies` hoeven niet te veranderen.
 
 ### Puntentelling en scorebord (nieuw)
-- Een goed antwoord levert **1000 punten** op.
+- Bij het maken (of aanpassen) van een quiz kies je per vraag bij **"Punten voor een goed antwoord"** hoeveel punten die vraag oplevert (standaard 1000, zelf aan te passen in stapjes van 50). Tijdens **live hosten** ziet zowel de quizmaster als de spelers boven de vraag hoeveel punten hij waard is. Oudere vragen zonder deze instelling tellen gewoon als 1000 punten, zoals voorheen.
 - Staat het na een vraag gelijk in punten, dan wint degene die (over alle beantwoorde vragen samen) **het snelst klikte** — dus hoe eerder je op "Antwoord versturen" klikt bij een goed antwoord, hoe beter je rangschikt bij een gelijke stand.
 - Het scorebord toont iedereen gerangschikt van hoog naar laag, met plek, dier en naam; spelers zien hun eigen rij gemarkeerd.
+- Bij **"Zonder mensen"** (solo spelen) is er geen puntentelling; daar zie je aan het eind gewoon hoeveel vragen je goed had.
 
 ### Host verlaat de quiz (nieuw)
 Zodra de quizmaster op "Terug" of "Afronden" klikt, of het tabblad sluit / de verbinding verliest (via Firebase `onDisconnect`), wordt de sessie verwijderd. Alle spelers die op dat moment meedoen, zien meteen een scherm dat de quiz gestopt is en kunnen terug naar start.
