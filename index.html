@@ -16,10 +16,12 @@
     <section id="scherm-algemeen" class="scherm actief">
       <h1 class="titel-regenboog">Quizzzzz</h1>
       <p class="subtitel">Maak een quiz of doe mee met een quiz</p>
+      <div class="munten-weergave">💰 <span class="munten-aantal">0</span> munten</div>
       <div class="vakken-rij">
         <button class="vak vak-maken" id="btn-naar-quizmaken">Quiz maken</button>
         <button class="vak vak-speelbaar" id="btn-naar-speelbaar">Speelbare quizzen</button>
         <button class="vak vak-meedoen" id="btn-naar-meedoen">Meedoen aan quiz</button>
+        <button class="vak vak-winkel" id="btn-naar-winkel">🎁 Winkel</button>
       </div>
     </section>
 
@@ -292,6 +294,17 @@
       <button class="btn btn-secondary" id="btn-solo-terug">Terug</button>
     </section>
 
+    <!-- SCHERM: WINKEL (mysterieboxen kopen) -->
+    <section id="scherm-winkel" class="scherm">
+      <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
+      <h2 class="titel-regenboog">Winkel</h2>
+      <p class="subtitel">Koop mysterieboxen met munten. Alles wat erin zit, krijg en houd je voorgoed. Munten verdien je door een quiz "Met mensen" te winnen.</p>
+      <div class="munten-weergave">💰 <span class="munten-aantal">0</span> munten</div>
+      <button class="btn btn-primary" id="btn-winkel-nieuwe-box" type="button" style="display:none">+ Nieuwe mysteriebox maken</button>
+      <div id="winkel-boxen-lijst" class="quizzen-grid"></div>
+      <p id="winkel-geen-boxen" class="subtitel" style="display:none">Er zijn nog geen mysterieboxen. Kom later nog eens terug!</p>
+    </section>
+
     <button class="btn-sitebeheer" id="btn-sitebeheer" type="button">⚙ Sitebeheer</button>
 
   </div>
@@ -341,6 +354,34 @@
       <div class="sitebeheer-knoppen">
         <button class="btn btn-secondary" id="btn-sitebeheer-annuleren" type="button">Annuleren</button>
         <button class="btn btn-primary" id="btn-sitebeheer-bevestigen" type="button">Inloggen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MYSTERIEBOX: aanmaken/aanpassen (alleen zichtbaar voor sitebeheer) -->
+  <div id="box-bewerken-overlay" class="sitebeheer-overlay">
+    <div class="sitebeheer-venster box-venster">
+      <h3 id="box-bewerken-titel">Nieuwe mysteriebox</h3>
+
+      <label for="input-box-naam">Naam van de box</label>
+      <input type="text" id="input-box-naam" placeholder="Bijv. Jungle box" maxlength="40">
+
+      <label for="input-box-prijs">Prijs (munten)</label>
+      <input type="number" id="input-box-prijs" min="0" step="10" value="100">
+
+      <p>Kies wat erin zit. De koper krijgt en houdt alles wat je hier aanvinkt.</p>
+
+      <div class="kiezer-groep-titel">Dieren</div>
+      <div id="box-items-dieren" class="dieren-kiezer accessoires"></div>
+
+      <div class="kiezer-groep-titel">Accessoires</div>
+      <div id="box-items-accessoires" class="dieren-kiezer accessoires"></div>
+
+      <p id="box-bewerken-foutmelding" class="foutmelding"></p>
+      <div class="sitebeheer-knoppen">
+        <button class="btn btn-secondary" id="btn-box-annuleren" type="button">Annuleren</button>
+        <button class="btn-verwijderen-quiz" id="btn-box-verwijderen" type="button" style="display:none">Verwijderen</button>
+        <button class="btn btn-primary" id="btn-box-opslaan" type="button">Opslaan</button>
       </div>
     </div>
   </div>
