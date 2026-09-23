@@ -90,6 +90,8 @@ btnSitebeheerBevestigenEl.addEventListener('click', probeerSitebeheerInloggen);
 auth.onAuthStateChanged(gebruiker => {
   sitebeheerActief = !!gebruiker;
   werkSitebeheerKnopBij();
+  const extraPoppetjesKnop = document.getElementById('btn-sitebeheer-poppetjes');
+  if (extraPoppetjesKnop) extraPoppetjesKnop.style.display = sitebeheerActief ? 'block' : 'none';
   if (document.getElementById('scherm-speelbare-quizzen').classList.contains('actief')) {
     laadOpenbareQuizzen();
   }
@@ -2819,8 +2821,7 @@ function werkPoppetjesBeheerKnopBij(){
   const knop=document.getElementById('btn-sitebeheer-poppetjes');
   if(knop)knop.style.display=sitebeheerActief?'block':'none';
 }
-const oudeWerkSitebeheerKnopBij=werkSitebeheerKnopBij;
-werkSitebeheerKnopBij=function(){oudeWerkSitebeheerKnopBij();werkPoppetjesBeheerKnopBij();};
+setTimeout(werkPoppetjesBeheerKnopBij, 0);
 
 const oudeBouwBoxItemsKiezer=bouwBoxItemsKiezer;
 bouwBoxItemsKiezer=function(){
@@ -2855,28 +2856,9 @@ bouwBoxItemsKiezer=function(){
   });
 };
 
-laadAangepasteCatalogus().then(() => bouwKiezer());
+bouwKiezer();
+laadAangepasteCatalogus().then(() => { bouwKiezer(); werkMuntenWeergaveBij(); });
 werkMuntenWeergaveBij();
 
 // ---------- Bij het openen van de site: naam bij eigen quizzen zetten ----------
 koppelMakerNaamAanEigenQuizzen();
-
-======================== firebase-config.js ========================
-
-// Vervang onderstaande waarden door jouw eigen Firebase-configuratie.
-// Je vindt deze in de Firebase Console:
-// Project instellingen -> Algemeen -> "Jouw apps" -> Web app -> SDK setup and configuration
-
-const firebaseConfig = {
-  apiKey: "AIzaSyD9tLFsO8SXHgoqs2_n7wl8FPlcB_w-yz0",
-  authDomain: "quizwebsite-f7951.firebaseapp.com",
-  databaseURL: "https://quizwebsite-f7951-default-rtdb.europe-west1.firebasedatabase.app/",
-  projectId: "quizwebsite-f7951",
-  storageBucket: "quizwebsite-f7951.firebasestorage.app",
-  messagingSenderId: "560493888721",
-  appId: "1:560493888721:web:2726e9d4a86bbf3df231f0"
-};
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const auth = firebase.auth();
