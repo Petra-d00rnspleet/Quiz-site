@@ -1028,6 +1028,27 @@ label {
   justify-content: flex-start;
 }
 
+/* ---------- Zoekbalken (speelbare quizzen + sitebeheer makersoverzicht) ---------- */
+
+.zoekbalk {
+  margin-bottom: 14px;
+}
+
+.sitebeheer-makers-zoek {
+  margin-bottom: 12px;
+}
+
+.sitebeheer-makers-zoek input {
+  padding: 9px 12px;
+  font-size: 14px;
+}
+
+.sitebeheer-makers-leeg {
+  color: #9a97a8;
+  font-size: 14px;
+  margin: 6px 0 0;
+}
+
 /* ---------- Sitebeheer: overzicht van alle quizmakers ---------- */
 
 .sitebeheer-makers {
