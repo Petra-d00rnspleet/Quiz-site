@@ -476,9 +476,93 @@ function geldigeAccessoires(accessoires) {
   return resultaat;
 }
 
+
+// ---------------------------------------------------------------------------
+// Aangepaste poppetjes/accessoires die sitebeheer kan maken uit een emoji.
+// Deze worden vanuit Firebase geregistreerd door app.js. Ze gebruiken een
+// eenvoudige, apparaat-onafhankelijke SVG in plaats van het emoji-lettertype
+// rechtstreeks in de pagina.
+// ---------------------------------------------------------------------------
+const AANGEPASTE_POPPETJES = {};
+const AANGEPASTE_ACCESSOIRES = {};
+
+function maakEmojiTekst(emoji, x, y, grootte = 52) {
+  const veilig = String(emoji || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-size="${grootte}" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">${veilig}</text>`;
+}
+
+function registreerAangepastPoppetje(id, data) {
+  const sleutel = String(id);
+  AANGEPASTE_POPPETJES[sleutel] = Object.assign({}, data, { id: sleutel });
+  if (DIEREN.indexOf(sleutel) === -1) DIEREN.push(sleutel);
+}
+
+function registreerAangepastAccessoire(id, data) {
+  const sleutel = String(id);
+  const plek = data.plek || 'hoek';
+  AANGEPASTE_ACCESSOIRES[sleutel] = Object.assign({}, data, { id: sleutel, plek: plek });
+  ACCESSOIRES[sleutel] = Object.assign({}, ACCESSOIRES[sleutel] || {}, {
+    plek: plek,
+    naam: data.naam || 'Aangepast accessoire',
+    customEmoji: data.emoji || '✨',
+    customKleur: data.kleur || '#f0c04d'
+  });
+  let groep = ACCESSOIRE_GROEPEN.find(g => g.plek === plek);
+  if (!groep) {
+    groep = { plek: plek, titel: plek === 'boven' ? 'Hoeden' : plek === 'gezicht' ? 'Brillen' : 'Hartjes en meer', items: [] };
+    ACCESSOIRE_GROEPEN.push(groep);
+  }
+  if (groep.items.indexOf(sleutel) === -1) groep.items.push(sleutel);
+}
+
+function verwijderAangepastPoppetjeUitCatalogus(id) {
+  const i = DIEREN.indexOf(id);
+  if (i !== -1) DIEREN.splice(i, 1);
+  delete AANGEPASTE_POPPETJES[id];
+}
+
+function verwijderAangepastAccessoireUitCatalogus(id) {
+  delete ACCESSOIRES[id];
+  delete AANGEPASTE_ACCESSOIRES[id];
+  ACCESSOIRE_GROEPEN.forEach(g => {
+    const i = g.items.indexOf(id);
+    if (i !== -1) g.items.splice(i, 1);
+  });
+}
+
+function tekenAangepastPoppetje(data) {
+  const kleur = data.kleur || '#8b93a3';
+  const emoji = data.emoji || '🙂';
+  return {
+    achter: `<ellipse cx="50" cy="56" rx="35" ry="37" fill="${kleur}" opacity=".96"/>`,
+    hoofd: `<ellipse cx="50" cy="59" rx="31" ry="30" fill="${kleur}"/>` +
+      `<ellipse cx="39" cy="55" rx="4" ry="5" fill="#2b2140"/><ellipse cx="61" cy="55" rx="4" ry="5" fill="#2b2140"/>` +
+      `<circle cx="38" cy="53" r="1.3" fill="#fff"/><circle cx="60" cy="53" r="1.3" fill="#fff"/>` +
+      `<path d="M42 71 Q50 77 58 71" fill="none" stroke="#2b2140" stroke-width="2.5" stroke-linecap="round"/>` +
+      `<circle cx="50" cy="67" r="2.5" fill="#ff8fa3"/>` +
+      maakEmojiTekst(emoji, 50, 36, 27),
+    voor: '',
+    kruin: { x: 50, y: 29, b: 46 },
+    ogen: { y: 55, dx: 11 }
+  };
+}
+
+function tekenAangepastAccessoire(id, data) {
+  const emoji = data.emoji || '✨';
+  const kleur = data.kleur || '#f0c04d';
+  const plek = data.plek || 'hoek';
+  const naam = data.naam || 'Aangepast accessoire';
+  return Object.assign({}, ACCESSOIRES[id], {
+    plek, naam, customEmoji: emoji, customKleur: kleur
+  });
+}
+
 // Bouwt het hele poppetje als SVG-tekst: dier + accessoires, passend gemaakt.
 function poppetjeSvg(dier, accessoires) {
-  const tekening = DIER_TEKENINGEN[dier];
+  let tekening = DIER_TEKENINGEN[dier];
+  if (!tekening && AANGEPASTE_POPPETJES[dier]) {
+    tekening = tekenAangepastPoppetje(AANGEPASTE_POPPETJES[dier]);
+  }
   if (!tekening) return '';
   const acc = geldigeAccessoires(accessoires);
 
@@ -486,9 +570,17 @@ function poppetjeSvg(dier, accessoires) {
 
   if (acc.boven) {
     const k = tekening.kruin;
-    const hoed = ACCESSOIRES[acc.boven].tekening;
-    const hoedTekening = typeof hoed === 'function' ? hoed(k.strik) : hoed;
-    delen += `<g transform="translate(${k.x} ${k.y}) rotate(${k.r || 0}) scale(${k.b / 100})">${hoedTekening}</g>`;
+    const boven = ACCESSOIRES[acc.boven];
+    if (boven.customEmoji) {
+      const kleur = boven.customKleur || '#f0c04d';
+      delen += `<g transform="translate(${k.x} ${k.y}) rotate(${k.r || 0}) scale(${k.b / 100})">` +
+        `<ellipse cx="0" cy="-22" rx="32" ry="12" fill="${kleur}" opacity=".95"/>` +
+        maakEmojiTekst(boven.customEmoji, 0, -24, 42) + `</g>`;
+    } else {
+      const hoed = boven.tekening;
+      const hoedTekening = typeof hoed === 'function' ? hoed(k.strik) : hoed;
+      delen += `<g transform="translate(${k.x} ${k.y}) rotate(${k.r || 0}) scale(${k.b / 100})">${hoedTekening}</g>`;
+    }
   }
 
   delen += tekening.voor;
@@ -501,7 +593,14 @@ function poppetjeSvg(dier, accessoires) {
   }
 
   if (acc.hoek) {
-    delen += `<g transform="translate(77 -10) scale(1.2)">${ACCESSOIRES[acc.hoek].tekening}</g>`;
+    const hoekAcc = ACCESSOIRES[acc.hoek];
+    if (hoekAcc.customEmoji) {
+      delen += `<g transform="translate(77 -10) scale(1.2)">` +
+        `<circle cx="12" cy="12" r="12" fill="${hoekAcc.customKleur || '#f0c04d'}" opacity=".35"/>` +
+        maakEmojiTekst(hoekAcc.customEmoji, 12, 12, 24) + `</g>`;
+    } else {
+      delen += `<g transform="translate(77 -10) scale(1.2)">${hoekAcc.tekening}</g>`;
+    }
   }
 
   return `<svg class="poppetje-svg" viewBox="-10 -26 120 126" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${delen}</svg>`;
