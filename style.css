@@ -211,7 +211,7 @@ h2.titel-regenboog {
 .vakken-rij {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 18px;
   margin-top: 12px;
 }
@@ -256,6 +256,23 @@ h2.titel-regenboog {
 
 .vak-meedoen {
   background: linear-gradient(160deg, #0d1c3a 0%, #0c1230 60%);
+}
+
+.vak-winkel {
+  background: linear-gradient(160deg, #2a1c3a 0%, #0c1230 60%);
+}
+
+/* ---------- Munten (verdien je door een live quiz te winnen; besteed je in de winkel) ---------- */
+
+.munten-weergave {
+  align-self: center;
+  background: #10152e;
+  border: 1px solid #4a3c1a;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-weight: 700;
+  color: #f0c04d;
+  margin: 0 0 14px 0;
 }
 
 /* ---------- Algemene elementen ---------- */
@@ -1478,6 +1495,16 @@ h2.titel-regenboog.host-resultaat-vraag {
 
 /* ---------- Kiezen: met mensen of alleen spelen ---------- */
 
+.box-venster {
+  max-width: 480px;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.box-venster .dieren-kiezer {
+  max-width: 100%;
+}
+
 .sitebeheer-venster.speelkeuze-venster {
   max-width: 440px;
 }
@@ -1648,6 +1675,14 @@ h2.titel-regenboog.host-resultaat-vraag {
   font-size: 13px;
   color: #9a97a8;
   text-align: left;
+}
+
+.kiezer-hint {
+  grid-column: 1 / -1;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #9a97a8;
+  text-align: center;
 }
 
 .kiezer-weg-knop {
