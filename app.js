@@ -393,6 +393,30 @@ function normaliseerVraag(vraag) {
   };
 }
 
+// Zet een getal om naar een leesbare tekst met duizendtal-punten (Nederlandse notatie),
+// bijv. 1000000 -> "1.000.000". Wordt gebruikt om het puntenveld mooi te tonen.
+function formatPunten(getal) {
+  return getal.toLocaleString('nl-NL');
+}
+
+// Leest het puntenveld van een vraagblok. Haalt eerst alles weg wat geen cijfer is
+// (dus ook duizendtal-punten of -komma's die iemand zelf intypt, bijv. "1.000.000"),
+// zodat grote aantallen punten nooit per ongeluk als ongeldig worden gezien en stil
+// terugvallen op de standaardwaarde.
+function leesPuntenWaarde(blokEl) {
+  const ruweTekst = blokEl.querySelector('.veld-punten').value;
+  const cijfers = ruweTekst.replace(/[^\d]/g, '');
+  if (!cijfers) return 1000; // leeg veld: terugvallen op de standaardwaarde
+  const getal = parseInt(cijfers, 10);
+  return (Number.isFinite(getal) && getal >= 0) ? getal : 1000;
+}
+
+// Zet een getal netjes geformatteerd in het puntenveld van een vraagblok.
+function zetPuntenWaarde(blokEl, getal) {
+  const veilig = Math.max(0, getal);
+  blokEl.querySelector('.veld-punten').value = formatPunten(veilig);
+}
+
 // Vergelijkt twee lijsten met antwoordnummers zonder rekening te houden met volgorde.
 function setsGelijk(a, b) {
   if (!a || !b || a.length !== b.length) return false;
@@ -480,7 +504,7 @@ function voegVraagBlokToe(vraagData) {
 
     blokEl.querySelector('.veld-vraag').value = genormaliseerd.vraag;
     blokEl.querySelector('.veld-aantal-antwoorden').value = String(aantalAntwoorden);
-    blokEl.querySelector('.veld-punten').value = String(genormaliseerd.punten);
+    zetPuntenWaarde(blokEl, genormaliseerd.punten);
 
     const antwoordVelden = blokEl.querySelectorAll('.veld-antwoord');
     const goedVinkjes = blokEl.querySelectorAll('.veld-goed-vinkje');
@@ -518,6 +542,25 @@ function voegVraagBlokToe(vraagData) {
       .finally(() => {
         e.target.value = '';
       });
+  });
+
+  // Punten-stappenteller: +/- knoppen tellen in stappen van 50 op/af, en het veld
+  // wordt na het typen automatisch netjes geformatteerd (bijv. "1.000.000").
+  const stapGrootte = 50;
+  blokEl.querySelector('.btn-punten-min').addEventListener('click', () => {
+    zetPuntenWaarde(blokEl, leesPuntenWaarde(blokEl) - stapGrootte);
+  });
+  blokEl.querySelector('.btn-punten-plus').addEventListener('click', () => {
+    zetPuntenWaarde(blokEl, leesPuntenWaarde(blokEl) + stapGrootte);
+  });
+  const puntenVeld = blokEl.querySelector('.veld-punten');
+  puntenVeld.addEventListener('input', () => {
+    // Laat tijdens het typen alleen cijfers en punten toe.
+    const schoon = puntenVeld.value.replace(/[^\d.]/g, '');
+    if (schoon !== puntenVeld.value) puntenVeld.value = schoon;
+  });
+  puntenVeld.addEventListener('blur', () => {
+    zetPuntenWaarde(blokEl, leesPuntenWaarde(blokEl));
   });
 
   blokEl.querySelector('.veld-aantal-antwoorden').addEventListener('change', (e) => {
@@ -650,8 +693,7 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
     const goedAntwoorden = goedVinkjes
       .map((vinkje, i) => vinkje.checked ? i + 1 : null)
       .filter(i => i !== null);
-    const puntenIngevoerd = parseInt(blok.querySelector('.veld-punten').value, 10);
-    const punten = (Number.isFinite(puntenIngevoerd) && puntenIngevoerd >= 0) ? puntenIngevoerd : 1000;
+    const punten = leesPuntenWaarde(blok);
 
     if (!vraagTekst || antwoorden.some(a => !a)) {
       foutmelding.textContent = 'Vul bij elke vraag de vraagtekst en alle antwoorden in.';
@@ -1528,7 +1570,7 @@ function renderScorebordLijst(containerId, spelers, eigenSpelerId) {
 
     const score = document.createElement('div');
     score.className = 'scorebord-score';
-    score.textContent = (speler.score || 0) + ' pt';
+    score.textContent = formatPunten(speler.score || 0) + ' pt';
 
     rij.appendChild(plek); // 1e, 2e, 3e plek enz. blijven gewoon staan
     const dier = geldigDier(speler.dier);
