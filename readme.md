@@ -182,3 +182,13 @@ De maker zelf ziet bij "Mijn quizzen" een gele melding op een geblokkeerde quiz 
 - Bij een gelijke eindstand op #1 krijgt nu maar één speler de winnaarsmunten (degene die als eerste in de sorteervolgorde staat, dus de snelste van de twee) — dat zou je kunnen veranderen naar "iedereen op #1 krijgt munten".
 - Punten laten afnemen naarmate je langzamer antwoordt (in plaats van altijd vlak 1000 punten).
 - Gedeeltelijke punten geven als een speler bij een vraag met meerdere goede antwoorden er een paar goed heeft, maar niet allemaal.
+
+
+## Nieuwe functie: eigen poppetjes en accessoires
+Sitebeheer kan in de Winkel via `🎨 Poppetjes & accessoires maken` een eigen poppetje of accessoire maken. Kies een emoji, naam en kleur. Bij accessoires kies je ook de plek. Je krijgt direct een preview en kunt meteen een bestaande mysteriebox/kist kiezen; het nieuwe item wordt dan automatisch aan die kist toegevoegd.
+
+Nieuwe Firebase-tak: `aangepastePoppetjes`. Voeg naast de bestaande databasepaden deze regel toe:
+```json
+"aangepastePoppetjes": { ".read": true, ".write": true }
+```
+Voor een echte openbare site zijn strengere Firebase-regels aan te raden.
