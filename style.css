@@ -1701,3 +1701,12 @@ h2.titel-regenboog.host-resultaat-vraag {
   border-color: #ff5c72;
   background: #1c1a33;
 }
+
+/* ---------- Sitebeheer: aangepaste poppetjes ---------- */
+.kleur-kiezer-rij{display:flex;align-items:center;gap:12px;margin:4px 0 10px}
+.kleur-kiezer-rij input[type="color"]{width:58px;height:40px;padding:2px;border:1px solid #6b5a2b;border-radius:10px;background:#10152e}
+#custom-item-kleur-waarde{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#f0c04d}
+.custom-item-preview-label{margin-top:12px;font-weight:700;color:#f0c04d}
+.custom-item-preview{min-height:150px;display:flex;align-items:center;justify-content:center;border:1px solid #4a3c1a;border-radius:16px;background:#080d26;margin:8px 0 12px}
+.custom-item-preview .poppetje-svg{width:130px;height:130px}
+.poppetjes-maker-venster{max-height:90vh;overflow:auto}
