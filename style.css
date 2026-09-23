@@ -384,6 +384,62 @@ label {
   color: #f0c04d;
 }
 
+.punten-stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #10152e;
+  border: 1px solid #4a3c1a;
+  border-radius: 12px;
+  padding: 6px;
+}
+
+.punten-stepper .veld-punten {
+  flex: 1;
+  width: auto;
+  border: none;
+  background: transparent;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: #f0c04d;
+  padding: 8px 4px;
+  letter-spacing: 0.5px;
+}
+
+.punten-stepper .veld-punten:focus {
+  outline: none;
+  box-shadow: none;
+  border: none;
+}
+
+.btn-punten-stap {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid #4a3c1a;
+  background: #0c1130;
+  color: #f0c04d;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: filter 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.btn-punten-stap:hover {
+  border-color: #f0c04d;
+  filter: brightness(1.15);
+}
+
+.btn-punten-stap:active {
+  transform: scale(0.92);
+}
+
 .vraag-blok {
   border: 1px solid #4a3c1a;
   border-radius: 14px;
