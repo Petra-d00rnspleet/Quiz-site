@@ -381,11 +381,15 @@ function normaliseerVraag(vraag) {
   if (!goedAntwoorden) {
     goedAntwoorden = vraag.goedAntwoord ? [vraag.goedAntwoord] : [];
   }
+  // Oudere vragen (gemaakt vóór punten instelbaar waren) hebben geen `punten`
+  // veld; die tellen gewoon als 1000, zoals voorheen altijd het geval was.
+  const punten = (typeof vraag.punten === 'number' && vraag.punten >= 0) ? vraag.punten : 1000;
   return {
     vraag: vraag.vraag,
     antwoorden: vraag.antwoorden || [],
     goedAntwoorden: goedAntwoorden,
-    afbeelding: vraag.afbeelding || ''
+    afbeelding: vraag.afbeelding || '',
+    punten: punten
   };
 }
 
@@ -476,6 +480,7 @@ function voegVraagBlokToe(vraagData) {
 
     blokEl.querySelector('.veld-vraag').value = genormaliseerd.vraag;
     blokEl.querySelector('.veld-aantal-antwoorden').value = String(aantalAntwoorden);
+    blokEl.querySelector('.veld-punten').value = String(genormaliseerd.punten);
 
     const antwoordVelden = blokEl.querySelectorAll('.veld-antwoord');
     const goedVinkjes = blokEl.querySelectorAll('.veld-goed-vinkje');
@@ -645,6 +650,8 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
     const goedAntwoorden = goedVinkjes
       .map((vinkje, i) => vinkje.checked ? i + 1 : null)
       .filter(i => i !== null);
+    const puntenIngevoerd = parseInt(blok.querySelector('.veld-punten').value, 10);
+    const punten = (Number.isFinite(puntenIngevoerd) && puntenIngevoerd >= 0) ? puntenIngevoerd : 1000;
 
     if (!vraagTekst || antwoorden.some(a => !a)) {
       foutmelding.textContent = 'Vul bij elke vraag de vraagtekst en alle antwoorden in.';
@@ -658,7 +665,8 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
     const vraagData = {
       vraag: vraagTekst,
       antwoorden: antwoorden,
-      goedAntwoorden: goedAntwoorden
+      goedAntwoorden: goedAntwoorden,
+      punten: punten
     };
     if (blok._afbeelding) {
       vraagData.afbeelding = blok._afbeelding;
@@ -1682,7 +1690,8 @@ function renderSessieVoorHost(sessie) {
     const vraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
 
     document.getElementById('host-voortgang-weergave').textContent =
-      'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length;
+      'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length +
+      ' · ' + vraag.punten + (vraag.punten === 1 ? ' punt' : ' punten');
     document.getElementById('host-vraag-weergave').textContent = vraag.vraag;
     toonVraagFoto('host-vraag-foto', vraag.afbeelding);
 
@@ -1815,7 +1824,7 @@ function berekenScoresEnToonResultaat() {
       if (setsGelijk(gekozenIndexen, vraag.goedAntwoorden)) {
         const huidigeScore = spelers[spelerId].score || 0;
         const huidigeTijd = spelers[spelerId].totaleReactietijd || 0;
-        updates['spelers/' + spelerId + '/score'] = huidigeScore + 1000;
+        updates['spelers/' + spelerId + '/score'] = huidigeScore + (typeof vraag.punten === 'number' ? vraag.punten : 1000);
         updates['spelers/' + spelerId + '/totaleReactietijd'] = huidigeTijd + (antwoord.reactietijdMs || 0);
       }
     });
@@ -1989,7 +1998,8 @@ function renderSessieVoorSpeler(sessie) {
       toonScherm('scherm-speler-antwoord-verzonden');
     } else {
       document.getElementById('speler-voortgang-weergave').textContent =
-        'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length;
+        'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length +
+        ' · ' + vraag.punten + (vraag.punten === 1 ? ' punt' : ' punten');
       document.getElementById('speler-vraag-weergave').textContent = vraag.vraag;
       toonVraagFoto('speler-vraag-foto', vraag.afbeelding);
 
