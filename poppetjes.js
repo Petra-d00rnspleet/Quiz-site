@@ -341,6 +341,12 @@ const DIER_TEKENINGEN = {
 
 const DIEREN = Object.keys(DIER_TEKENINGEN);
 
+// Deze twee dieren heeft iedereen gratis. De rest van DIEREN hierboven blijft
+// gewoon bestaan (de tekeningen zijn nodig zodra iemand zo'n dier wint uit een
+// mysteriebox), maar wordt nergens meer standaard aangeboden: sitebeheer stopt
+// ze desgewenst in een mysteriebox in de winkel (zie app.js, "Winkel").
+const STANDAARD_DIEREN = ['🐶', '🐱'];
+
 // ---------------------------------------------------------------------------
 // Accessoires. Elke plek (boven / gezicht / hoek) heeft eigen tekeningen.
 // Hoeden zijn getekend met de onderkant op y=0 en het midden op x=0; een
@@ -454,6 +460,10 @@ const ACCESSOIRE_GROEPEN = [
   { plek: 'gezicht', titel: 'Brillen',         items: ['🕶️', '👓'] },
   { plek: 'hoek',    titel: 'Hartjes en meer', items: ['❤️', '💖', '💙', '💚', '💛', '💜', '⭐', '✨', '🌸', '🔥', '💎', '🍀'] }
 ];
+
+// Deze bril heeft iedereen gratis. De rest van ACCESSOIRE_GROEPEN hierboven
+// (hoeden, de gewone bril, hartjes en meer) zit verstopt in mysterieboxen.
+const STANDAARD_ACCESSOIRES = ['🕶️'];
 
 // Geeft alleen de geldige accessoires terug, als { plek: emoji }.
 function geldigeAccessoires(accessoires) {
