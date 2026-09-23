@@ -2695,8 +2695,188 @@ document.getElementById('btn-solo-opnieuw').addEventListener('click', () => {
   toonSoloVraag();
 });
 
-bouwKiezer();
+
+// ================================================================
+// SITEBEHEER: eigen poppetjes/accessoires maken vanuit een emoji
+// ================================================================
+const customCatalogus = { dieren: {}, accessoires: {} };
+
+function naamVanDier(dier) {
+  return AANGEPASTE_POPPETJES[dier]?.naam || dier;
+}
+
+function laadAangepasteCatalogus() {
+  return db.ref('aangepastePoppetjes').once('value').then(snapshot => {
+    Object.keys(AANGEPASTE_POPPETJES).forEach(k => verwijderAangepastPoppetjeUitCatalogus(k));
+    Object.keys(AANGEPASTE_ACCESSOIRES).forEach(k => verwijderAangepastAccessoireUitCatalogus(k));
+    customCatalogus.dieren = {};
+    customCatalogus.accessoires = {};
+    const data = snapshot.val() || {};
+    Object.entries(data.dieren || {}).forEach(([id,item]) => {
+      registreerAangepastPoppetje(id,item);
+      customCatalogus.dieren[id]=item;
+    });
+    Object.entries(data.accessoires || {}).forEach(([id,item]) => {
+      registreerAangepastAccessoire(id,item);
+      customCatalogus.accessoires[id]=item;
+    });
+  }).catch(() => {});
+}
+
+function bouwCustomPreview() {
+  const type=document.getElementById('custom-item-type').value;
+  const emoji=document.getElementById('custom-item-emoji').value.trim() || (type==='dier'?'🙂':'✨');
+  const kleur=document.getElementById('custom-item-kleur').value || '#f0c04d';
+  const preview=document.getElementById('custom-item-preview');
+  if(type==='dier'){
+    const id='__preview_custom_dier__';
+    registreerAangepastPoppetje(id,{emoji,kleur,naam:'Voorbeeld'});
+    preview.innerHTML=poppetjeSvg(id,{});
+    verwijderAangepastPoppetjeUitCatalogus(id);
+  } else {
+    const plek=document.getElementById('custom-accessoire-plek').value;
+    const id='__preview_custom_acc__';
+    registreerAangepastAccessoire(id,{emoji,kleur,naam:'Voorbeeld',plek});
+    preview.innerHTML=poppetjeSvg(STANDAARD_DIEREN[0],{[plek]:id});
+    verwijderAangepastAccessoireUitCatalogus(id);
+  }
+}
+
+function laadCustomBoxenVoorKiezer(){
+  const select=document.getElementById('custom-item-box');
+  select.innerHTML='<option value="">Geen kist (later toevoegen)</option>';
+  return db.ref('mysterieboxen').once('value').then(snapshot=>{
+    Object.entries(snapshot.val()||{}).forEach(([id,box])=>{
+      const optie=document.createElement('option');
+      optie.value=id;
+      optie.textContent=(box.naam||'Mysteriebox')+' ('+(box.prijs||0)+' munten)';
+      select.appendChild(optie);
+    });
+  });
+}
+
+function openCustomPoppetjesMaker(){
+  if(!sitebeheerActief)return;
+  document.getElementById('poppetjes-bewerken-foutmelding').textContent='';
+  document.getElementById('custom-item-type').value='dier';
+  document.getElementById('custom-item-emoji').value='🐸';
+  document.getElementById('custom-item-naam').value='';
+  document.getElementById('custom-item-kleur').value='#63c174';
+  document.getElementById('custom-item-kleur-waarde').textContent='#63c174';
+  document.getElementById('custom-accessoire-plek-wrap').style.display='none';
+  laadCustomBoxenVoorKiezer().finally(bouwCustomPreview);
+  document.getElementById('poppetjes-bewerken-overlay').classList.add('actief');
+}
+function sluitCustomPoppetjesMaker(){document.getElementById('poppetjes-bewerken-overlay').classList.remove('actief');}
+function updateCustomMakerType(){
+  const type=document.getElementById('custom-item-type').value;
+  document.getElementById('custom-accessoire-plek-wrap').style.display=type==='accessoire'?'':'none';
+  bouwCustomPreview();
+}
+
+document.getElementById('btn-sitebeheer-poppetjes').addEventListener('click',openCustomPoppetjesMaker);
+document.getElementById('btn-poppetjes-annuleren').addEventListener('click',sluitCustomPoppetjesMaker);
+document.getElementById('custom-item-type').addEventListener('change',updateCustomMakerType);
+document.getElementById('custom-accessoire-plek').addEventListener('change',bouwCustomPreview);
+document.getElementById('custom-item-emoji').addEventListener('input',bouwCustomPreview);
+document.getElementById('custom-item-kleur').addEventListener('input',e=>{
+  document.getElementById('custom-item-kleur-waarde').textContent=e.target.value;
+  bouwCustomPreview();
+});
+
+document.getElementById('btn-poppetje-opslaan').addEventListener('click',async()=>{
+  if(!sitebeheerActief)return;
+  const fout=document.getElementById('poppetjes-bewerken-foutmelding');
+  const type=document.getElementById('custom-item-type').value;
+  const emoji=document.getElementById('custom-item-emoji').value.trim();
+  const naam=document.getElementById('custom-item-naam').value.trim();
+  const kleur=document.getElementById('custom-item-kleur').value;
+  const boxId=document.getElementById('custom-item-box').value;
+  if(!emoji){fout.textContent='Kies een emoji.';return;}
+  if(!naam){fout.textContent='Geef het item een naam.';return;}
+  const id=db.ref('aangepastePoppetjes').push().key;
+  const data={emoji,naam,kleur};
+  if(type==='accessoire')data.plek=document.getElementById('custom-accessoire-plek').value;
+  try{
+    await db.ref('aangepastePoppetjes/'+(type==='dier'?'dieren/':'accessoires/')+id).set(data);
+    if(boxId){
+      const snap=await db.ref('mysterieboxen/'+boxId).once('value');
+      const box=snap.val()||{};
+      const veld=type==='dier'?'dieren':'accessoires';
+      const lijst=Array.isArray(box[veld])?box[veld].slice():[];
+      if(!lijst.includes(id))lijst.push(id);
+      await db.ref('mysterieboxen/'+boxId+'/'+veld).set(lijst);
+    }
+    await laadAangepasteCatalogus();
+    bouwKiezer();
+    if(document.getElementById('scherm-winkel').classList.contains('actief'))laadWinkelBoxen();
+    sluitCustomPoppetjesMaker();
+    alert('🎉 '+naam+' is gemaakt en opgeslagen.');
+  }catch(e){fout.textContent='Opslaan is niet gelukt. Controleer Firebase en probeer opnieuw.';}
+});
+
+function werkPoppetjesBeheerKnopBij(){
+  const knop=document.getElementById('btn-sitebeheer-poppetjes');
+  if(knop)knop.style.display=sitebeheerActief?'block':'none';
+}
+const oudeWerkSitebeheerKnopBij=werkSitebeheerKnopBij;
+werkSitebeheerKnopBij=function(){oudeWerkSitebeheerKnopBij();werkPoppetjesBeheerKnopBij();};
+
+const oudeBouwBoxItemsKiezer=bouwBoxItemsKiezer;
+bouwBoxItemsKiezer=function(){
+  oudeBouwBoxItemsKiezer();
+  const dierenEl=document.getElementById('box-items-dieren');
+  Object.entries(AANGEPASTE_POPPETJES).forEach(([id,item])=>{
+    const knop=document.createElement('button');
+    knop.type='button';knop.className='dier-knop';knop.innerHTML=poppetjeSvg(id,{});
+    knop.title=item.naam||item.emoji;
+    knop.classList.toggle('gekozen',boxGeselecteerdeDieren.indexOf(id)!==-1);
+    knop.addEventListener('click',()=>{
+      const i=boxGeselecteerdeDieren.indexOf(id);
+      if(i===-1)boxGeselecteerdeDieren.push(id);else boxGeselecteerdeDieren.splice(i,1);
+      knop.classList.toggle('gekozen');
+    });
+    dierenEl.appendChild(knop);
+  });
+  const accEl=document.getElementById('box-items-accessoires');
+  Object.entries(AANGEPASTE_ACCESSOIRES).forEach(([id,item])=>{
+    const plek=item.plek||'hoek', voorbeeld={[plek]:id};
+    const knop=document.createElement('button');
+    knop.type='button';knop.className='dier-knop';
+    knop.innerHTML=poppetjeSvg(STANDAARD_DIEREN[0],voorbeeld);
+    knop.title=item.naam||item.emoji;
+    knop.classList.toggle('gekozen',boxGeselecteerdeAccessoires.indexOf(id)!==-1);
+    knop.addEventListener('click',()=>{
+      const i=boxGeselecteerdeAccessoires.indexOf(id);
+      if(i===-1)boxGeselecteerdeAccessoires.push(id);else boxGeselecteerdeAccessoires.splice(i,1);
+      knop.classList.toggle('gekozen');
+    });
+    accEl.appendChild(knop);
+  });
+};
+
+laadAangepasteCatalogus().then(() => bouwKiezer());
 werkMuntenWeergaveBij();
 
 // ---------- Bij het openen van de site: naam bij eigen quizzen zetten ----------
 koppelMakerNaamAanEigenQuizzen();
+
+======================== firebase-config.js ========================
+
+// Vervang onderstaande waarden door jouw eigen Firebase-configuratie.
+// Je vindt deze in de Firebase Console:
+// Project instellingen -> Algemeen -> "Jouw apps" -> Web app -> SDK setup and configuration
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD9tLFsO8SXHgoqs2_n7wl8FPlcB_w-yz0",
+  authDomain: "quizwebsite-f7951.firebaseapp.com",
+  databaseURL: "https://quizwebsite-f7951-default-rtdb.europe-west1.firebasedatabase.app/",
+  projectId: "quizwebsite-f7951",
+  storageBucket: "quizwebsite-f7951.firebasestorage.app",
+  messagingSenderId: "560493888721",
+  appId: "1:560493888721:web:2726e9d4a86bbf3df231f0"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const auth = firebase.auth();
