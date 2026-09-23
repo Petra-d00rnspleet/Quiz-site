@@ -301,6 +301,7 @@
       <p class="subtitel">Koop mysterieboxen met munten. Alles wat erin zit, krijg en houd je voorgoed. Munten verdien je door een quiz "Met mensen" te winnen.</p>
       <div class="munten-weergave">💰 <span class="munten-aantal">0</span> munten</div>
       <button class="btn btn-primary" id="btn-winkel-nieuwe-box" type="button" style="display:none">+ Nieuwe mysteriebox maken</button>
+      <button class="btn btn-secondary" id="btn-sitebeheer-poppetjes" type="button" style="display:none">🎨 Poppetjes & accessoires maken</button>
       <div id="winkel-boxen-lijst" class="quizzen-grid"></div>
       <p id="winkel-geen-boxen" class="subtitel" style="display:none">Er zijn nog geen mysterieboxen. Kom later nog eens terug!</p>
     </section>
@@ -382,6 +383,36 @@
         <button class="btn btn-secondary" id="btn-box-annuleren" type="button">Annuleren</button>
         <button class="btn-verwijderen-quiz" id="btn-box-verwijderen" type="button" style="display:none">Verwijderen</button>
         <button class="btn btn-primary" id="btn-box-opslaan" type="button">Opslaan</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- SITEBEHEER: aangepaste poppetjes/accessoires maken -->
+  <div id="poppetjes-bewerken-overlay" class="sitebeheer-overlay">
+    <div class="sitebeheer-venster box-venster poppetjes-maker-venster">
+      <h3>🎨 Poppetjes & accessoires maken</h3>
+      <p class="subtitel">Kies een emoji, kleur en kist. Je ziet meteen hoe het item eruitziet.</p>
+      <label for="custom-item-type">Wat wil je maken?</label>
+      <select id="custom-item-type"><option value="dier">Poppetje / dier</option><option value="accessoire">Accessoire</option></select>
+      <label for="custom-item-emoji">Emoji</label>
+      <input id="custom-item-emoji" type="text" maxlength="8" value="🐸" placeholder="Bijv. 🐸">
+      <label for="custom-item-naam">Naam</label>
+      <input id="custom-item-naam" type="text" maxlength="40" placeholder="Bijv. Mijn kikker">
+      <label for="custom-item-kleur">Kleur</label>
+      <div class="kleur-kiezer-rij"><input id="custom-item-kleur" type="color" value="#63c174"><span id="custom-item-kleur-waarde">#63c174</span></div>
+      <div id="custom-accessoire-plek-wrap">
+        <label for="custom-accessoire-plek">Plek van accessoire</label>
+        <select id="custom-accessoire-plek"><option value="boven">Bovenop het hoofd</option><option value="gezicht">Op het gezicht</option><option value="hoek">Naast het hoofd</option></select>
+      </div>
+      <label for="custom-item-box">In welke kist moet hij komen?</label>
+      <select id="custom-item-box"><option value="">Geen kist (later toevoegen)</option></select>
+      <div class="custom-item-preview-label">Voorbeeld</div>
+      <div id="custom-item-preview" class="custom-item-preview"></div>
+      <p id="poppetjes-bewerken-foutmelding" class="foutmelding"></p>
+      <div class="sitebeheer-knoppen">
+        <button class="btn btn-secondary" id="btn-poppetjes-annuleren" type="button">Annuleren</button>
+        <button class="btn btn-primary" id="btn-poppetje-opslaan" type="button">Maken & opslaan</button>
       </div>
     </div>
   </div>
