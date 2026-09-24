@@ -210,28 +210,25 @@ h2.titel-regenboog {
 
 .vakken-rij {
   flex: 1;
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
   margin-top: 12px;
 }
 
 .vak {
-  flex: 1 1 0;
-  min-width: 0;
   border: 2px solid #b8863c;
   border-radius: 14px;
-  padding: 8px 4px;
-  font-size: clamp(10px, 2.4vw, 15px);
+  padding: 14px 10px;
+  min-height: 70px;
+  font-size: 16px;
   font-weight: 700;
   color: #fff;
   cursor: pointer;
-  aspect-ratio: 1 / 1;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  overflow: hidden;
   background: #0c1230;
   position: relative;
   transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
