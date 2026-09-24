@@ -1665,7 +1665,7 @@ const GEKOCHTE_BOXEN_SLEUTEL = 'quizAppGekochteBoxen';
 // Munten bij een live quiz ("Met mensen"): 1e, 2e en 3e plek. De rest krijgt niets.
 const MUNTEN_LIVE_PER_PLEK = [30, 20, 10];
 // Munten als je alleen speelt ("Zonder mensen") en alles goed hebt.
-const MUNTEN_SOLO_ALLES_GOED = 30;
+const MUNTEN_SOLO_ALLES_GOED = 5;
 
 function haalMunten() {
   return parseInt(localStorage.getItem(MUNTEN_SLEUTEL) || '0', 10) || 0;
