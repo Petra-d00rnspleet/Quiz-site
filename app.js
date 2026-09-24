@@ -1649,7 +1649,9 @@ function koopMysteriebox(boxId) {
 
 function verwijderMysteriebox(boxId) {
   if (!confirm('Deze mysteriebox definitief verwijderen? Spelers die hem al gekocht hebben, houden gewoon wat ze al kregen.')) return;
-  db.ref('mysterieboxen/' + boxId).remove().then(laadWinkelBoxen);
+  db.ref('mysterieboxen/' + boxId).remove().then(laadWinkelBoxen).catch(() => {
+    alert('Verwijderen is niet gelukt. Controleer Firebase (regel voor mysterieboxen) en probeer het opnieuw.');
+  });
 }
 
 document.getElementById('btn-winkel-nieuwe-box').addEventListener('click', () => openBoxBewerken(null, null));
@@ -2697,12 +2699,11 @@ document.getElementById('btn-solo-opnieuw').addEventListener('click', () => {
 
 
 // ================================================================
-// SITEBEHEER: eigen poppetjes/accessoires maken — direct vanuit de kist
+// SITEBEHEER: al eerder gemaakte eigen poppetjes/accessoires laden
 // ----------------------------------------------------------------
-// Geen apart scherm meer met een naam/kleur/plek-formulier. Sitebeheer
-// klikt in het kist-scherm (Nieuwe/Aanpassen mysteriebox) gewoon op een
-// emoji: die wordt meteen een nieuw poppetje (of accessoire), precies zoals
-// de bestaande dieren hierboven, en staat meteen aangevinkt in de kist.
+// Poppetjes maken uit een emoji kan niet meer (er zijn nu genoeg vaste dieren
+// en accessoires). Wat eerder gemaakt is en in Firebase staat, blijft gewoon
+// werken en wordt hier nog geladen.
 // ================================================================
 
 function laadAangepasteCatalogus() {
@@ -2714,184 +2715,6 @@ function laadAangepasteCatalogus() {
     Object.entries(data.accessoires || {}).forEach(([id,item]) => registreerAangepastAccessoire(id,item));
   }).catch(() => {});
 }
-
-// Ruime, kant-en-klare emoji-verzameling (gevoelens, gezichtjes en wat dieren)
-// om zo uit te kiezen — "alle emoties" waar sitebeheer gewoon op kan klikken.
-const EMOJI_KEUZE = [
-  '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍',
-  '🤩','😘','😗','😙','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐',
-  '🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷',
-  '🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','😎','🤓','🧐',
-  '😕','🙁','😮','😲','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣',
-  '😞','😓','😩','😫','🥱','😤','😡','🤬','😈','👿','💀','👻','👽','🤖','🎃',
-  '🥲','🥹','🫠','🫡','🫢','🫣','🥸','😳','😺','😸','😹','😻','😼','😽','🙀','😿','😾',
-  '🙈','🙉','🙊','🤡','💩','👹','👺','😵','😮','😯',
-  '🦄','🐉','🐙','🦊','🐼','🐨','🦁','🐯','🐷','🐵','🦉'
-];
-
-// Vaste, afwisselende kleurenset zodat een nieuw poppetje/accessoire er meteen
-// goed uitziet — sitebeheer hoeft dus zelf geen kleur te kiezen.
-const AUTO_KLEUREN = ['#63c174','#f4a259','#5aa9e6','#f76c6c','#f0c04d','#9d8df1','#4cd3c2','#ef7fbb','#8bd346','#f28d35'];
-let volgendeKleurIndex = 0;
-function volgendeAutoKleur() {
-  return AUTO_KLEUREN[(volgendeKleurIndex++) % AUTO_KLEUREN.length];
-}
-
-// Bouwt echte poppetje/accessoire-SVG-voorbeelden (dezelfde tekenmethode als
-// de rest van de site) zodat emoji altijd goed getekend worden — ook op
-// apparaten/browsers waar een kaal emoji-tekstteken in een knop niet goed
-// wordt weergegeven.
-function emojiDierPreviewSvg(emoji) {
-  const id = '__emoji_preview_dier__';
-  registreerAangepastPoppetje(id, { emoji, kleur: '#8b93a3', naam: 'Voorbeeld' });
-  const svg = poppetjeSvg(id, {});
-  verwijderAangepastPoppetjeUitCatalogus(id);
-  return svg;
-}
-
-function emojiAccessoirePreviewSvg(emoji, plek) {
-  const id = '__emoji_preview_acc__';
-  registreerAangepastAccessoire(id, { emoji, kleur: '#f0c04d', naam: 'Voorbeeld', plek });
-  const svg = poppetjeSvg(STANDAARD_DIEREN[0], { [plek]: id });
-  verwijderAangepastAccessoireUitCatalogus(id);
-  return svg;
-}
-
-// Emoji aanklikken = selecteren (nog niet omzetten). Pas bij "Doorgaan" worden
-// alle aangeklikte emoji omgezet naar nieuwe poppetjes/accessoires en meteen
-// in de kist gezet die nu open staat.
-let emojiDierenGekozen = [];
-let emojiAccessoiresGekozen = [];
-let gekozenAccessoirePlek = 'boven';
-
-function voegEmojisToeAlsDieren(lijst) {
-  lijst.forEach(emoji => {
-    const id = db.ref('aangepastePoppetjes/dieren').push().key;
-    const data = { emoji, naam: emoji, kleur: volgendeAutoKleur() };
-    registreerAangepastPoppetje(id, data);
-    if (boxGeselecteerdeDieren.indexOf(id) === -1) boxGeselecteerdeDieren.push(id);
-    db.ref('aangepastePoppetjes/dieren/' + id).set(data).catch(() => {
-      boxBewerkenFoutmeldingEl.textContent = 'Opslaan van een nieuw poppetje is niet gelukt. Controleer Firebase.';
-    });
-  });
-  bouwBoxItemsKiezer();
-}
-
-function voegEmojisToeAlsAccessoires(lijst) {
-  lijst.forEach(emoji => {
-    const id = db.ref('aangepastePoppetjes/accessoires').push().key;
-    const data = { emoji, naam: emoji, kleur: volgendeAutoKleur(), plek: gekozenAccessoirePlek };
-    registreerAangepastAccessoire(id, data);
-    if (boxGeselecteerdeAccessoires.indexOf(id) === -1) boxGeselecteerdeAccessoires.push(id);
-    db.ref('aangepastePoppetjes/accessoires/' + id).set(data).catch(() => {
-      boxBewerkenFoutmeldingEl.textContent = 'Opslaan van een nieuw accessoire is niet gelukt. Controleer Firebase.';
-    });
-  });
-  bouwBoxItemsKiezer();
-}
-
-// Maakt (eenmalig) de Doorgaan-knop onder een emoji-raster.
-function maakEmojiDoorgaanKnop(rasterEl, id, tekstVoor) {
-  let knop = document.getElementById(id);
-  if (!knop) {
-    knop = document.createElement('button');
-    knop.type = 'button';
-    knop.id = id;
-    knop.className = 'btn btn-primary';
-    rasterEl.insertAdjacentElement('afterend', knop);
-  }
-  return knop;
-}
-
-function werkDoorgaanTekstBij(knop, aantal) {
-  knop.textContent = aantal ? 'Doorgaan (' + aantal + ' gekozen)' : 'Doorgaan';
-}
-
-function bouwEmojiDierenKiezer() {
-  const dierenEl = document.getElementById('box-emoji-dieren');
-  dierenEl.innerHTML = '';
-  const doorgaanKnop = maakEmojiDoorgaanKnop(dierenEl, 'btn-emoji-dieren-doorgaan');
-  werkDoorgaanTekstBij(doorgaanKnop, emojiDierenGekozen.length);
-
-  EMOJI_KEUZE.forEach(emoji => {
-    const knop = document.createElement('button');
-    knop.type = 'button';
-    knop.className = 'dier-knop emoji-knop';
-    knop.innerHTML = emojiDierPreviewSvg(emoji);
-    knop.title = emoji;
-    knop.setAttribute('aria-label', 'Kies ' + emoji);
-    knop.classList.toggle('gekozen', emojiDierenGekozen.indexOf(emoji) !== -1);
-    knop.addEventListener('click', () => {
-      const i = emojiDierenGekozen.indexOf(emoji);
-      if (i === -1) emojiDierenGekozen.push(emoji); else emojiDierenGekozen.splice(i, 1);
-      knop.classList.toggle('gekozen');
-      werkDoorgaanTekstBij(doorgaanKnop, emojiDierenGekozen.length);
-    });
-    dierenEl.appendChild(knop);
-  });
-
-  doorgaanKnop.onclick = () => {
-    if (!emojiDierenGekozen.length) {
-      boxBewerkenFoutmeldingEl.textContent = 'Klik eerst op een of meer emoji bij "Nieuw poppetje toevoegen".';
-      return;
-    }
-    boxBewerkenFoutmeldingEl.textContent = '';
-    const lijst = emojiDierenGekozen.slice();
-    emojiDierenGekozen = [];
-    voegEmojisToeAlsDieren(lijst);
-    bouwEmojiDierenKiezer();
-  };
-}
-
-// Wordt opnieuw opgebouwd zodra de plek (boven/gezicht/hoek) wisselt, zodat
-// het voorbeeld klopt. De gekozen emoji blijven geselecteerd.
-function bouwEmojiAccessoireKiezer() {
-  const accEl = document.getElementById('box-emoji-acc');
-  accEl.innerHTML = '';
-  const doorgaanKnop = maakEmojiDoorgaanKnop(accEl, 'btn-emoji-acc-doorgaan');
-  werkDoorgaanTekstBij(doorgaanKnop, emojiAccessoiresGekozen.length);
-
-  EMOJI_KEUZE.forEach(emoji => {
-    const knop = document.createElement('button');
-    knop.type = 'button';
-    knop.className = 'dier-knop emoji-knop';
-    knop.innerHTML = emojiAccessoirePreviewSvg(emoji, gekozenAccessoirePlek);
-    knop.title = emoji;
-    knop.setAttribute('aria-label', 'Kies ' + emoji);
-    knop.classList.toggle('gekozen', emojiAccessoiresGekozen.indexOf(emoji) !== -1);
-    knop.addEventListener('click', () => {
-      const i = emojiAccessoiresGekozen.indexOf(emoji);
-      if (i === -1) emojiAccessoiresGekozen.push(emoji); else emojiAccessoiresGekozen.splice(i, 1);
-      knop.classList.toggle('gekozen');
-      werkDoorgaanTekstBij(doorgaanKnop, emojiAccessoiresGekozen.length);
-    });
-    accEl.appendChild(knop);
-  });
-
-  doorgaanKnop.onclick = () => {
-    if (!emojiAccessoiresGekozen.length) {
-      boxBewerkenFoutmeldingEl.textContent = 'Klik eerst op een of meer emoji bij "Nieuw accessoire toevoegen".';
-      return;
-    }
-    boxBewerkenFoutmeldingEl.textContent = '';
-    const lijst = emojiAccessoiresGekozen.slice();
-    emojiAccessoiresGekozen = [];
-    voegEmojisToeAlsAccessoires(lijst);
-    bouwEmojiAccessoireKiezer();
-  };
-}
-
-bouwEmojiDierenKiezer();
-bouwEmojiAccessoireKiezer();
-
-document.querySelectorAll('#box-emoji-acc-plek .plek-knop').forEach(knop => {
-  knop.addEventListener('click', () => {
-    document.querySelectorAll('#box-emoji-acc-plek .plek-knop').forEach(k => k.classList.remove('actief'));
-    knop.classList.add('actief');
-    gekozenAccessoirePlek = knop.dataset.plek;
-    bouwEmojiAccessoireKiezer();
-  });
-});
 
 bouwKiezer();
 laadAangepasteCatalogus().then(() => { bouwKiezer(); werkMuntenWeergaveBij(); });
