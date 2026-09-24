@@ -1703,10 +1703,59 @@ h2.titel-regenboog.host-resultaat-vraag {
 }
 
 /* ---------- Sitebeheer: aangepaste poppetjes ---------- */
-.kleur-kiezer-rij{display:flex;align-items:center;gap:12px;margin:4px 0 10px}
-.kleur-kiezer-rij input[type="color"]{width:58px;height:40px;padding:2px;border:1px solid #6b5a2b;border-radius:10px;background:#10152e}
-#custom-item-kleur-waarde{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#f0c04d}
-.custom-item-preview-label{margin-top:12px;font-weight:700;color:#f0c04d}
-.custom-item-preview{min-height:150px;display:flex;align-items:center;justify-content:center;border:1px solid #4a3c1a;border-radius:16px;background:#080d26;margin:8px 0 12px}
-.custom-item-preview .poppetje-svg{width:130px;height:130px}
-.poppetjes-maker-venster{max-height:90vh;overflow:auto}
+/* Emoji-kiezer: klik op een emoji om meteen een nieuw poppetje/accessoire
+   te maken en aan de kist toe te voegen — geen apart scherm meer nodig. */
+.dieren-kiezer.accessoires.emoji-kiezer {
+  grid-template-columns: repeat(8, 1fr);
+  max-width: none;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid #4a3c1a;
+  border-radius: 14px;
+  background: #080d26;
+}
+
+.emoji-knop {
+  font-size: 30px;
+  line-height: 1;
+  padding: 6px 0;
+  border-radius: 10px;
+  border: 2px solid #4a3c1a;
+  background: #10152e;
+  cursor: pointer;
+}
+
+.emoji-knop:hover {
+  border-color: #b8863c;
+  background: #1c1a33;
+  transform: scale(1.08);
+}
+
+.emoji-knop:active {
+  border-color: #f0c04d;
+  background: #1c1a33;
+}
+
+.plek-kiezer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 10px;
+}
+
+.plek-knop {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 2px solid #4a3c1a;
+  background: #10152e;
+  color: #f0c04d;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.plek-knop.actief {
+  border-color: #f0c04d;
+  background: #1c1a33;
+  box-shadow: 0 0 0 2px rgba(240, 192, 77, 0.4);
+}
