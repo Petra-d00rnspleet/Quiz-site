@@ -209,6 +209,11 @@ document.getElementById('btn-naar-meedoen').addEventListener('click', () => {
   toonScherm('scherm-meedoen');
 });
 
+document.getElementById('btn-naar-dierentuin').addEventListener('click', () => {
+  toonScherm('scherm-dierenverzameling');
+  bouwVerzamelingKiezer();
+});
+
 document.querySelectorAll('[data-terug-naar]').forEach(knop => {
   knop.addEventListener('click', () => {
     const doel = knop.getAttribute('data-terug-naar');
@@ -1436,6 +1441,81 @@ document.getElementById('tab-accessoires').addEventListener('click', () => {
   kiezerTab = 'accessoires';
   bouwKiezer();
 });
+
+// ---------- Dierenverzameling: de hele catalogus bekijken, ook buiten een quiz om ----------
+// Dit scherm is alleen om te bekijken (niets is aanklikbaar): het laat zowel de dieren/
+// accessoires zien die je al hebt, als de rest van de catalogus (grijs met een slotje),
+// zodat je ook zonder in een quiz te zitten kunt zien welke poppetjes er allemaal bestaan.
+
+let kiezerTabVerzameling = 'dieren'; // 'dieren' of 'accessoires'
+
+document.getElementById('tab-verzameling-dieren').addEventListener('click', () => {
+  kiezerTabVerzameling = 'dieren';
+  bouwVerzamelingKiezer();
+});
+document.getElementById('tab-verzameling-accessoires').addEventListener('click', () => {
+  kiezerTabVerzameling = 'accessoires';
+  bouwVerzamelingKiezer();
+});
+
+function bouwVerzamelingKiezer() {
+  const kiezerEl = document.getElementById('verzameling-kiezer');
+  kiezerEl.innerHTML = '';
+
+  const opDieren = kiezerTabVerzameling === 'dieren';
+  kiezerEl.classList.toggle('accessoires', !opDieren);
+  document.getElementById('tab-verzameling-dieren').classList.toggle('actief', opDieren);
+  document.getElementById('tab-verzameling-dieren').setAttribute('aria-selected', String(opDieren));
+  document.getElementById('tab-verzameling-accessoires').classList.toggle('actief', !opDieren);
+  document.getElementById('tab-verzameling-accessoires').setAttribute('aria-selected', String(!opDieren));
+
+  const bezitDieren = haalBezitDieren();
+  const bezitAccessoires = haalBezitAccessoires();
+  const voorbeeldDier = bezitDieren[0] || DIEREN[0];
+
+  const telling = document.createElement('p');
+  telling.className = 'verzameling-telling';
+  kiezerEl.appendChild(telling);
+
+  if (opDieren) {
+    telling.textContent = bezitDieren.length + ' van de ' + DIEREN.length + ' dieren in bezit';
+
+    DIEREN.forEach(dier => {
+      const inBezit = bezitDieren.indexOf(dier) !== -1;
+      const knop = document.createElement('div');
+      knop.className = 'dier-knop' + (inBezit ? '' : ' niet-bezit');
+      knop.innerHTML = poppetjeSvg(dier, {});
+      knop.setAttribute('aria-label', inBezit ? 'In bezit' : 'Nog niet in bezit');
+      kiezerEl.appendChild(knop);
+    });
+  } else {
+    const totaalAccessoires = ACCESSOIRE_GROEPEN.reduce((n, g) => n + g.items.length, 0);
+    telling.textContent = bezitAccessoires.length + ' van de ' + totaalAccessoires + ' accessoires in bezit';
+
+    ACCESSOIRE_GROEPEN.forEach(groep => {
+      const kop = document.createElement('div');
+      kop.className = 'kiezer-groep-titel';
+      kop.textContent = groep.titel;
+      kiezerEl.appendChild(kop);
+
+      groep.items.forEach(emoji => {
+        const inBezit = bezitAccessoires.indexOf(emoji) !== -1;
+        const voorbeeld = {};
+        voorbeeld[groep.plek] = emoji;
+        const knop = document.createElement('div');
+        knop.className = 'dier-knop' + (inBezit ? '' : ' niet-bezit');
+        knop.innerHTML = poppetjeSvg(voorbeeldDier, voorbeeld);
+        knop.setAttribute('aria-label', (ACCESSOIRES[emoji] && ACCESSOIRES[emoji].naam) ? ACCESSOIRES[emoji].naam : 'Nog niet in bezit');
+        kiezerEl.appendChild(knop);
+      });
+    });
+  }
+
+  const hint = document.createElement('p');
+  hint.className = 'kiezer-hint';
+  hint.textContent = '🎁 Grijze diertjes en accessoires met een slotje vind je (met een beetje geluk) in de winkel!';
+  kiezerEl.appendChild(hint);
+}
 
 // Toont het gekozen poppetje groot boven de tekst en markeert de gekozen knoppen.
 // `speler` is het speler-object uit de sessie (met dier en accessoires).
@@ -2727,7 +2807,7 @@ function laadAangepasteCatalogus() {
 }
 
 bouwKiezer();
-laadAangepasteCatalogus().then(() => { bouwKiezer(); werkMuntenWeergaveBij(); });
+laadAangepasteCatalogus().then(() => { bouwKiezer(); bouwVerzamelingKiezer(); werkMuntenWeergaveBij(); });
 werkMuntenWeergaveBij();
 
 // ---------- Bij het openen van de site: naam bij eigen quizzen zetten ----------
