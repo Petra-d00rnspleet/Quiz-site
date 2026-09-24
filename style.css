@@ -236,7 +236,8 @@ h2.titel-regenboog {
   font-weight: 700;
   color: #fff;
   cursor: pointer;
-  min-height: 160px;
+  aspect-ratio: 1 / 1;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1616,19 +1617,24 @@ h2.titel-regenboog.host-resultaat-vraag {
   box-shadow: 0 0 0 2px rgba(240, 192, 77, 0.4), 0 0 16px rgba(240, 192, 77, 0.25);
 }
 
-/* Dierenverzameling: dieren/accessoires die je nog niet hebt staan grijs met een slotje */
+/* Dierenverzameling: dieren/accessoires die je nog niet hebt staan grijs met een slotje.
+   Dieren/accessoires die je wél hebt, kun je hier aanklikken om te verkopen. */
 .verzameling-kiezer {
   max-width: 460px;
 }
 
 .verzameling-kiezer .dier-knop {
-  cursor: default;
   position: relative;
 }
 
-.verzameling-kiezer .dier-knop:hover {
-  border-color: #4a3c1a;
-  background: #10152e;
+.verzameling-kiezer .dier-knop:disabled {
+  cursor: not-allowed;
+}
+
+.verzameling-kiezer .dier-knop:not(:disabled):hover {
+  border-color: #ff5c72;
+  background: #1c1a33;
+  box-shadow: 0 0 0 2px rgba(255, 92, 114, 0.35);
 }
 
 .verzameling-kiezer .dier-knop.niet-bezit {
