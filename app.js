@@ -1658,6 +1658,10 @@ function verwijderAlleAccessoires() {
 const MUNTEN_SLEUTEL = 'quizAppMunten';
 const BEZIT_DIEREN_SLEUTEL = 'quizAppBezitDieren';
 const BEZIT_ACCESSOIRES_SLEUTEL = 'quizAppBezitAccessoires';
+// Welke mysterieboxen (op id) deze speler ooit heeft gekocht — lokaal onthouden, zodat
+// we in de winkel kunnen laten zien "✅ Al eerder gekocht" en iemand niet per ongeluk
+// nog een keer munten uitgeeft aan een box die hij al heeft.
+const GEKOCHTE_BOXEN_SLEUTEL = 'quizAppGekochteBoxen';
 // Munten bij een live quiz ("Met mensen"): 1e, 2e en 3e plek. De rest krijgt niets.
 const MUNTEN_LIVE_PER_PLEK = [30, 20, 10];
 // Munten als je alleen speelt ("Zonder mensen") en alles goed hebt.
@@ -1692,6 +1696,19 @@ function haalBezitAccessoires() {
   return Array.isArray(opgeslagen) && opgeslagen.length ? opgeslagen : STANDAARD_ACCESSOIRES.slice();
 }
 
+function haalGekochteBoxen() {
+  const opgeslagen = JSON.parse(localStorage.getItem(GEKOCHTE_BOXEN_SLEUTEL) || 'null');
+  return Array.isArray(opgeslagen) ? opgeslagen : [];
+}
+
+function voegGekochteBoxToe(boxId) {
+  const gekocht = haalGekochteBoxen();
+  if (gekocht.indexOf(boxId) === -1) {
+    gekocht.push(boxId);
+    localStorage.setItem(GEKOCHTE_BOXEN_SLEUTEL, JSON.stringify(gekocht));
+  }
+}
+
 // Voegt de inhoud van een gekochte box toe aan wat de speler al heeft (geen dubbelen).
 function voegBezitToe(dieren, accessoires) {
   const huidigeDieren = haalBezitDieren();
@@ -1712,9 +1729,17 @@ document.getElementById('btn-naar-winkel').addEventListener('click', () => {
 function bouwBoxKaartHtml(boxId, box) {
   const aantalItems = (box.dieren || []).length + (box.accessoires || []).length;
   const genoegMunten = haalMunten() >= (box.prijs || 0);
+  const algemeenAlGekocht = haalGekochteBoxen().indexOf(boxId) !== -1;
   let html = '<div class="quiz-item-body">' +
     '<div class="quiz-item-info"><strong>🎁 ' + escapeHtml(box.naam || 'Mysteriebox') + '</strong>' +
-    '<span>' + (box.prijs || 0) + ' munten · ' + aantalItems + ' verrassing(en) erin</span></div>' +
+    '<span>' + (box.prijs || 0) + ' munten · ' + aantalItems + ' verrassing(en) erin</span>';
+  if (algemeenAlGekocht) {
+    html += '<span class="box-al-gekocht">✅ Al eerder gekocht</span>';
+  }
+  if (sitebeheerActief) {
+    html += '<span class="box-aantal-gekocht">🛒 ' + (box.aantalGekocht || 0) + 'x gekocht (door alle spelers)</span>';
+  }
+  html += '</div>' +
     '<div class="quiz-item-knoppen">' +
     '<button class="btn btn-primary btn-koop-box" data-box="' + boxId + '"' + (genoegMunten ? '' : ' disabled') + '>' +
     (genoegMunten ? 'Kopen' : 'Niet genoeg munten') + '</button>';
@@ -1777,6 +1802,10 @@ function koopMysteriebox(boxId) {
 
     zetMunten(haalMunten() - (box.prijs || 0));
     voegBezitToe(box.dieren, box.accessoires);
+    voegGekochteBoxToe(boxId);
+    // Telt voor sitebeheer bij hoeveel spelers deze box al gekocht is (transaction,
+    // want meerdere spelers kunnen tegelijk kopen).
+    db.ref('mysterieboxen/' + boxId + '/aantalGekocht').transaction(huidig => (huidig || 0) + 1);
 
     const gekregenNamen = [].concat(
       (box.dieren || []).filter(d => DIER_TEKENINGEN[d]),
