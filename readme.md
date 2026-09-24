@@ -252,7 +252,9 @@ Gedeeltelijke punten geven als een speler bij een vraag met meerdere goede antwo
 
 Nieuwe functie: eigen poppetjes en accessoires
 
-Sitebeheer kan in de Winkel via 🎨 Poppetjes & accessoires maken een eigen poppetje of accessoire maken. Kies een emoji, naam en kleur. Bij accessoires kies je ook de plek. Je krijgt direct een preview en kunt meteen een bestaande mysteriebox/kist kiezen; het nieuwe item wordt dan automatisch aan die kist toegevoegd.
+Eigen poppetjes maken zit nu gewoon in het scherm waar je een kist (mysteriebox) maakt of aanpast — geen apart scherm meer. Onderaan dat scherm staat "🎨 Nieuw poppetje toevoegen": een heel raster met emoji (allerlei gezichtjes/emoties en een paar dieren). Klik je op een emoji, dan wordt hij meteen een nieuw poppetje, precies zoals de bestaande dieren erboven, en staat hij meteen aangevinkt in de kist die je op dat moment aan het maken bent. Naam en kleur hoef je niet zelf in te vullen: de naam wordt de emoji zelf en de kleur wordt automatisch gekozen uit een vaste kleurenset.
+
+Eronder staat op dezelfde manier "🎨 Nieuw accessoire toevoegen": kies eerst de plek (🎩 bovenop het hoofd, 👓 op het gezicht, of ✨ naast het hoofd) en klik dan op een emoji — die komt er meteen op die plek bij, ook weer meteen aangevinkt in de kist.
 
 Nieuwe Firebase-tak: aangepastePoppetjes. Voeg naast de bestaande databasepaden deze regel toe:
 
