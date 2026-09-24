@@ -22,7 +22,20 @@
         <button class="vak vak-speelbaar" id="btn-naar-speelbaar">Speelbare quizzen</button>
         <button class="vak vak-meedoen" id="btn-naar-meedoen">Meedoen aan quiz</button>
         <button class="vak vak-winkel" id="btn-naar-winkel">🎁 Winkel</button>
+        <button class="vak vak-dierentuin" id="btn-naar-dierentuin">🐾 Dierenverzameling</button>
       </div>
+    </section>
+
+    <!-- SCHERM: DIERENVERZAMELING (alle dieren en accessoires bekijken, ook buiten een quiz om) -->
+    <section id="scherm-dierenverzameling" class="scherm">
+      <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
+      <h2 class="titel-regenboog">Dierenverzameling</h2>
+      <p id="verzameling-uitleg" class="subtitel">Dit heb je al, en dit kun je nog winnen. Dieren en accessoires die je nog niet hebt, zijn grijs met een slotje.</p>
+      <div class="kiezer-tabs" role="tablist">
+        <button type="button" class="kiezer-tab actief" id="tab-verzameling-dieren" role="tab" aria-selected="true">🐶 Dieren</button>
+        <button type="button" class="kiezer-tab" id="tab-verzameling-accessoires" role="tab" aria-selected="false">🎩 Accessoires</button>
+      </div>
+      <div id="verzameling-kiezer" class="dieren-kiezer verzameling-kiezer"></div>
     </section>
 
     <!-- SCHERM: SPEELBARE QUIZZEN (openbaar gemaakt door anderen) -->
