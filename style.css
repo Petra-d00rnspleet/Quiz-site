@@ -8,7 +8,7 @@ html, body {
 }
 
 body {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
   background: radial-gradient(ellipse 120% 70% at 50% -10%, #16204a 0%, #0a1130 45%, #05081c 100%);
   color: #f2f2f5;
   min-height: 100vh;
@@ -282,6 +282,7 @@ h2.titel-regenboog {
   border-radius: 12px;
   padding: 14px 18px;
   font-size: 16px;
+  font-family: inherit;
   cursor: pointer;
   font-weight: 700;
 }
@@ -1704,37 +1705,26 @@ h2.titel-regenboog.host-resultaat-vraag {
 
 /* ---------- Sitebeheer: aangepaste poppetjes ---------- */
 /* Emoji-kiezer: klik op een emoji om meteen een nieuw poppetje/accessoire
-   te maken en aan de kist toe te voegen — geen apart scherm meer nodig. */
+   te maken en aan de kist toe te voegen — geen apart scherm meer nodig.
+   De knoppen tekenen een echt poppetje-voorbeeld (net als de knoppen
+   hierboven), in plaats van kaal emoji-tekst, zodat het altijd goed
+   getekend wordt, ook als een apparaat geen kleuremoji's kan tonen. */
 .dieren-kiezer.accessoires.emoji-kiezer {
-  grid-template-columns: repeat(8, 1fr);
   max-width: none;
-  max-height: 220px;
+  max-height: 260px;
   overflow-y: auto;
-  padding: 4px;
+  padding: 8px;
   border: 1px solid #4a3c1a;
   border-radius: 14px;
   background: #080d26;
 }
 
 .emoji-knop {
-  font-size: 30px;
-  line-height: 1;
-  padding: 6px 0;
-  border-radius: 10px;
-  border: 2px solid #4a3c1a;
-  background: #10152e;
-  cursor: pointer;
+  border-style: dashed;
 }
 
 .emoji-knop:hover {
-  border-color: #b8863c;
-  background: #1c1a33;
-  transform: scale(1.08);
-}
-
-.emoji-knop:active {
-  border-color: #f0c04d;
-  background: #1c1a33;
+  transform: scale(1.06);
 }
 
 .plek-kiezer {
@@ -1752,6 +1742,7 @@ h2.titel-regenboog.host-resultaat-vraag {
   color: #f0c04d;
   font-weight: 700;
   cursor: pointer;
+  font-family: inherit;
 }
 
 .plek-knop.actief {
