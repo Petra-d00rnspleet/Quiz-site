@@ -211,6 +211,7 @@ document.getElementById('btn-naar-meedoen').addEventListener('click', () => {
 
 document.getElementById('btn-naar-dierentuin').addEventListener('click', () => {
   toonScherm('scherm-dierenverzameling');
+  werkMuntenWeergaveBij();
   bouwVerzamelingKiezer();
 });
 
@@ -1443,11 +1444,14 @@ document.getElementById('tab-accessoires').addEventListener('click', () => {
 });
 
 // ---------- Dierenverzameling: de hele catalogus bekijken, ook buiten een quiz om ----------
-// Dit scherm is alleen om te bekijken (niets is aanklikbaar): het laat zowel de dieren/
-// accessoires zien die je al hebt, als de rest van de catalogus (grijs met een slotje),
-// zodat je ook zonder in een quiz te zitten kunt zien welke poppetjes er allemaal bestaan.
+// Dit scherm laat zowel de dieren/accessoires zien die je al hebt, als de rest van de
+// catalogus (grijs met een slotje), zodat je ook zonder in een quiz te zitten kunt zien
+// welke poppetjes er allemaal bestaan. Klik je op iets dat je al hebt, dan verkoop je het
+// (na een bevestigingsvraag) voor VERKOOP_PRIJS munten; grijze (nog niet in bezit) knoppen
+// doen niks.
 
 let kiezerTabVerzameling = 'dieren'; // 'dieren' of 'accessoires'
+const VERKOOP_PRIJS = 5;
 
 document.getElementById('tab-verzameling-dieren').addEventListener('click', () => {
   kiezerTabVerzameling = 'dieren';
@@ -1457,6 +1461,43 @@ document.getElementById('tab-verzameling-accessoires').addEventListener('click',
   kiezerTabVerzameling = 'accessoires';
   bouwVerzamelingKiezer();
 });
+
+// Verkoopt een dier uit je bezit. Je laatste dier mag je niet verkopen: haalBezitDieren()
+// valt anders terug op de gratis standaarddieren zodra je bezit leeg is, en dan zou je
+// oneindig munten kunnen "verdienen" door steeds hetzelfde teruggekregen dier te verkopen.
+function verkoopDier(dier) {
+  const bezit = haalBezitDieren();
+  const index = bezit.indexOf(dier);
+  if (index === -1) return;
+  if (bezit.length <= 1) {
+    alert('Je kunt je laatste dier niet verkopen.');
+    return;
+  }
+  if (!confirm('Dit dier verkopen voor ' + VERKOOP_PRIJS + ' munten? Je bent hem dan kwijt.')) return;
+
+  bezit.splice(index, 1);
+  localStorage.setItem(BEZIT_DIEREN_SLEUTEL, JSON.stringify(bezit));
+  geefMunten(VERKOOP_PRIJS);
+  bouwVerzamelingKiezer();
+}
+
+// Zelfde idee als verkoopDier(), maar dan voor een accessoire.
+function verkoopAccessoire(emoji) {
+  const bezit = haalBezitAccessoires();
+  const index = bezit.indexOf(emoji);
+  if (index === -1) return;
+  if (bezit.length <= 1) {
+    alert('Je kunt je laatste accessoire niet verkopen.');
+    return;
+  }
+  const naam = (ACCESSOIRES[emoji] && ACCESSOIRES[emoji].naam) || 'dit accessoire';
+  if (!confirm('"' + naam + '" verkopen voor ' + VERKOOP_PRIJS + ' munten? Je bent het dan kwijt.')) return;
+
+  bezit.splice(index, 1);
+  localStorage.setItem(BEZIT_ACCESSOIRES_SLEUTEL, JSON.stringify(bezit));
+  geefMunten(VERKOOP_PRIJS);
+  bouwVerzamelingKiezer();
+}
 
 function bouwVerzamelingKiezer() {
   const kiezerEl = document.getElementById('verzameling-kiezer');
@@ -1482,10 +1523,18 @@ function bouwVerzamelingKiezer() {
 
     DIEREN.forEach(dier => {
       const inBezit = bezitDieren.indexOf(dier) !== -1;
-      const knop = document.createElement('div');
+      const knop = document.createElement('button');
+      knop.type = 'button';
       knop.className = 'dier-knop' + (inBezit ? '' : ' niet-bezit');
       knop.innerHTML = poppetjeSvg(dier, {});
-      knop.setAttribute('aria-label', inBezit ? 'In bezit' : 'Nog niet in bezit');
+      if (inBezit) {
+        knop.setAttribute('aria-label', 'Verkoop dit dier voor ' + VERKOOP_PRIJS + ' munten');
+        knop.title = 'Verkopen voor ' + VERKOOP_PRIJS + ' munten';
+        knop.addEventListener('click', () => verkoopDier(dier));
+      } else {
+        knop.disabled = true;
+        knop.setAttribute('aria-label', 'Nog niet in bezit');
+      }
       kiezerEl.appendChild(knop);
     });
   } else {
@@ -1502,10 +1551,19 @@ function bouwVerzamelingKiezer() {
         const inBezit = bezitAccessoires.indexOf(emoji) !== -1;
         const voorbeeld = {};
         voorbeeld[groep.plek] = emoji;
-        const knop = document.createElement('div');
+        const naam = (ACCESSOIRES[emoji] && ACCESSOIRES[emoji].naam) || 'Nog niet in bezit';
+        const knop = document.createElement('button');
+        knop.type = 'button';
         knop.className = 'dier-knop' + (inBezit ? '' : ' niet-bezit');
         knop.innerHTML = poppetjeSvg(voorbeeldDier, voorbeeld);
-        knop.setAttribute('aria-label', (ACCESSOIRES[emoji] && ACCESSOIRES[emoji].naam) ? ACCESSOIRES[emoji].naam : 'Nog niet in bezit');
+        if (inBezit) {
+          knop.setAttribute('aria-label', 'Verkoop ' + naam + ' voor ' + VERKOOP_PRIJS + ' munten');
+          knop.title = 'Verkopen voor ' + VERKOOP_PRIJS + ' munten';
+          knop.addEventListener('click', () => verkoopAccessoire(emoji));
+        } else {
+          knop.disabled = true;
+          knop.setAttribute('aria-label', 'Nog niet in bezit');
+        }
         kiezerEl.appendChild(knop);
       });
     });
@@ -1513,7 +1571,7 @@ function bouwVerzamelingKiezer() {
 
   const hint = document.createElement('p');
   hint.className = 'kiezer-hint';
-  hint.textContent = '🎁 Grijze diertjes en accessoires met een slotje vind je (met een beetje geluk) in de winkel!';
+  hint.textContent = '🎁 Grijze diertjes en accessoires met een slotje vind je (met een beetje geluk) in de winkel! Klik op iets dat je al hebt om het voor ' + VERKOOP_PRIJS + ' munten te verkopen.';
   kiezerEl.appendChild(hint);
 }
 
