@@ -211,9 +211,15 @@ h2.titel-regenboog {
 .vakken-rij {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 18px;
   margin-top: 12px;
+}
+
+@media (max-width: 900px) {
+  .vakken-rij {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 700px) {
@@ -260,6 +266,10 @@ h2.titel-regenboog {
 
 .vak-winkel {
   background: linear-gradient(160deg, #2a1c3a 0%, #0c1230 60%);
+}
+
+.vak-dierentuin {
+  background: linear-gradient(160deg, #1c2a1c 0%, #0c1230 60%);
 }
 
 /* ---------- Munten (verdien je door een live quiz te winnen; besteed je in de winkel) ---------- */
@@ -1604,6 +1614,44 @@ h2.titel-regenboog.host-resultaat-vraag {
   border-color: #f0c04d;
   background: #1c1a33;
   box-shadow: 0 0 0 2px rgba(240, 192, 77, 0.4), 0 0 16px rgba(240, 192, 77, 0.25);
+}
+
+/* Dierenverzameling: dieren/accessoires die je nog niet hebt staan grijs met een slotje */
+.verzameling-kiezer {
+  max-width: 460px;
+}
+
+.verzameling-kiezer .dier-knop {
+  cursor: default;
+  position: relative;
+}
+
+.verzameling-kiezer .dier-knop:hover {
+  border-color: #4a3c1a;
+  background: #10152e;
+}
+
+.verzameling-kiezer .dier-knop.niet-bezit {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+
+.verzameling-kiezer .dier-knop.niet-bezit::after {
+  content: "🔒";
+  position: absolute;
+  bottom: 2px;
+  right: 6px;
+  font-size: 15px;
+  filter: none;
+  opacity: 1;
+}
+
+.verzameling-telling {
+  grid-column: 1 / -1;
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: #9a97a8;
+  text-align: center;
 }
 
 .scorebord-dier {
