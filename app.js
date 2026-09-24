@@ -2735,6 +2735,26 @@ function volgendeAutoKleur() {
   return AUTO_KLEUREN[(volgendeKleurIndex++) % AUTO_KLEUREN.length];
 }
 
+// Bouwt echte poppetje/accessoire-SVG-voorbeelden (dezelfde tekenmethode als
+// de rest van de site) zodat emoji altijd goed getekend worden — ook op
+// apparaten/browsers waar een kaal emoji-tekstteken in een knop niet goed
+// wordt weergegeven.
+function emojiDierPreviewSvg(emoji) {
+  const id = '__emoji_preview_dier__';
+  registreerAangepastPoppetje(id, { emoji, kleur: '#8b93a3', naam: 'Voorbeeld' });
+  const svg = poppetjeSvg(id, {});
+  verwijderAangepastPoppetjeUitCatalogus(id);
+  return svg;
+}
+
+function emojiAccessoirePreviewSvg(emoji, plek) {
+  const id = '__emoji_preview_acc__';
+  registreerAangepastAccessoire(id, { emoji, kleur: '#f0c04d', naam: 'Voorbeeld', plek });
+  const svg = poppetjeSvg(STANDAARD_DIEREN[0], { [plek]: id });
+  verwijderAangepastAccessoireUitCatalogus(id);
+  return svg;
+}
+
 // Van emoji naar nieuw dier: opslaan in Firebase, meteen in de catalogus en
 // meteen aangevinkt in de kist die nu open staat.
 function voegEmojiToeAlsDier(emoji) {
@@ -2761,38 +2781,49 @@ function voegEmojiToeAlsAccessoire(emoji) {
   });
 }
 
-// Bouwt de twee emoji-rasters (dieren + accessoires) eenmalig op — de
-// bijbehorende klik-acties gebruiken steeds de op dat moment open kist.
-function bouwEmojiKiezers() {
+// Bouwt het emoji-raster voor nieuwe poppetjes — eenmalig, want de kleur
+// verandert niet meer terwijl je aan het kiezen bent.
+function bouwEmojiDierenKiezer() {
   const dierenEl = document.getElementById('box-emoji-dieren');
+  dierenEl.innerHTML = '';
   EMOJI_KEUZE.forEach(emoji => {
     const knop = document.createElement('button');
     knop.type = 'button';
-    knop.className = 'emoji-knop';
-    knop.textContent = emoji;
-    knop.setAttribute('aria-label', 'Maak nieuw poppetje van ' + emoji);
+    knop.className = 'dier-knop emoji-knop';
+    knop.innerHTML = emojiDierPreviewSvg(emoji);
+    knop.title = 'Maak nieuw poppetje van ' + emoji;
+    knop.setAttribute('aria-label', knop.title);
     knop.addEventListener('click', () => voegEmojiToeAlsDier(emoji));
     dierenEl.appendChild(knop);
   });
+}
 
+// Bouwt het emoji-raster voor nieuwe accessoires — wordt opnieuw opgebouwd
+// zodra de plek (boven/gezicht/hoek) wisselt, zodat het voorbeeld klopt.
+function bouwEmojiAccessoireKiezer() {
   const accEl = document.getElementById('box-emoji-acc');
+  accEl.innerHTML = '';
   EMOJI_KEUZE.forEach(emoji => {
     const knop = document.createElement('button');
     knop.type = 'button';
-    knop.className = 'emoji-knop';
-    knop.textContent = emoji;
-    knop.setAttribute('aria-label', 'Maak nieuw accessoire van ' + emoji);
+    knop.className = 'dier-knop emoji-knop';
+    knop.innerHTML = emojiAccessoirePreviewSvg(emoji, gekozenAccessoirePlek);
+    knop.title = 'Maak nieuw accessoire van ' + emoji;
+    knop.setAttribute('aria-label', knop.title);
     knop.addEventListener('click', () => voegEmojiToeAlsAccessoire(emoji));
     accEl.appendChild(knop);
   });
 }
-bouwEmojiKiezers();
+
+bouwEmojiDierenKiezer();
+bouwEmojiAccessoireKiezer();
 
 document.querySelectorAll('#box-emoji-acc-plek .plek-knop').forEach(knop => {
   knop.addEventListener('click', () => {
     document.querySelectorAll('#box-emoji-acc-plek .plek-knop').forEach(k => k.classList.remove('actief'));
     knop.classList.add('actief');
     gekozenAccessoirePlek = knop.dataset.plek;
+    bouwEmojiAccessoireKiezer();
   });
 });
 
