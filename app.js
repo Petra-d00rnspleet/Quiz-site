@@ -1513,14 +1513,17 @@ function verwijderAlleAccessoires() {
 // STANDAARD_ACCESSOIRES in poppetjes.js). De rest zit verstopt in
 // mysterieboxen die sitebeheer ontwerpt (naam, prijs, inhoud) en die je met
 // munten koopt in de Winkel; alles wat erin zit krijg en houd je voorgoed.
-// Munten verdien je door een live quiz ("Met mensen") als eerste te
-// eindigen. Boxen staan in Firebase onder "mysterieboxen" — zie readme.md
+// Munten verdien je bij een live quiz ("Met mensen") met een top 3-plek
+// (1e: 30, 2e: 20, 3e: 10) of door alleen een quiz helemaal goed te spelen (30). Boxen staan in Firebase onder "mysterieboxen" — zie readme.md
 // voor de bijbehorende regel die daar nog voor toegevoegd moet worden.
 
 const MUNTEN_SLEUTEL = 'quizAppMunten';
 const BEZIT_DIEREN_SLEUTEL = 'quizAppBezitDieren';
 const BEZIT_ACCESSOIRES_SLEUTEL = 'quizAppBezitAccessoires';
-const MUNTEN_VOOR_WINNEN = 100;
+// Munten bij een live quiz ("Met mensen"): 1e, 2e en 3e plek. De rest krijgt niets.
+const MUNTEN_LIVE_PER_PLEK = [30, 20, 10];
+// Munten als je alleen speelt ("Zonder mensen") en alles goed hebt.
+const MUNTEN_SOLO_ALLES_GOED = 30;
 
 function haalMunten() {
   return parseInt(localStorage.getItem(MUNTEN_SLEUTEL) || '0', 10) || 0;
@@ -2440,9 +2443,12 @@ function renderSessieVoorSpeler(sessie) {
         if (scoreB !== scoreA) return scoreB - scoreA;
         return (a[1].totaleReactietijd || 0) - (b[1].totaleReactietijd || 0);
       });
-      if (eindstand.length && eindstand[0][0] === huidigeSpelerId) {
-        geefMunten(MUNTEN_VOOR_WINNEN);
-        scorebordBericht = '🏆 Je hebt gewonnen: +' + MUNTEN_VOOR_WINNEN + ' munten! Bekijk de winkel voor mysterieboxen.';
+      const mijnPlek = eindstand.findIndex(regel => regel[0] === huidigeSpelerId);
+      if (mijnPlek !== -1 && mijnPlek < MUNTEN_LIVE_PER_PLEK.length) {
+        const verdiend = MUNTEN_LIVE_PER_PLEK[mijnPlek];
+        geefMunten(verdiend);
+        const medaille = ['🥇', '🥈', '🥉'][mijnPlek];
+        scorebordBericht = medaille + ' Je bent ' + (mijnPlek + 1) + 'e geworden: +' + verdiend + ' munten! Bekijk de winkel voor mysterieboxen.';
       }
     }
     document.getElementById('speler-scorebord-bericht').textContent = scorebordBericht;
@@ -2677,8 +2683,12 @@ function toonSoloEinde() {
   ringEl.classList.toggle('leeg', soloAantalGoed === 0);
 
   document.getElementById('solo-einde-aantal').textContent = soloAantalGoed + '/' + totaal;
-  document.getElementById('solo-einde-tekst').textContent =
-    'Je had ' + soloAantalGoed + ' van de ' + totaal + (totaal === 1 ? ' vraag' : ' vragen') + ' goed';
+  let eindTekst = 'Je had ' + soloAantalGoed + ' van de ' + totaal + (totaal === 1 ? ' vraag' : ' vragen') + ' goed';
+  if (totaal > 0 && soloAantalGoed === totaal) {
+    geefMunten(MUNTEN_SOLO_ALLES_GOED);
+    eindTekst += ' — 🎉 +' + MUNTEN_SOLO_ALLES_GOED + ' munten!';
+  }
+  document.getElementById('solo-einde-tekst').textContent = eindTekst;
 
   toonScherm('scherm-solo-einde');
 }
