@@ -211,9 +211,46 @@ h2.titel-regenboog {
 .vakken-rij {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  grid-template-columns: repeat(6, 1fr);
   gap: 12px;
   margin-top: 12px;
+}
+
+/* Bovenste rij: Quiz maken, Speelbare quizzen, Meedoen aan quiz — 3 even brede vakken. */
+.vak-maken {
+  grid-column: 1 / 3;
+}
+
+.vak-speelbaar {
+  grid-column: 3 / 5;
+}
+
+.vak-meedoen {
+  grid-column: 5 / 7;
+}
+
+/* Onderste rij: Winkel en Dierenverzameling — zelfde breedte, maar gecentreerd
+   onder de bovenste rij (een omgekeerde piramide/toren). */
+.vak-winkel {
+  grid-column: 2 / 4;
+}
+
+.vak-dierentuin {
+  grid-column: 4 / 6;
+}
+
+@media (max-width: 480px) {
+  .vakken-rij {
+    grid-template-columns: 1fr;
+  }
+
+  .vak-maken,
+  .vak-speelbaar,
+  .vak-meedoen,
+  .vak-winkel,
+  .vak-dierentuin {
+    grid-column: 1 / -1;
+  }
 }
 
 .vak {
