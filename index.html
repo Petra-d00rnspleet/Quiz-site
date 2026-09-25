@@ -16,19 +16,45 @@
     <span id="profiel-badge-tekst">👤 Profiel maken</span>
   </button>
 
-  <div id="profiel-overlay" class="sitebeheer-overlay">
-    <div class="sitebeheer-venster">
-      <div class="sitebeheer-icoon">👤</div>
-      <h3>Jouw profiel</h3>
-      <div id="profiel-overlay-poppetje" class="profiel-overlay-poppetje" aria-hidden="true"></div>
-      <p id="profiel-overlay-naam" class="subtitel"></p>
-      <p class="subtitel">Je gebruikersnaam kun je niet meer wijzigen, maar je poppetje wel.</p>
-      <button class="btn btn-secondary" id="btn-profiel-poppetje-wijzigen" type="button">🔁 Poppetje wijzigen</button>
-      <div id="profiel-overlay-dieren-kiezer" class="dieren-kiezer" style="display:none;"></div>
-      <button class="btn btn-secondary" id="btn-profiel-overlay-sluiten" type="button">Sluiten</button>
-    </div>
-  </div>
+<div id="profiel-overlay" class="sitebeheer-overlay profiel-overlay">
+  <div class="sitebeheer-venster profiel-venster">
 
+    <div class="sitebeheer-icoon">👤</div>
+
+    <h3>Jouw profiel</h3>
+
+    <div id="profiel-overlay-poppetje"
+         class="profiel-overlay-poppetje"
+         aria-hidden="true"></div>
+
+    <p id="profiel-overlay-naam" class="subtitel"></p>
+
+    <p class="subtitel">
+      Je gebruikersnaam kun je niet meer wijzigen, maar je poppetje wel.
+    </p>
+
+    <button
+      class="btn btn-secondary"
+      id="btn-profiel-poppetje-wijzigen"
+      type="button">
+      🔁 Poppetje aanpassen
+    </button>
+
+    <div
+      id="profiel-overlay-dieren-kiezer"
+      class="profiel-dieren-kiezer"
+      style="display:none;">
+    </div>
+
+    <button
+      class="btn btn-secondary"
+      id="btn-profiel-overlay-sluiten"
+      type="button">
+      Sluiten
+    </button>
+
+  </div>
+</div>
   <div class="container">
 
     <!-- SCHERM: ALGEMEEN (startscherm) -->
