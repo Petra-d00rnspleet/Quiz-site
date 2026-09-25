@@ -109,9 +109,90 @@ auth.onAuthStateChanged(gebruiker => {
 // wel, via "Naam wijzigen" bij "Alle quizmakers" (zie toonSitebeheerMakersOverzicht).
 
 const MAKER_NAAM_SLEUTEL = 'makerNaam';
+const PROFIEL_DIER_SLEUTEL = 'profielDier';
 
 function huidigeMakerNaam() {
   return localStorage.getItem(MAKER_NAAM_SLEUTEL);
+}
+
+function huidigProfielDier() {
+  return localStorage.getItem(PROFIEL_DIER_SLEUTEL) || '';
+}
+
+// Een profiel bestaat pas als er zowel een gebruikersnaam als een gekozen
+// poppetje (profielfoto) lokaal onthouden zijn.
+function heeftProfiel() {
+  return !!(huidigeMakerNaam() && huidigProfielDier());
+}
+
+// Onthoudt welk poppetje net gekozen is op het profiel-maken-scherm, vóórdat
+// er op "Profiel aanmaken" geklikt is.
+let profielGekozenDier = '';
+
+// Onthoudt wat er moet gebeuren zodra het profiel is aangemaakt (welk scherm
+// tonen en welke gegevens erbij laden), zodat "Quiz maken", "Winkel",
+// "Dierenverzameling" en "Geluksrad" na het aanmaken van een profiel meteen
+// verdergaan naar waar de bezoeker eigenlijk heen wilde.
+let naProfielActie = null;
+
+// Bouwt de poppetje-kiezer op het profiel-maken-scherm: alleen de dieren die
+// deze bezoeker al bezit (net als in de wachtkamer), zonder accessoires.
+function bouwProfielDierenKiezer() {
+  const kiezerEl = document.getElementById('profiel-dieren-kiezer');
+  if (!kiezerEl) return;
+  kiezerEl.innerHTML = '';
+  const bezitDieren = haalBezitDieren();
+  bezitDieren.forEach(dier => {
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'dier-knop';
+    knop.innerHTML = poppetjeSvg(dier, {});
+    knop.dataset.dier = dier;
+    knop.classList.toggle('gekozen', dier === profielGekozenDier);
+    knop.setAttribute('aria-label', 'Kies ' + dier + ' als profielfoto');
+    knop.addEventListener('click', () => {
+      profielGekozenDier = dier;
+      kiezerEl.querySelectorAll('.dier-knop').forEach(k => k.classList.toggle('gekozen', k.dataset.dier === dier));
+    });
+    kiezerEl.appendChild(knop);
+  });
+}
+
+// Werkt de badge rechtsboven bij: toont poppetje + naam als er een profiel
+// is, anders een knop om er een aan te maken.
+function werkProfielBadgeBij() {
+  const poppetjeEl = document.getElementById('profiel-badge-poppetje');
+  const tekstEl = document.getElementById('profiel-badge-tekst');
+  if (heeftProfiel()) {
+    poppetjeEl.textContent = huidigProfielDier();
+    tekstEl.textContent = huidigeMakerNaam();
+  } else {
+    poppetjeEl.textContent = '';
+    tekstEl.textContent = '👤 Profiel maken';
+  }
+}
+
+// Opent het profiel-maken-scherm. Is er al een naam maar nog geen poppetje
+// (bijv. van vóór deze functie bestond), dan staat de naam alvast klaar en
+// hoeft alleen nog een poppetje gekozen te worden.
+function openProfielMakenScherm() {
+  inputMakerNaamEl.value = huidigeMakerNaam() || '';
+  naamInvullenFoutmeldingEl.textContent = '';
+  profielGekozenDier = geldigDier(huidigProfielDier());
+  bouwProfielDierenKiezer();
+  toonScherm('scherm-naam-invullen');
+}
+
+// Zorgt dat een schermwissel alleen doorgaat als er al een profiel is; is er
+// nog geen profiel, dan wordt eerst het profiel-maken-scherm getoond en gaat
+// het na het aanmaken automatisch verder naar "actie".
+function metProfielVereist(actie) {
+  if (heeftProfiel()) {
+    actie();
+  } else {
+    naProfielActie = actie;
+    openProfielMakenScherm();
+  }
 }
 
 // Tekst veilig in innerHTML zetten (namen en titels komen van gebruikers).
@@ -168,10 +249,27 @@ function bevestigMakerNaam() {
     naamInvullenFoutmeldingEl.textContent = 'Vul je naam in.';
     return;
   }
+  if (!profielGekozenDier) {
+    naamInvullenFoutmeldingEl.textContent = 'Kies ook een poppetje als profielfoto.';
+    return;
+  }
   localStorage.setItem(MAKER_NAAM_SLEUTEL, naam);
-  toonScherm('scherm-quizmaken');
-  // Eerst de naam bij bestaande quizzen zetten, dan pas het overzicht laden.
-  koppelMakerNaamAanEigenQuizzen().then(() => laadEigenQuizzen());
+  localStorage.setItem(PROFIEL_DIER_SLEUTEL, profielGekozenDier);
+  werkProfielBadgeBij();
+  werkVakSlotjesBij();
+
+  const actie = naProfielActie;
+  naProfielActie = null;
+
+  if (actie) {
+    actie();
+  } else {
+    toonScherm('scherm-quizmaken');
+    laadEigenQuizzen();
+  }
+  // Eerst de naam bij bestaande quizzen zetten (voor het geval er al oudere
+  // quizzen van dit apparaat bestaan zonder naam).
+  koppelMakerNaamAanEigenQuizzen();
 }
 
 document.getElementById('btn-naam-bevestigen').addEventListener('click', bevestigMakerNaam);
@@ -190,14 +288,10 @@ function toonScherm(id) {
 }
 
 document.getElementById('btn-naar-quizmaken').addEventListener('click', () => {
-  if (huidigeMakerNaam()) {
+  metProfielVereist(() => {
     toonScherm('scherm-quizmaken');
     laadEigenQuizzen();
-  } else {
-    inputMakerNaamEl.value = '';
-    naamInvullenFoutmeldingEl.textContent = '';
-    toonScherm('scherm-naam-invullen');
-  }
+  });
 });
 
 document.getElementById('btn-naar-speelbaar').addEventListener('click', () => {
@@ -210,9 +304,11 @@ document.getElementById('btn-naar-meedoen').addEventListener('click', () => {
 });
 
 document.getElementById('btn-naar-dierentuin').addEventListener('click', () => {
-  toonScherm('scherm-dierenverzameling');
-  werkMuntenWeergaveBij();
-  bouwVerzamelingKiezer();
+  metProfielVereist(() => {
+    toonScherm('scherm-dierenverzameling');
+    werkMuntenWeergaveBij();
+    bouwVerzamelingKiezer();
+  });
 });
 
 document.querySelectorAll('[data-terug-naar]').forEach(knop => {
@@ -1750,13 +1846,17 @@ function voegBezitToe(dieren, accessoires) {
 }
 
 document.getElementById('btn-naar-winkel').addEventListener('click', () => {
-  toonScherm('scherm-winkel');
-  laadWinkelBoxen();
+  metProfielVereist(() => {
+    toonScherm('scherm-winkel');
+    laadWinkelBoxen();
+  });
 });
 
 document.getElementById('btn-naar-wiel').addEventListener('click', () => {
-  toonScherm('scherm-wiel');
-  laadGeluksrad();
+  metProfielVereist(() => {
+    toonScherm('scherm-wiel');
+    laadGeluksrad();
+  });
 });
 
 // ---------- Mysterieboxen laden en tonen ----------
@@ -3386,3 +3486,35 @@ werkMuntenWeergaveBij();
 
 // ---------- Bij het openen van de site: naam bij eigen quizzen zetten ----------
 koppelMakerNaamAanEigenQuizzen();
+
+// ---------- Profiel: badge, slotjes op de vakken en het profiel-overlay ----------
+
+// Zet een 🔒 op de vakken die pas werken met een profiel, zolang er nog
+// geen profiel is aangemaakt.
+function werkVakSlotjesBij() {
+  const opSlot = !heeftProfiel();
+  ['btn-naar-quizmaken', 'btn-naar-winkel', 'btn-naar-dierentuin', 'btn-naar-wiel'].forEach(id => {
+    document.getElementById(id).classList.toggle('vak-op-slot', opSlot);
+  });
+  document.getElementById('profiel-vereist-hint').style.display = opSlot ? '' : 'none';
+}
+
+const profielOverlayEl = document.getElementById('profiel-overlay');
+
+document.getElementById('btn-profiel-badge').addEventListener('click', () => {
+  if (heeftProfiel()) {
+    document.getElementById('profiel-overlay-poppetje').textContent = huidigProfielDier();
+    document.getElementById('profiel-overlay-naam').textContent = 'Ingelogd als ' + huidigeMakerNaam();
+    profielOverlayEl.classList.add('actief');
+  } else {
+    naProfielActie = null;
+    openProfielMakenScherm();
+  }
+});
+
+document.getElementById('btn-profiel-overlay-sluiten').addEventListener('click', () => {
+  profielOverlayEl.classList.remove('actief');
+});
+
+werkProfielBadgeBij();
+werkVakSlotjesBij();
