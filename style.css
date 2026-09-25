@@ -1058,50 +1058,146 @@ label {
   z-index: 500;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  padding: 5px;
   background: #10152e;
   border: 1px solid #4a3c1a;
-  border-radius: 999px;
-  padding: 6px 14px 6px 6px;
+  border-radius: 50%;
   color: #e6cd8f;
-  font-size: 13px;
-  font-weight: 700;
   cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition: border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 
 .profiel-badge:hover {
   border-color: #f0c04d;
   color: #f0c04d;
+  transform: scale(1.04);
 }
 
 .profiel-badge-poppetje {
   display: inline-flex;
-  width: 26px;
-  height: 26px;
-  font-size: 22px;
-  line-height: 1;
+  width: 36px;
+  height: 36px;
   align-items: center;
   justify-content: center;
+  font-size: 0;
+  line-height: 0;
 }
 
 .profiel-badge-poppetje:empty {
   display: none;
 }
 
+.profiel-badge-poppetje svg {
+  display: block;
+  width: 36px;
+  height: 36px;
+  overflow: visible;
+}
+
+#profiel-badge-tekst {
+  display: none;
+}
+
+.profiel-overlay {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 20px;
+}
+
+.profiel-venster {
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
 .profiel-overlay-poppetje {
-  font-size: 64px;
-  line-height: 1;
-  text-align: center;
-  margin: 4px 0 8px;
+  width: 96px;
+  height: 96px;
+  margin: 4px auto 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.profiel-overlay-poppetje svg {
+  display: block;
+  width: 96px;
+  height: 96px;
+  overflow: visible;
+}
+
+.profiel-dieren-kiezer {
+  width: 100%;
+  max-width: 100%;
+  margin-top: 4px;
+}
+
+.profiel-kiezer-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.profiel-kiezer-tab {
+  flex: 1;
+  border: 1px solid #4a3c1a;
+  background: #10152e;
+  color: #9a97a8;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.profiel-kiezer-tab.actief {
+  border-color: #f0c04d;
+  color: #f0c04d;
+  background: #1c1a33;
+}
+
+.profiel-dieren-kiezer.accessoires {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.profiel-dieren-kiezer .dier-knop {
+  position: relative;
+}
+
+.profiel-dieren-kiezer .dier-knop .poppetje-svg {
+  margin: 0 auto;
 }
 
 @media (max-width: 480px) {
   .profiel-badge {
     top: 8px;
     right: 8px;
-    padding: 5px 10px 5px 5px;
-    font-size: 12px;
+    width: 42px;
+    height: 42px;
+  }
+
+  .profiel-badge-poppetje,
+  .profiel-badge-poppetje svg {
+    width: 33px;
+    height: 33px;
+  }
+
+  .profiel-overlay {
+    padding: 10px;
+  }
+
+  .profiel-venster {
+    max-height: calc(100vh - 20px);
+    padding: 24px 18px 20px;
   }
 }
 
