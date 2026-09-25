@@ -119,10 +119,13 @@ function huidigProfielDier() {
   return localStorage.getItem(PROFIEL_DIER_SLEUTEL) || '';
 }
 
-// Een profiel bestaat pas als er zowel een gebruikersnaam als een gekozen
-// poppetje (profielfoto) lokaal onthouden zijn.
+// Een profiel bestaat zodra er een gebruikersnaam is. Het poppetje komt er
+// idealiiter gelijk bij, maar is geen harde eis: heb je (nog) geen enkel
+// poppetje in bezit (bijv. omdat je ze allemaal verkocht hebt), dan kun je
+// nog steeds een profiel hebben en later alsnog een poppetje kiezen zodra je
+// er weer een hebt.
 function heeftProfiel() {
-  return !!(huidigeMakerNaam() && huidigProfielDier());
+  return !!huidigeMakerNaam();
 }
 
 // Onthoudt welk poppetje net gekozen is op het profiel-maken-scherm, vóórdat
@@ -135,27 +138,43 @@ let profielGekozenDier = '';
 // verdergaan naar waar de bezoeker eigenlijk heen wilde.
 let naProfielActie = null;
 
-// Bouwt de poppetje-kiezer op het profiel-maken-scherm: alleen de dieren die
-// deze bezoeker al bezit (net als in de wachtkamer), zonder accessoires.
-function bouwProfielDierenKiezer() {
-  const kiezerEl = document.getElementById('profiel-dieren-kiezer');
-  if (!kiezerEl) return;
-  kiezerEl.innerHTML = '';
+// Bouwt een poppetje-kiezer (alleen dieren die je al bezit, zonder accessoires)
+// in het meegegeven element. Heb je nog geen enkel poppetje in bezit, dan komt
+// er gewoon een uitleg te staan in plaats van een lege/onbruikbare kiezer.
+// onKiezen(dier) wordt aangeroepen zodra er op een poppetje geklikt wordt.
+function bouwPoppetjeKiezer(containerEl, huidigeWaarde, onKiezen) {
+  if (!containerEl) return;
+  containerEl.innerHTML = '';
   const bezitDieren = haalBezitDieren();
+
+  if (!bezitDieren.length) {
+    const hint = document.createElement('p');
+    hint.className = 'kiezer-hint';
+    hint.textContent = 'Je hebt nog geen enkel poppetje om te kiezen. Verdien of win er eerst één (bijv. bij de Winkel of het Geluksrad).';
+    containerEl.appendChild(hint);
+    return;
+  }
+
   bezitDieren.forEach(dier => {
     const knop = document.createElement('button');
     knop.type = 'button';
     knop.className = 'dier-knop';
     knop.innerHTML = poppetjeSvg(dier, {});
     knop.dataset.dier = dier;
-    knop.classList.toggle('gekozen', dier === profielGekozenDier);
+    knop.classList.toggle('gekozen', dier === huidigeWaarde);
     knop.setAttribute('aria-label', 'Kies ' + dier + ' als profielfoto');
     knop.addEventListener('click', () => {
-      profielGekozenDier = dier;
-      kiezerEl.querySelectorAll('.dier-knop').forEach(k => k.classList.toggle('gekozen', k.dataset.dier === dier));
+      onKiezen(dier);
+      containerEl.querySelectorAll('.dier-knop').forEach(k => k.classList.toggle('gekozen', k.dataset.dier === dier));
     });
-    kiezerEl.appendChild(knop);
+    containerEl.appendChild(knop);
   });
+}
+
+// Bouwt de poppetje-kiezer op het profiel-maken-scherm.
+function bouwProfielDierenKiezer() {
+  const kiezerEl = document.getElementById('profiel-dieren-kiezer');
+  bouwPoppetjeKiezer(kiezerEl, profielGekozenDier, (dier) => { profielGekozenDier = dier; });
 }
 
 // Werkt de badge rechtsboven bij: toont poppetje + naam als er een profiel
@@ -249,12 +268,16 @@ function bevestigMakerNaam() {
     naamInvullenFoutmeldingEl.textContent = 'Vul je naam in.';
     return;
   }
-  if (!profielGekozenDier) {
+  // Een poppetje kiezen is alleen verplicht als er ook echt iets te kiezen
+  // valt; heb je (nog) geen enkel poppetje, dan kun je zonder verder.
+  if (haalBezitDieren().length && !profielGekozenDier) {
     naamInvullenFoutmeldingEl.textContent = 'Kies ook een poppetje als profielfoto.';
     return;
   }
   localStorage.setItem(MAKER_NAAM_SLEUTEL, naam);
-  localStorage.setItem(PROFIEL_DIER_SLEUTEL, profielGekozenDier);
+  if (profielGekozenDier) {
+    localStorage.setItem(PROFIEL_DIER_SLEUTEL, profielGekozenDier);
+  }
   werkProfielBadgeBij();
   werkVakSlotjesBij();
 
@@ -3500,11 +3523,35 @@ function werkVakSlotjesBij() {
 }
 
 const profielOverlayEl = document.getElementById('profiel-overlay');
+const btnProfielPoppetjeWijzigenEl = document.getElementById('btn-profiel-poppetje-wijzigen');
+const profielOverlayDierenKiezerEl = document.getElementById('profiel-overlay-dieren-kiezer');
+
+function sluitProfielPoppetjeKiezer() {
+  profielOverlayDierenKiezerEl.style.display = 'none';
+  profielOverlayDierenKiezerEl.innerHTML = '';
+  btnProfielPoppetjeWijzigenEl.textContent = '🔁 Poppetje wijzigen';
+}
+
+btnProfielPoppetjeWijzigenEl.addEventListener('click', () => {
+  const isOpen = profielOverlayDierenKiezerEl.style.display !== 'none';
+  if (isOpen) {
+    sluitProfielPoppetjeKiezer();
+    return;
+  }
+  bouwPoppetjeKiezer(profielOverlayDierenKiezerEl, huidigProfielDier(), (dier) => {
+    localStorage.setItem(PROFIEL_DIER_SLEUTEL, dier);
+    werkProfielBadgeBij();
+    document.getElementById('profiel-overlay-poppetje').textContent = dier;
+  });
+  profielOverlayDierenKiezerEl.style.display = '';
+  btnProfielPoppetjeWijzigenEl.textContent = 'Kiezer sluiten';
+});
 
 document.getElementById('btn-profiel-badge').addEventListener('click', () => {
   if (heeftProfiel()) {
     document.getElementById('profiel-overlay-poppetje').textContent = huidigProfielDier();
     document.getElementById('profiel-overlay-naam').textContent = 'Ingelogd als ' + huidigeMakerNaam();
+    sluitProfielPoppetjeKiezer();
     profielOverlayEl.classList.add('actief');
   } else {
     naProfielActie = null;
