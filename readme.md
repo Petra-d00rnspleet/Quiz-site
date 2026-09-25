@@ -176,7 +176,7 @@ Boxen staan in Firebase onder een nieuw pad mysterieboxen naast quizzen en sessi
 
 Kist later te koop zetten of offline halen (nieuw)
 
-In het ontwerpvenster van een kist staat nu ook "Te koop vanaf (optioneel)": vul je hier een datum in de toekomst in, dan ziet alleen sitebeheer die kist alvast in de winkel (met een label "⏳ Te koop vanaf ..."); gewone spelers zien hem pas zodra die datum is aangebroken. Laat je het veld leeg, dan is de kist meteen te koop, zoals voorheen.
+In het ontwerpvenster van een kist staat nu ook "Te koop vanaf (optioneel)": vul je hier een datum in de toekomst in, dan is de kist standaard nog helemaal onzichtbaar voor spelers totdat die datum is aangebroken. Daaronder staat het vinkje "Spelers mogen al zien dat deze kist eraan komt (naam, prijs en datum), maar kunnen hem nog niet kopen": zet je dat aan, dan verschijnt de kist alvast in de winkel bij spelers met het label "⏳ Binnenkort — te koop vanaf ...", met een uitgegrijsde "Nog niet te koop"-knop (zonder dat ze zien wat erin zit). Laat je het vinkje uit, dan blijft de kist volledig verborgen tot de vanaf-datum, zoals voorheen. Boven de winkel-lijst staat voor sitebeheer een inklapbaar overzicht "🔜 Kisten die nog komen", met alle kisten die nog een toekomstige vanaf-datum hebben, op datum gesorteerd (eerstkomende bovenaan) en met een aanduiding of spelers hem al kunnen zien.
 
 Daarnaast staat er "Automatisch offline vanaf (optioneel)": vul je hier een datum in, dan verdwijnt de kist die dag vanzelf uit de winkel voor gewone spelers (net als bij handmatig "Offline halen"), met een label "🔒 Automatisch offline sinds ..." voor sitebeheer. Laat je dit veld leeg, dan blijft de kist gewoon online totdat je hem zelf offline haalt of verwijdert.
 
