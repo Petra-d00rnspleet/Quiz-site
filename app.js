@@ -1754,6 +1754,11 @@ document.getElementById('btn-naar-winkel').addEventListener('click', () => {
   laadWinkelBoxen();
 });
 
+document.getElementById('btn-naar-wiel').addEventListener('click', () => {
+  toonScherm('scherm-wiel');
+  laadGeluksrad();
+});
+
 // ---------- Mysterieboxen laden en tonen ----------
 
 function bouwBoxKaartHtml(boxId, box) {
@@ -2120,6 +2125,233 @@ document.getElementById('btn-box-opslaan').addEventListener('click', () => {
     laadWinkelBoxen();
   }).catch(() => {
     boxBewerkenFoutmeldingEl.textContent = 'Opslaan is niet gelukt. Probeer het opnieuw.';
+  });
+});
+
+// ---------- Geluksrad (1x per dag gratis draaien voor munten) ----------
+// Rad staat in Firebase onder "geluksrad/segmenten" (een array), naast mysterieboxen —
+// zie readme.md voor de bijbehorende Firebase-regel. Is er nog niets ingesteld door
+// sitebeheer, dan gebruiken we STANDAARD_WIEL_SEGMENTEN zodat het rad meteen werkt.
+
+const WIEL_LAATSTE_DRAAI_SLEUTEL = 'quizAppWielLaatsteDraai';
+const WIEL_LAATSTE_RESULTAAT_SLEUTEL = 'quizAppWielLaatsteResultaat';
+// Hoeveel volle rondes het rad draait vóór het bij het gekozen vak uitkomt (voor het effect).
+const WIEL_EXTRA_RONDES = 5;
+// Moet gelijk zijn aan de transition-duration van .wiel-schijf in style.css (in ms).
+const WIEL_DRAAI_DUUR_MS = 4200;
+// Kleuren voor de vakken, worden cyclisch gebruikt (zoals in het voorbeeldplaatje van een geluksrad).
+const WIEL_KLEUREN = ['#f2c14e', '#3fc6f0', '#e0459a', '#8b3fe0', '#f0524a', '#f2933e', '#39c98f', '#4a6bf0'];
+
+const STANDAARD_WIEL_SEGMENTEN = [
+  { naam: '5 munten', munten: 5, kans: 3 },
+  { naam: '10 munten', munten: 10, kans: 3 },
+  { naam: '2 munten', munten: 2, kans: 4 },
+  { naam: '20 munten', munten: 20, kans: 2 },
+  { naam: '5 munten', munten: 5, kans: 3 },
+  { naam: '50 munten', munten: 50, kans: 1 },
+  { naam: '10 munten', munten: 10, kans: 3 },
+  { naam: '100 munten', munten: 100, kans: 1 }
+];
+
+let wielSegmentenCache = STANDAARD_WIEL_SEGMENTEN;
+let wielSegmentenMetHoek = [];
+let wielHuidigeRotatie = 0;
+let wielDraaitNu = false;
+
+// Zet de rauwe segmenten (naam/munten/kans) om naar segmenten met een startHoek en
+// breedteHoek (in graden, 0° = boven bij de wijzer, met de klok mee) op basis van de
+// "kans"-gewichten. Een groter vak = een hoger gewicht = vaker gewonnen.
+function berekenWielHoeken(segmenten) {
+  const totaalKans = segmenten.reduce((som, s) => som + (s.kans > 0 ? s.kans : 0), 0);
+  let cursor = 0;
+  return segmenten.map((s, i) => {
+    const gewicht = s.kans > 0 ? s.kans : 1;
+    const breedte = totaalKans > 0 ? (gewicht / totaalKans) * 360 : (360 / segmenten.length);
+    const metHoek = { naam: s.naam, munten: s.munten, kans: s.kans, kleur: WIEL_KLEUREN[i % WIEL_KLEUREN.length], startHoek: cursor, breedteHoek: breedte };
+    cursor += breedte;
+    return metHoek;
+  });
+}
+
+// Kiest een vak, met precies dezelfde kansverhouding als de grootte van de vakken op het rad.
+function kiesGewogenWielSegment(segmentenMetHoek) {
+  const totaal = segmentenMetHoek.reduce((som, s) => som + s.breedteHoek, 0);
+  let r = Math.random() * totaal;
+  for (let i = 0; i < segmentenMetHoek.length; i++) {
+    if (r < segmentenMetHoek[i].breedteHoek) return segmentenMetHoek[i];
+    r -= segmentenMetHoek[i].breedteHoek;
+  }
+  return segmentenMetHoek[segmentenMetHoek.length - 1];
+}
+
+// Bouwt de SVG-taart van het rad op basis van de segmenten-met-hoek.
+function bouwWielSvg(segmentenMetHoek) {
+  const cx = 140, cy = 140, r = 132;
+  const naarPunt = (hoekGraden) => {
+    const rad = (hoekGraden - 90) * Math.PI / 180; // -90 zodat 0° boven is
+    return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+  };
+  let paden = '';
+  let labels = '';
+  segmentenMetHoek.forEach(s => {
+    const start = naarPunt(s.startHoek);
+    const eind = naarPunt(s.startHoek + s.breedteHoek);
+    const grootBoog = s.breedteHoek > 180 ? 1 : 0;
+    paden += '<path d="M ' + cx + ' ' + cy + ' L ' + start[0].toFixed(1) + ' ' + start[1].toFixed(1) +
+      ' A ' + r + ' ' + r + ' 0 ' + grootBoog + ' 1 ' + eind[0].toFixed(1) + ' ' + eind[1].toFixed(1) + ' Z" fill="' + s.kleur + '" stroke="#0b1029" stroke-width="2"></path>';
+    if (s.breedteHoek > 8) {
+      const midHoek = s.startHoek + s.breedteHoek / 2;
+      const labelPunt = naarPunt(midHoek);
+      const labelX = cx + (labelPunt[0] - cx) * 0.62;
+      const labelY = cy + (labelPunt[1] - cy) * 0.62;
+      labels += '<text x="' + labelX.toFixed(1) + '" y="' + labelY.toFixed(1) + '" text-anchor="middle" dominant-baseline="middle" font-size="15" font-weight="700" fill="#0b1029">' + escapeHtml(s.naam) + '</text>';
+    }
+  });
+  return '<svg viewBox="0 0 280 280" xmlns="http://www.w3.org/2000/svg">' + paden + labels + '</svg>';
+}
+
+// Werkt de knop-tekst en de statusregel onder het rad bij, afhankelijk van of er vandaag
+// al gedraaid is.
+function werkWielStatusBij() {
+  const knopEl = document.getElementById('btn-wiel-draaien');
+  const statusEl = document.getElementById('wiel-status');
+  const resultaatEl = document.getElementById('wiel-resultaat');
+  const vandaag = huidigeDatumTekst();
+  const alGedraaidVandaag = localStorage.getItem(WIEL_LAATSTE_DRAAI_SLEUTEL) === vandaag;
+
+  if (alGedraaidVandaag) {
+    knopEl.disabled = true;
+    statusEl.textContent = '⏳ Je hebt vandaag al gedraaid. Kom morgen terug voor een nieuwe beurt!';
+    const laatsteResultaat = localStorage.getItem(WIEL_LAATSTE_RESULTAAT_SLEUTEL);
+    resultaatEl.textContent = laatsteResultaat ? ('🎉 Vandaag gewonnen: ' + laatsteResultaat) : '';
+  } else {
+    knopEl.disabled = wielDraaitNu;
+    statusEl.textContent = wielDraaitNu ? '' : 'Klik op de knop in het midden van het rad om te draaien!';
+    if (!wielDraaitNu) resultaatEl.textContent = '';
+  }
+}
+
+function laadGeluksrad() {
+  werkMuntenWeergaveBij();
+  document.getElementById('btn-wiel-aanpassen').style.display = sitebeheerActief ? 'inline-block' : 'none';
+  wielHuidigeRotatie = 0;
+  const schijfEl = document.getElementById('wiel-schijf');
+  schijfEl.style.transition = 'none';
+  schijfEl.style.transform = 'rotate(0deg)';
+
+  db.ref('geluksrad/segmenten').once('value').then(snapshot => {
+    const opgeslagen = snapshot.val();
+    wielSegmentenCache = (Array.isArray(opgeslagen) && opgeslagen.length >= 2) ? opgeslagen : STANDAARD_WIEL_SEGMENTEN;
+    wielSegmentenMetHoek = berekenWielHoeken(wielSegmentenCache);
+    schijfEl.innerHTML = bouwWielSvg(wielSegmentenMetHoek);
+    // Forceer een reflow zodat de volgende draai-transitie weer gewoon animeert
+    // (na het instant terugzetten naar 0° hierboven).
+    void schijfEl.offsetWidth;
+    schijfEl.style.transition = '';
+    werkWielStatusBij();
+  }).catch(() => {
+    wielSegmentenCache = STANDAARD_WIEL_SEGMENTEN;
+    wielSegmentenMetHoek = berekenWielHoeken(wielSegmentenCache);
+    schijfEl.innerHTML = bouwWielSvg(wielSegmentenMetHoek);
+    werkWielStatusBij();
+  });
+}
+
+function draaiRad() {
+  if (wielDraaitNu) return;
+  const vandaag = huidigeDatumTekst();
+  if (localStorage.getItem(WIEL_LAATSTE_DRAAI_SLEUTEL) === vandaag) return;
+  if (!wielSegmentenMetHoek.length) return;
+
+  wielDraaitNu = true;
+  werkWielStatusBij();
+
+  const gekozenSegment = kiesGewogenWielSegment(wielSegmentenMetHoek);
+  const marge = Math.min(wielSegmentenMetHoek.length > 1 ? gekozenSegment.breedteHoek * 0.15 : 0, 10);
+  const speling = Math.max(gekozenSegment.breedteHoek - marge * 2, 0.01);
+  const doelHoek = gekozenSegment.startHoek + marge + Math.random() * speling;
+
+  const huidigeBasis = ((wielHuidigeRotatie % 360) + 360) % 360;
+  let extra = (360 - doelHoek) - huidigeBasis;
+  extra = ((extra % 360) + 360) % 360;
+  wielHuidigeRotatie += WIEL_EXTRA_RONDES * 360 + extra;
+
+  document.getElementById('wiel-schijf').style.transform = 'rotate(' + wielHuidigeRotatie + 'deg)';
+
+  setTimeout(() => {
+    wielDraaitNu = false;
+    localStorage.setItem(WIEL_LAATSTE_DRAAI_SLEUTEL, vandaag);
+    localStorage.setItem(WIEL_LAATSTE_RESULTAAT_SLEUTEL, gekozenSegment.naam);
+    if (gekozenSegment.munten) geefMunten(gekozenSegment.munten);
+    document.getElementById('wiel-resultaat').textContent = '🎉 Je hebt gewonnen: ' + gekozenSegment.naam + '!';
+    werkWielStatusBij();
+  }, WIEL_DRAAI_DUUR_MS);
+}
+
+document.getElementById('btn-wiel-draaien').addEventListener('click', draaiRad);
+
+// ---------- Geluksrad aanpassen (alleen sitebeheer) ----------
+
+const wielBewerkenOverlayEl = document.getElementById('wiel-bewerken-overlay');
+const wielSegmentenLijstEl = document.getElementById('wiel-segmenten-lijst');
+const sjabloonWielSegmentRij = document.getElementById('sjabloon-wiel-segment-rij');
+const wielBewerkenFoutmeldingEl = document.getElementById('wiel-bewerken-foutmelding');
+
+function voegWielSegmentRijToe(segment) {
+  const kloon = sjabloonWielSegmentRij.content.cloneNode(true);
+  const rij = kloon.querySelector('.wiel-segment-rij');
+  rij.querySelector('.wiel-segment-naam').value = segment ? (segment.naam || '') : '';
+  rij.querySelector('.wiel-segment-munten').value = segment ? (segment.munten || 0) : 10;
+  rij.querySelector('.wiel-segment-kans').value = segment ? (segment.kans || 1) : 1;
+  rij.querySelector('.wiel-segment-verwijderen').addEventListener('click', () => rij.remove());
+  wielSegmentenLijstEl.appendChild(kloon);
+}
+
+function openGeluksradBewerken() {
+  wielSegmentenLijstEl.innerHTML = '';
+  wielBewerkenFoutmeldingEl.textContent = '';
+  wielSegmentenCache.forEach(segment => voegWielSegmentRijToe(segment));
+  wielBewerkenOverlayEl.classList.add('actief');
+}
+
+document.getElementById('btn-wiel-aanpassen').addEventListener('click', openGeluksradBewerken);
+
+document.getElementById('btn-wiel-segment-toevoegen').addEventListener('click', () => {
+  voegWielSegmentRijToe(null);
+});
+
+document.getElementById('btn-wiel-annuleren').addEventListener('click', () => {
+  wielBewerkenOverlayEl.classList.remove('actief');
+});
+
+document.getElementById('btn-wiel-opslaan').addEventListener('click', () => {
+  const rijen = wielSegmentenLijstEl.querySelectorAll('.wiel-segment-rij');
+  const segmenten = [];
+  let fout = '';
+
+  rijen.forEach(rij => {
+    if (fout) return;
+    const naamRuw = rij.querySelector('.wiel-segment-naam').value.trim();
+    const munten = parseInt(rij.querySelector('.wiel-segment-munten').value, 10);
+    const kans = parseInt(rij.querySelector('.wiel-segment-kans').value, 10);
+    if (isNaN(munten) || munten < 0) { fout = 'Vul bij elk vak een geldig aantal munten in (0 of meer).'; return; }
+    if (isNaN(kans) || kans < 1) { fout = 'Vul bij elk vak een kans van minstens 1 in.'; return; }
+    segmenten.push({ naam: naamRuw || (munten + ' munten'), munten: munten, kans: kans });
+  });
+
+  if (!fout && segmenten.length < 2) {
+    fout = 'Voeg minstens 2 vakken toe aan het rad.';
+  }
+  if (fout) {
+    wielBewerkenFoutmeldingEl.textContent = fout;
+    return;
+  }
+
+  db.ref('geluksrad/segmenten').set(segmenten).then(() => {
+    wielBewerkenOverlayEl.classList.remove('actief');
+    laadGeluksrad();
+  }).catch(() => {
+    wielBewerkenFoutmeldingEl.textContent = 'Opslaan is niet gelukt. Probeer het opnieuw.';
   });
 });
 
