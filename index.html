@@ -10,6 +10,23 @@
 
   <div id="firebase-fout-balk"></div>
 
+  <!-- PROFIEL: badge rechtsboven, altijd zichtbaar -->
+  <button id="btn-profiel-badge" class="profiel-badge" type="button">
+    <span id="profiel-badge-poppetje" class="profiel-badge-poppetje" aria-hidden="true"></span>
+    <span id="profiel-badge-tekst">👤 Profiel maken</span>
+  </button>
+
+  <div id="profiel-overlay" class="sitebeheer-overlay">
+    <div class="sitebeheer-venster">
+      <div class="sitebeheer-icoon">👤</div>
+      <h3>Jouw profiel</h3>
+      <div id="profiel-overlay-poppetje" class="profiel-overlay-poppetje" aria-hidden="true"></div>
+      <p id="profiel-overlay-naam" class="subtitel"></p>
+      <p class="subtitel">Je gebruikersnaam en poppetje kun je niet meer wijzigen.</p>
+      <button class="btn btn-secondary" id="btn-profiel-overlay-sluiten" type="button">Sluiten</button>
+    </div>
+  </div>
+
   <div class="container">
 
     <!-- SCHERM: ALGEMEEN (startscherm) -->
@@ -18,13 +35,14 @@
       <p class="subtitel">Maak een quiz of doe mee met een quiz</p>
       <div class="munten-weergave">💰 <span class="munten-aantal">0</span> munten</div>
       <div class="vakken-rij">
-        <button class="vak vak-maken" id="btn-naar-quizmaken">📝 Quiz maken</button>
+        <button class="vak vak-maken" id="btn-naar-quizmaken">📝 Quiz maken<span class="vak-slotje" aria-hidden="true">🔒</span></button>
         <button class="vak vak-speelbaar" id="btn-naar-speelbaar">🌍 Speelbare quizzen</button>
         <button class="vak vak-meedoen" id="btn-naar-meedoen">🙋 Meedoen aan quiz</button>
-        <button class="vak vak-winkel" id="btn-naar-winkel">🎁 Winkel</button>
-        <button class="vak vak-dierentuin" id="btn-naar-dierentuin">🐾 Dierenverzameling</button>
-        <button class="vak vak-wiel" id="btn-naar-wiel">🎡 Geluksrad</button>
+        <button class="vak vak-winkel" id="btn-naar-winkel">🎁 Winkel<span class="vak-slotje" aria-hidden="true">🔒</span></button>
+        <button class="vak vak-dierentuin" id="btn-naar-dierentuin">🐾 Dierenverzameling<span class="vak-slotje" aria-hidden="true">🔒</span></button>
+        <button class="vak vak-wiel" id="btn-naar-wiel">🎡 Geluksrad<span class="vak-slotje" aria-hidden="true">🔒</span></button>
       </div>
+      <p id="profiel-vereist-hint" class="subtitel" style="margin-top:14px;">🔒 Maak eerst een profiel aan (gebruikersnaam + poppetje) om quizzen te maken, de winkel, de dierenverzameling en het geluksrad te gebruiken. Meedoen aan een quiz en speelbare quizzen spelen kan altijd, ook zonder profiel.</p>
     </section>
 
     <!-- SCHERM: DIERENVERZAMELING (alle dieren en accessoires bekijken, ook buiten een quiz om) -->
@@ -121,14 +139,16 @@
       <button class="btn btn-secondary" id="btn-speler-terug-naar-start" style="display:none;">Terug naar start</button>
     </section>
 
-    <!-- SCHERM: NAAM INVULLEN (verplicht vóór quiz maken) -->
+    <!-- SCHERM: PROFIEL MAKEN (verplicht vóór quiz maken, winkel, dierenverzameling, geluksrad) -->
     <section id="scherm-naam-invullen" class="scherm">
       <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
-      <h2 class="titel-regenboog">Hoe heet je?</h2>
-      <p class="subtitel">Vul je naam in voordat je een quiz maakt. Deze naam komt bij al je quizzen te staan. Gewone bezoekers zien je naam niet; alleen sitebeheer kan zien wie een quiz heeft gemaakt. Let op: je kunt je naam hierna niet meer wijzigen.</p>
-      <label for="input-maker-naam">Jouw naam</label>
+      <h2 class="titel-regenboog">Maak je profiel</h2>
+      <p class="subtitel">Bedenk een gebruikersnaam en kies een poppetje als profielfoto. Dit wordt lokaal in je browser onthouden (geen wachtwoord nodig). Gewone bezoekers zien je naam niet; alleen sitebeheer kan zien wie een quiz heeft gemaakt. Let op: hierna kun je je gebruikersnaam en poppetje niet meer wijzigen.</p>
+      <label for="input-maker-naam">Gebruikersnaam</label>
       <input type="text" id="input-maker-naam" placeholder="Bijv. Sam" maxlength="30">
-      <button class="btn btn-primary" id="btn-naam-bevestigen">Doorgaan</button>
+      <label>Kies je poppetje (profielfoto)</label>
+      <div id="profiel-dieren-kiezer" class="dieren-kiezer"></div>
+      <button class="btn btn-primary" id="btn-naam-bevestigen">Profiel aanmaken</button>
       <p id="naam-invullen-foutmelding" class="foutmelding"></p>
     </section>
 
