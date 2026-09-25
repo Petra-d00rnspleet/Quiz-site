@@ -1,3 +1,4 @@
+
 // ---------- Sitebeheer (echt inloggen via Firebase Authentication) ----------
 //
 // De beheerder logt in met een e-mailadres + wachtwoord dat in de Firebase
@@ -7,6 +8,16 @@
 // ingelogd tot er bewust wordt uitgelogd.
 
 let sitebeheerActief = false;
+
+// Voor gewone spelers gebruiken we anonieme Firebase-authenticatie. Daardoor
+// krijgt iedere browser een eigen veilige Firebase-ID zonder dat er een wachtwoord
+// nodig is. Die ID koppelen we aan de gekozen gebruikersnaam voor vrienden/chat.
+function zorgVoorSocialeGebruiker() {
+  if (typeof auth === 'undefined') return;
+  if (!auth.currentUser) {
+    auth.signInAnonymously().catch(() => {});
+  }
+}
 
 const sitebeheerOverlayEl = document.getElementById('sitebeheer-overlay');
 const inputSitebeheerEmailEl = document.getElementById('input-sitebeheer-email');
@@ -88,8 +99,14 @@ btnSitebeheerBevestigenEl.addEventListener('click', probeerSitebeheerInloggen);
 });
 
 auth.onAuthStateChanged(gebruiker => {
-  sitebeheerActief = !!gebruiker;
+  sitebeheerActief = !!gebruiker && !gebruiker.isAnonymous;
   werkSitebeheerKnopBij();
+  if (gebruiker && !gebruiker.isAnonymous) {
+    // Beheerder-account: niets extra's nodig.
+  } else if (!gebruiker) {
+    zorgVoorSocialeGebruiker();
+  }
+  if (typeof laadSocialeGegevens === 'function') laadSocialeGegevens();
   if (document.getElementById('scherm-speelbare-quizzen').classList.contains('actief')) {
     laadOpenbareQuizzen();
   }
@@ -97,6 +114,8 @@ auth.onAuthStateChanged(gebruiker => {
     laadEigenQuizzen();
   }
 });
+
+zorgVoorSocialeGebruiker();
 
 // ---------- Naam van de quizmaker (verplicht, eenmalig, niet meer te wijzigen) ----------
 //
@@ -278,6 +297,7 @@ function bevestigMakerNaam() {
   if (profielGekozenDier) {
     localStorage.setItem(PROFIEL_DIER_SLEUTEL, profielGekozenDier);
   }
+  registreerSociaalProfiel();
   werkProfielBadgeBij();
   werkVakSlotjesBij();
 
@@ -3743,3 +3763,483 @@ document.getElementById('btn-profiel-overlay-sluiten').addEventListener('click',
 
 werkProfielBadgeBij();
 werkVakSlotjesBij();
+
+
+
+// ================================================================
+// VRIENDEN, CHAT EN DUBBELE VERZAMELING
+// ================================================================
+
+const BEZIT_AANTALLEN_SLEUTEL = 'quizAppBezitAantallen';
+const SOCIAAL_PROFIEL_PAD = 'gebruikers';
+
+function normaliseerGebruikersnaam(naam) {
+  return String(naam || '').trim().toLowerCase().replace(/\\s+/g, ' ');
+}
+
+function profielFirebaseGebruiker() {
+  return typeof auth !== 'undefined' ? auth.currentUser : null;
+}
+
+function huidigeBezitAantallen() {
+  let data = {};
+  try { data = JSON.parse(localStorage.getItem(BEZIT_AANTALLEN_SLEUTEL) || '{}') || {}; } catch (e) {}
+  const dieren = haalBezitDierenBasisVoorAantal();
+  const accessoires = haalBezitAccessoiresBasisVoorAantal();
+  dieren.forEach(item => { if (!Number.isInteger(data['dier:' + item]) || data['dier:' + item] < 1) data['dier:' + item] = 1; });
+  accessoires.forEach(item => { if (!Number.isInteger(data['accessoire:' + item]) || data['accessoire:' + item] < 1) data['accessoire:' + item] = 1; });
+  return data;
+}
+
+function haalBezitDierenBasisVoorAantal() {
+  const opgeslagen = JSON.parse(localStorage.getItem(BEZIT_DIEREN_SLEUTEL) || 'null');
+  return Array.isArray(opgeslagen) && opgeslagen.length ? opgeslagen : STANDAARD_DIEREN.slice();
+}
+
+function haalBezitAccessoiresBasisVoorAantal() {
+  const opgeslagen = JSON.parse(localStorage.getItem(BEZIT_ACCESSOIRES_SLEUTEL) || 'null');
+  return Array.isArray(opgeslagen) && opgeslagen.length ? opgeslagen : STANDAARD_ACCESSOIRES.slice();
+}
+
+function slaBezitAantallenOp(data) {
+  localStorage.setItem(BEZIT_AANTALLEN_SLEUTEL, JSON.stringify(data || {}));
+}
+
+function aantalVan(type, item) {
+  const data = huidigeBezitAantallen();
+  return Math.max(0, Number(data[type + ':' + item] || 0));
+}
+
+function pasAantalAan(type, item, delta) {
+  const data = huidigeBezitAantallen();
+  const sleutel = type + ':' + item;
+  const nieuw = Math.max(0, (Number(data[sleutel]) || 0) + delta);
+  if (nieuw > 0) data[sleutel] = nieuw;
+  else delete data[sleutel];
+  slaBezitAantallenOp(data);
+  return nieuw;
+}
+
+function onlineBezitObject() {
+  const data = huidigeBezitAantallen();
+  const dieren = {};
+  const accessoires = {};
+  Object.keys(data).forEach(k => {
+    const [type, ...rest] = k.split(':');
+    const item = rest.join(':');
+    if (type === 'dier') dieren[item] = data[k];
+    if (type === 'accessoire') accessoires[item] = data[k];
+  });
+  return { dieren, accessoires };
+}
+
+function syncSociaalBezit() {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker || !heeftProfiel()) return Promise.resolve();
+  return db.ref(SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid + '/bezit').set(onlineBezitObject()).catch(() => {});
+}
+
+function registreerSociaalProfiel() {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker || !heeftProfiel()) return Promise.resolve();
+  const naam = huidigeMakerNaam();
+  const zoeknaam = normaliseerGebruikersnaam(naam);
+  const dier = geldigDier(huidigProfielDier()) || '';
+  const accessoires = huidigeProfielAccessoires ? huidigeProfielAccessoires() : {};
+  const naamRef = db.ref('gebruikersnamen/' + encodeURIComponent(zoeknaam));
+  return naamRef.transaction(v => v || gebruiker.uid).then(result => {
+    const eigenaar = result.snapshot.val();
+    if (eigenaar && eigenaar !== gebruiker.uid) {
+      throw new Error('Deze gebruikersnaam is al in gebruik.');
+    }
+    return db.ref(SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid).update({
+      gebruikersnaam: naam,
+      gebruikersnaamZoek: zoeknaam,
+      dier: dier,
+      accessoires: accessoires,
+      laatstOnline: firebase.database.ServerValue.TIMESTAMP
+    });
+  }).then(() => syncSociaalBezit()).catch(err => {
+    if (err && err.message === 'Deze gebruikersnaam is al in gebruik.') {
+      alert(err.message + ' Kies een andere naam.');
+    }
+  });
+}
+
+function laadOnlineBezitVoorEigenProfiel() {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker || !heeftProfiel()) return;
+  db.ref(SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid + '/bezit').on('value', snap => {
+    const data = snap.val();
+    if (!data) { syncSociaalBezit(); return; }
+    const aantallen = {};
+    const dieren = [];
+    const accessoires = [];
+    Object.entries(data.dieren || {}).forEach(([item, aantal]) => {
+      if (geldigDier(item) && Number(aantal) > 0) { dieren.push(item); aantallen['dier:' + item] = Number(aantal); }
+    });
+    Object.entries(data.accessoires || {}).forEach(([item, aantal]) => {
+      if (ACCESSOIRES[item] && Number(aantal) > 0) { accessoires.push(item); aantallen['accessoire:' + item] = Number(aantal); }
+    });
+    if (dieren.length) localStorage.setItem(BEZIT_DIEREN_SLEUTEL, JSON.stringify(dieren));
+    if (accessoires.length) localStorage.setItem(BEZIT_ACCESSOIRES_SLEUTEL, JSON.stringify(accessoires));
+    if (Object.keys(aantallen).length) slaBezitAantallenOp(aantallen);
+    werkMuntenWeergaveBij();
+    bouwVerzamelingKiezer();
+  }).catch(() => {});
+}
+
+function laadSocialeGegevens() {
+  if (!auth || !auth.currentUser) return;
+  if (heeftProfiel()) {
+    registreerSociaalProfiel();
+    laadOnlineBezitVoorEigenProfiel();
+    laadVriendenEnVerzoeken();
+  }
+}
+
+// Overridden inventory getters: dezelfde API als de oude code, maar nu met
+// unieke items in de lijst en aantallen apart opgeslagen.
+function haalBezitDieren() { return haalBezitDierenBasisVoorAantal(); }
+function haalBezitAccessoires() { return haalBezitAccessoiresBasisVoorAantal(); }
+
+function voegBezitToe(dieren, accessoires) {
+  const aantallen = huidigeBezitAantallen();
+  const huidigeDieren = haalBezitDierenBasisVoorAantal();
+  const huidigeAccessoires = haalBezitAccessoiresBasisVoorAantal();
+  (dieren || []).forEach(d => {
+    if (!geldigDier(d)) return;
+    if (huidigeDieren.indexOf(d) === -1) huidigeDieren.push(d);
+    const sleutel = 'dier:' + d;
+    aantallen[sleutel] = (Number(aantallen[sleutel]) || 0) + 1;
+  });
+  (accessoires || []).forEach(a => {
+    if (!ACCESSOIRES[a]) return;
+    if (huidigeAccessoires.indexOf(a) === -1) huidigeAccessoires.push(a);
+    const sleutel = 'accessoire:' + a;
+    aantallen[sleutel] = (Number(aantallen[sleutel]) || 0) + 1;
+  });
+  localStorage.setItem(BEZIT_DIEREN_SLEUTEL, JSON.stringify(huidigeDieren));
+  localStorage.setItem(BEZIT_ACCESSOIRES_SLEUTEL, JSON.stringify(huidigeAccessoires));
+  slaBezitAantallenOp(aantallen);
+  syncSociaalBezit();
+  werkMuntenWeergaveBij();
+  bouwVerzamelingKiezer();
+}
+
+function verwijderEenUitBezit(type, item) {
+  const aantallen = huidigeBezitAantallen();
+  const sleutel = type + ':' + item;
+  const nieuw = Math.max(0, (Number(aantallen[sleutel]) || 0) - 1);
+  if (nieuw > 0) aantallen[sleutel] = nieuw;
+  else delete aantallen[sleutel];
+  if (type === 'dier') {
+    const lijst = haalBezitDierenBasisVoorAantal().filter(x => x !== item);
+    if (nieuw > 0) lijst.push(item);
+    localStorage.setItem(BEZIT_DIEREN_SLEUTEL, JSON.stringify([...new Set(lijst)]));
+  } else {
+    const lijst = haalBezitAccessoiresBasisVoorAantal().filter(x => x !== item);
+    if (nieuw > 0) lijst.push(item);
+    localStorage.setItem(BEZIT_ACCESSOIRES_SLEUTEL, JSON.stringify([...new Set(lijst)]));
+  }
+  slaBezitAantallenOp(aantallen);
+  syncSociaalBezit();
+}
+
+function verkoopDier(dier) {
+  const aantal = aantalVan('dier', dier);
+  if (aantal <= 0) return;
+  if (aantal === 1 && haalBezitDieren().length <= 1) { alert('Je kunt je laatste dier niet verkopen.'); return; }
+  if (!confirm('Eén exemplaar van dit dier verkopen voor ' + VERKOOP_PRIJS + ' munten?')) return;
+  verwijderEenUitBezit('dier', dier);
+  geefMunten(VERKOOP_PRIJS);
+  bouwVerzamelingKiezer();
+}
+
+function verkoopAccessoire(emoji) {
+  const aantal = aantalVan('accessoire', emoji);
+  if (aantal <= 0) return;
+  if (aantal === 1 && haalBezitAccessoires().length <= 1) { alert('Je kunt je laatste accessoire niet verkopen.'); return; }
+  const naam = ACCESSOIRES[emoji] ? ACCESSOIRES[emoji].naam : 'dit accessoire';
+  if (!confirm('Eén exemplaar van "' + naam + '" verkopen voor ' + VERKOOP_PRIJS + ' munten?')) return;
+  verwijderEenUitBezit('accessoire', emoji);
+  geefMunten(VERKOOP_PRIJS);
+  bouwVerzamelingKiezer();
+}
+
+function openVerzamelItemActies(type, item) {
+  const aantal = aantalVan(type, item);
+  if (!aantal) return;
+  const titel = type === 'dier' ? item : ((ACCESSOIRES[item] && ACCESSOIRES[item].naam) || item);
+  const naarVriend = prompt('Wat wil je doen met ' + titel + '?\\nTyp VERKOOP om 1 exemplaar te verkopen, of typ STUUR om 1 exemplaar naar een vriend te sturen.');
+  if (!naarVriend) return;
+  if (naarVriend.trim().toLowerCase() === 'verkoop') {
+    type === 'dier' ? verkoopDier(item) : verkoopAccessoire(item);
+  } else if (naarVriend.trim().toLowerCase() === 'stuur') {
+    openVriendStuurOverlay(type, item);
+  }
+}
+
+// Vervangt de verzameling-renderer zodat dubbele exemplaren zichtbaar zijn als 2, 3, ...
+function bouwVerzamelingKiezer() {
+  const kiezerEl = document.getElementById('verzameling-kiezer');
+  if (!kiezerEl) return;
+  kiezerEl.innerHTML = '';
+  const opDieren = kiezerTabVerzameling === 'dieren';
+  const bezit = opDieren ? haalBezitDieren() : haalBezitAccessoires();
+  const catalogus = opDieren ? DIEREN : Object.keys(ACCESSOIRES);
+  const aantallen = huidigeBezitAantallen();
+
+  catalogus.forEach(item => {
+    const heeft = bezit.indexOf(item) !== -1;
+    const aantal = aantalVan(opDieren ? 'dier' : 'accessoire', item);
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'dier-knop verzameling-item' + (heeft ? ' in-bezit' : ' niet-in-bezit');
+    if (opDieren) {
+      knop.innerHTML = heeft ? poppetjeSvg(item, {}) : '<span class="verzameling-slot">🔒</span>';
+    } else {
+      const voorbeeldDier = huidigProfielDier() || bezit[0] || DIEREN[0];
+      const acc = {};
+      const groep = ACCESSOIRE_GROEPEN.find(g => g.items.indexOf(item) !== -1);
+      if (groep) acc[groep.plek] = item;
+      knop.innerHTML = heeft ? poppetjeSvg(voorbeeldDier, acc) : '<span class="verzameling-slot">🔒</span>';
+    }
+    if (heeft) {
+      const badge = document.createElement('span');
+      badge.className = 'dubbel-badge';
+      badge.textContent = String(aantal);
+      badge.title = aantal + ' exemplaar' + (aantal === 1 ? '' : 's');
+      knop.appendChild(badge);
+      knop.addEventListener('click', () => openVerzamelItemActies(opDieren ? 'dier' : 'accessoire', item));
+      knop.title = aantal > 1 ? 'Klik: 1 verkopen of 1 naar een vriend sturen' : 'Klik: verkopen of naar een vriend sturen';
+    }
+    kiezerEl.appendChild(knop);
+  });
+}
+
+// ---------------- Vrienden ----------------
+
+let socialeVrienden = {};
+let socialeVerzoeken = {};
+let socialeZoekTimer = null;
+let huidigChatUid = '';
+let huidigChatNaam = '';
+
+function chatIdVoor(a, b) { return [a, b].sort().join('_'); }
+
+function veiligeChatTekst(tekst) { return String(tekst || '').trim().slice(0, 500); }
+
+function laadVriendenEnVerzoeken() {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker || !heeftProfiel()) return;
+  db.ref('vrienden/' + gebruiker.uid).on('value', snap => {
+    socialeVrienden = snap.val() || {};
+    renderVrienden();
+  });
+  db.ref('vriendschapsverzoeken/' + gebruiker.uid).on('value', snap => {
+    socialeVerzoeken = snap.val() || {};
+    renderVrienden();
+  });
+}
+
+function zoekGebruikersOpNaam(zoekterm) {
+  const q = normaliseerGebruikersnaam(zoekterm);
+  const resultatenEl = document.getElementById('vrienden-zoekresultaten');
+  if (!resultatenEl) return;
+  if (q.length < 2) { resultatenEl.innerHTML = '<p class="subtitel">Typ minimaal 2 letters.</p>'; return; }
+  resultatenEl.innerHTML = '<p class="subtitel">Zoeken...</p>';
+  db.ref(SOCIAAL_PROFIEL_PAD).orderByChild('gebruikersnaamZoek').startAt(q).endAt(q + '\\uf8ff').limitToFirst(20).once('value').then(snap => {
+    resultatenEl.innerHTML = '';
+    const eigenUid = profielFirebaseGebruiker() && profielFirebaseGebruiker().uid;
+    let gevonden = 0;
+    snap.forEach(child => {
+      const p = child.val() || {};
+      if (child.key === eigenUid) return;
+      gevonden++;
+      const rij = document.createElement('div');
+      rij.className = 'vriend-zoekresultaat';
+      const pop = document.createElement('div');
+      pop.className = 'vriend-mini-poppetje';
+      if (geldigDier(p.dier)) pop.innerHTML = poppetjeSvg(p.dier, geldigeAccessoires(p.accessoires));
+      const naam = document.createElement('strong');
+      naam.textContent = p.gebruikersnaam || 'Onbekende gebruiker';
+      const knop = document.createElement('button');
+      knop.className = 'btn btn-secondary';
+      knop.type = 'button';
+      if (socialeVrienden[child.key]) {
+        knop.textContent = '✓ Vriend';
+        knop.disabled = true;
+      } else if (socialeVerzoeken[child.key]) {
+        knop.textContent = '✓ Verzoek gestuurd';
+        knop.disabled = true;
+      } else {
+        knop.textContent = '➕ Vriendschapsverzoek';
+        knop.addEventListener('click', () => stuurVriendschapsverzoek(child.key, p.gebruikersnaam || 'gebruiker'));
+      }
+      rij.append(pop, naam, knop);
+      resultatenEl.appendChild(rij);
+    });
+    if (!gevonden) resultatenEl.innerHTML = '<p class="subtitel">Geen gebruiker gevonden.</p>';
+  }).catch(() => { resultatenEl.innerHTML = '<p class="foutmelding">Zoeken lukt nu niet.</p>'; });
+}
+
+function stuurVriendschapsverzoek(toUid, naam) {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker) { alert('Je profiel is nog niet verbonden.'); return; }
+  db.ref('vriendschapsverzoeken/' + toUid + '/' + gebruiker.uid).set({
+    uid: gebruiker.uid,
+    gebruikersnaam: huidigeMakerNaam(),
+    naamOntvanger: naam,
+    tijd: firebase.database.ServerValue.TIMESTAMP
+  }).then(() => {
+    alert('Vriendschapsverzoek verstuurd naar ' + naam + '.');
+    zoekGebruikersOpNaam(document.getElementById('input-zoek-vrienden').value);
+  }).catch(() => alert('Het vriendschapsverzoek kon niet worden verstuurd.'));
+}
+
+function accepteerVriendschapsverzoek(fromUid, verzoek) {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker) return;
+  const updates = {};
+  updates['vrienden/' + gebruiker.uid + '/' + fromUid] = { gebruikersnaam: verzoek.gebruikersnaam || 'Vriend', sinds: firebase.database.ServerValue.TIMESTAMP };
+  updates['vrienden/' + fromUid + '/' + gebruiker.uid] = { gebruikersnaam: huidigeMakerNaam(), sinds: firebase.database.ServerValue.TIMESTAMP };
+  updates['vriendschapsverzoeken/' + gebruiker.uid + '/' + fromUid] = null;
+  db.ref().update(updates).catch(() => alert('Accepteren is mislukt.'));
+}
+
+function renderVrienden() {
+  const lijst = document.getElementById('vrienden-lijst');
+  const verzoeken = document.getElementById('vrienden-verzoeken');
+  if (!lijst || !verzoeken) return;
+  lijst.innerHTML = '';
+  Object.entries(socialeVrienden).forEach(([uid, info]) => {
+    const rij = document.createElement('div');
+    rij.className = 'vriend-rij';
+    const naam = document.createElement('strong');
+    naam.textContent = info.gebruikersnaam || 'Vriend';
+    const chat = document.createElement('button');
+    chat.type = 'button'; chat.className = 'btn btn-secondary'; chat.textContent = '💬 Chat';
+    chat.addEventListener('click', () => openChat(uid, info.gebruikersnaam || 'Vriend'));
+    rij.append(naam, chat); lijst.appendChild(rij);
+  });
+  if (!Object.keys(socialeVrienden).length) lijst.innerHTML = '<p class="subtitel">Je hebt nog geen vrienden.</p>';
+
+  verzoeken.innerHTML = '';
+  Object.entries(socialeVerzoeken).forEach(([uid, verzoek]) => {
+    const rij = document.createElement('div');
+    rij.className = 'vriend-rij';
+    const naam = document.createElement('strong');
+    naam.textContent = verzoek.gebruikersnaam || 'Gebruiker';
+    const knop = document.createElement('button');
+    knop.type = 'button'; knop.className = 'btn btn-primary'; knop.textContent = '✓ Accepteren';
+    knop.addEventListener('click', () => accepteerVriendschapsverzoek(uid, verzoek));
+    rij.append(naam, knop); verzoeken.appendChild(rij);
+  });
+  if (!Object.keys(socialeVerzoeken).length) verzoeken.innerHTML = '<p class="subtitel">Geen nieuwe verzoeken.</p>';
+}
+
+function openChat(uid, naam) {
+  huidigChatUid = uid; huidigChatNaam = naam;
+  const overlay = document.getElementById('chat-overlay');
+  document.getElementById('chat-titel').textContent = 'Chat met ' + naam;
+  overlay.classList.add('actief');
+  laadChatBerichten();
+}
+
+function laadChatBerichten() {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker || !huidigChatUid) return;
+  const lijst = document.getElementById('chat-berichten');
+  db.ref('chats/' + chatIdVoor(gebruiker.uid, huidigChatUid) + '/berichten').off();
+  db.ref('chats/' + chatIdVoor(gebruiker.uid, huidigChatUid) + '/berichten').limitToLast(100).on('value', snap => {
+    lijst.innerHTML = '';
+    snap.forEach(child => {
+      const b = child.val() || {};
+      const p = document.createElement('p');
+      p.className = b.uid === gebruiker.uid ? 'chat-bericht eigen' : 'chat-bericht';
+      p.textContent = (b.gebruikersnaam || 'Gebruiker') + ': ' + (b.tekst || '');
+      lijst.appendChild(p);
+    });
+    lijst.scrollTop = lijst.scrollHeight;
+  });
+}
+
+function verstuurChatBericht() {
+  const gebruiker = profielFirebaseGebruiker();
+  const input = document.getElementById('chat-input');
+  const tekst = veiligeChatTekst(input.value);
+  if (!gebruiker || !huidigChatUid || !tekst) return;
+  const ref = db.ref('chats/' + chatIdVoor(gebruiker.uid, huidigChatUid) + '/berichten').push();
+  ref.set({ uid: gebruiker.uid, gebruikersnaam: huidigeMakerNaam(), tekst: tekst, tijd: firebase.database.ServerValue.TIMESTAMP });
+  input.value = '';
+}
+
+function openVriendStuurOverlay(type, item) {
+  const lijst = document.getElementById('stuur-vriend-lijst');
+  const overlay = document.getElementById('stuur-vriend-overlay');
+  if (!lijst || !overlay) return;
+  lijst.innerHTML = '';
+  Object.entries(socialeVrienden).forEach(([uid, info]) => {
+    const knop = document.createElement('button');
+    knop.type = 'button'; knop.className = 'btn btn-secondary stuur-vriend-knop';
+    knop.textContent = '🎁 ' + (info.gebruikersnaam || 'Vriend');
+    knop.addEventListener('click', () => verstuurItemNaarVriend(uid, info.gebruikersnaam || 'Vriend', type, item));
+    lijst.appendChild(knop);
+  });
+  if (!Object.keys(socialeVrienden).length) lijst.innerHTML = '<p class="subtitel">Je moet eerst vrienden hebben.</p>';
+  overlay.dataset.type = type; overlay.dataset.item = item; overlay.classList.add('actief');
+}
+
+function verstuurItemNaarVriend(toUid, naam, type, item) {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker) return;
+  if (!socialeVrienden[toUid]) { alert('Je kunt alleen items naar vrienden sturen.'); return; }
+  if (aantalVan(type, item) < 1) { alert('Je hebt dit item niet meer.'); return; }
+  const pad = type === 'dier' ? 'dieren/' : 'accessoires/';
+  const fromRef = db.ref(SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid + '/bezit/' + pad + item);
+  const toRef = db.ref(SOCIAAL_PROFIEL_PAD + '/' + toUid + '/bezit/' + pad + item);
+  fromRef.transaction(v => { const n = Number(v) || 0; return n > 0 ? n - 1 : v; }).then(result => {
+    if (!result.committed || Number(result.snapshot.val() || 0) < 0) throw new Error('geen exemplaar');
+    return toRef.transaction(v => (Number(v) || 0) + 1);
+  }).then(() => {
+    verwijderEenUitBezit(type, item);
+    sluitStuurVriendOverlay();
+    alert('🎁 Verstuurd naar ' + naam + '!');
+  }).catch(() => alert('Versturen is mislukt. Probeer opnieuw.'));
+}
+
+function sluitStuurVriendOverlay() {
+  document.getElementById('stuur-vriend-overlay').classList.remove('actief');
+}
+
+// Sociale pagina openen.
+document.getElementById('btn-naar-vrienden').addEventListener('click', () => {
+  metProfielVereist(() => { toonScherm('scherm-vrienden'); laadVriendenEnVerzoeken(); });
+});
+
+document.getElementById('input-zoek-vrienden').addEventListener('input', e => {
+  clearTimeout(socialeZoekTimer);
+  socialeZoekTimer = setTimeout(() => zoekGebruikersOpNaam(e.target.value), 250);
+});
+document.getElementById('btn-chat-sluiten').addEventListener('click', () => {
+  document.getElementById('chat-overlay').classList.remove('actief');
+  huidigChatUid = '';
+});
+document.getElementById('btn-chat-sturen').addEventListener('click', verstuurChatBericht);
+document.getElementById('chat-input').addEventListener('keydown', e => { if (e.key === 'Enter') verstuurChatBericht(); });
+document.getElementById('btn-stuur-vriend-sluiten').addEventListener('click', sluitStuurVriendOverlay);
+
+// Houd het online profiel gelijk aan de lokale profielkeuze.
+const _oudeWerkProfielBadgeBij = werkProfielBadgeBij;
+werkProfielBadgeBij = function() {
+  _oudeWerkProfielBadgeBij();
+  if (heeftProfiel()) registreerSociaalProfiel();
+};
+
+// Initialiseer aantallen voor bestaande spelers en publiceer het profiel zodra
+// anonieme Firebase-auth klaar is.
+huidigeBezitAantallen();
+if (heeftProfiel()) {
+  setTimeout(() => { registreerSociaalProfiel(); laadOnlineBezitVoorEigenProfiel(); }, 0);
+}
