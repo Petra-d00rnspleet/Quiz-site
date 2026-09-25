@@ -232,11 +232,15 @@ h2.titel-regenboog {
 /* Onderste rij: Winkel en Dierenverzameling — zelfde breedte, maar gecentreerd
    onder de bovenste rij (een omgekeerde piramide/toren). */
 .vak-winkel {
-  grid-column: 2 / 4;
+  grid-column: 1 / 3;
 }
 
 .vak-dierentuin {
-  grid-column: 4 / 6;
+  grid-column: 3 / 5;
+}
+
+.vak-wiel {
+  grid-column: 5 / 7;
 }
 
 @media (max-width: 480px) {
@@ -248,7 +252,8 @@ h2.titel-regenboog {
   .vak-speelbaar,
   .vak-meedoen,
   .vak-winkel,
-  .vak-dierentuin {
+  .vak-dierentuin,
+  .vak-wiel {
     grid-column: 1 / -1;
   }
 }
@@ -295,6 +300,10 @@ h2.titel-regenboog {
 
 .vak-dierentuin {
   background: linear-gradient(160deg, #1c2a1c 0%, #0c1230 60%);
+}
+
+.vak-wiel {
+  background: linear-gradient(160deg, #331c3a 0%, #0c1230 60%);
 }
 
 /* ---------- Munten (verdien je door een live quiz te winnen; besteed je in de winkel) ---------- */
@@ -1548,6 +1557,134 @@ h2.titel-regenboog.host-resultaat-vraag {
 .scherm-gecentreerd .btn {
   width: 100%;
   max-width: 420px;
+}
+
+/* ---------- Geluksrad (1x per dag gratis draaien voor munten) ---------- */
+
+.wiel-omgeving {
+  position: relative;
+  width: min(280px, 78vw);
+  height: min(280px, 78vw);
+  margin: 6px auto 4px;
+}
+
+.wiel-wijzer {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 30px;
+  color: #f0c04d;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  z-index: 3;
+}
+
+.wiel-schijf {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 6px solid #b8863c;
+  box-shadow: 0 0 0 3px #0c1230, 0 12px 34px rgba(0, 0, 0, 0.5);
+  transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+}
+
+.wiel-schijf svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.wiel-knop-midden {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 25%;
+  height: 25%;
+  min-width: 56px;
+  min-height: 56px;
+  border-radius: 50%;
+  border: 4px solid #0c1230;
+  background-image: linear-gradient(120deg, #fff8e1, #ffe9a8, #fffdf5, #f0c04d, #fff8e1, #ffe9a8);
+  background-size: 300% 100%;
+  animation: glitter-schuiven 5s linear infinite;
+  color: #0a0a0a;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  z-index: 4;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.wiel-knop-midden:disabled {
+  animation: none;
+  background-image: none;
+  background: #2a2440;
+  color: #9a97a8;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.wiel-resultaat-tekst {
+  min-height: 20px;
+  font-weight: 700;
+  color: #f0c04d;
+  text-align: center;
+  margin: 0 0 8px;
+}
+
+/* ---------- Geluksrad aanpassen (alleen sitebeheer) ---------- */
+
+.wiel-venster {
+  max-width: 460px;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.wiel-segmenten-lijst {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 6px 0;
+}
+
+.wiel-segment-rij {
+  display: grid;
+  grid-template-columns: 1fr 84px 70px 34px;
+  gap: 6px;
+  align-items: center;
+}
+
+.wiel-segment-rij input {
+  width: 100%;
+}
+
+.wiel-segment-verwijderen {
+  background: #34131a;
+  border: 1px solid #ff5c72;
+  color: #ffb0bc;
+  border-radius: 10px;
+  height: 44px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.wiel-segment-verwijderen:hover {
+  filter: brightness(1.15);
+}
+
+@media (max-width: 420px) {
+  .wiel-segment-rij {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: "naam naam" "munten kans" "verwijderen verwijderen";
+  }
+
+  .wiel-segment-naam { grid-area: naam; }
+  .wiel-segment-munten { grid-area: munten; }
+  .wiel-segment-kans { grid-area: kans; }
+  .wiel-segment-verwijderen { grid-area: verwijderen; }
 }
 
 
