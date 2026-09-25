@@ -43,6 +43,7 @@
         <button class="vak vak-winkel" id="btn-naar-winkel">🎁 Winkel<span class="vak-slotje" aria-hidden="true">🔒</span></button>
         <button class="vak vak-dierentuin" id="btn-naar-dierentuin">🐾 Dierenverzameling<span class="vak-slotje" aria-hidden="true">🔒</span></button>
         <button class="vak vak-wiel" id="btn-naar-wiel">🎡 Geluksrad<span class="vak-slotje" aria-hidden="true">🔒</span></button>
+        <button class="vak vak-vrienden" id="btn-naar-vrienden">👥 Vrienden</button>
       </div>
       <p id="profiel-vereist-hint" class="subtitel" style="margin-top:14px;">🔒 Maak eerst een profiel aan (gebruikersnaam + poppetje) om quizzen te maken, de winkel, de dierenverzameling en het geluksrad te gebruiken. Meedoen aan een quiz en speelbare quizzen spelen kan altijd, ook zonder profiel.</p>
     </section>
@@ -58,6 +59,20 @@
         <button type="button" class="kiezer-tab" id="tab-verzameling-accessoires" role="tab" aria-selected="false">🎩 Accessoires</button>
       </div>
       <div id="verzameling-kiezer" class="dieren-kiezer verzameling-kiezer"></div>
+    </section>
+
+    <!-- SCHERM: VRIENDEN -->
+    <section id="scherm-vrienden" class="scherm">
+      <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
+      <h2 class="titel-regenboog">Vrienden</h2>
+      <p class="subtitel">Zoek iemand op gebruikersnaam, stuur een vriendschapsverzoek en chat met vrienden.</p>
+      <label for="input-zoek-vrienden">Gebruiker zoeken</label>
+      <input type="text" id="input-zoek-vrienden" class="zoekbalk" placeholder="🔍 Typ een gebruikersnaam..." maxlength="30">
+      <div id="vrienden-zoekresultaten" class="vrienden-lijst"></div>
+      <h3>📨 Verzoeken</h3>
+      <div id="vrienden-verzoeken" class="vrienden-lijst"></div>
+      <h3>👥 Mijn vrienden</h3>
+      <div id="vrienden-lijst" class="vrienden-lijst"></div>
     </section>
 
     <!-- SCHERM: SPEELBARE QUIZZEN (openbaar gemaakt door anderen) -->
@@ -546,6 +561,31 @@
       </div>
     </div>
   </template>
+
+  <!-- CHAT -->
+  <div id="chat-overlay" class="sitebeheer-overlay sociaal-overlay">
+    <div class="sitebeheer-venster sociaal-venster">
+      <div class="sitebeheer-icoon">💬</div>
+      <h3 id="chat-titel">Chat</h3>
+      <div id="chat-berichten" class="chat-berichten"></div>
+      <div class="chat-invoer">
+        <input id="chat-input" type="text" maxlength="500" placeholder="Typ een bericht...">
+        <button id="btn-chat-sturen" class="btn btn-primary" type="button">Sturen</button>
+      </div>
+      <button id="btn-chat-sluiten" class="btn btn-secondary" type="button">Sluiten</button>
+    </div>
+  </div>
+
+  <!-- ITEM NAAR VRIEND STUREN -->
+  <div id="stuur-vriend-overlay" class="sitebeheer-overlay sociaal-overlay">
+    <div class="sitebeheer-venster sociaal-venster">
+      <div class="sitebeheer-icoon">🎁</div>
+      <h3>Stuur naar vriend</h3>
+      <p class="subtitel">Je stuurt precies 1 exemplaar.</p>
+      <div id="stuur-vriend-lijst" class="vrienden-lijst"></div>
+      <button id="btn-stuur-vriend-sluiten" class="btn btn-secondary" type="button">Annuleren</button>
+    </div>
+  </div>
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
