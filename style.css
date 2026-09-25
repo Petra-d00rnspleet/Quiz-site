@@ -1049,6 +1049,81 @@ label {
   color: #f0c04d;
 }
 
+/* ---------- Profiel: badge rechtsboven (gebruikersnaam + poppetje) ---------- */
+
+.profiel-badge {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #10152e;
+  border: 1px solid #4a3c1a;
+  border-radius: 999px;
+  padding: 6px 14px 6px 6px;
+  color: #e6cd8f;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.profiel-badge:hover {
+  border-color: #f0c04d;
+  color: #f0c04d;
+}
+
+.profiel-badge-poppetje {
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  font-size: 22px;
+  line-height: 1;
+  align-items: center;
+  justify-content: center;
+}
+
+.profiel-badge-poppetje:empty {
+  display: none;
+}
+
+.profiel-overlay-poppetje {
+  font-size: 64px;
+  line-height: 1;
+  text-align: center;
+  margin: 4px 0 8px;
+}
+
+@media (max-width: 480px) {
+  .profiel-badge {
+    top: 8px;
+    right: 8px;
+    padding: 5px 10px 5px 5px;
+    font-size: 12px;
+  }
+}
+
+/* ---------- Slotje op vakken die een profiel vereisen ---------- */
+
+.vak-slotje {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 14px;
+  opacity: 0.85;
+  display: none;
+}
+
+.vak.vak-op-slot .vak-slotje {
+  display: inline;
+}
+
+.vak.vak-op-slot {
+  opacity: 0.82;
+}
+
 .sitebeheer-overlay {
   display: none;
   position: fixed;
