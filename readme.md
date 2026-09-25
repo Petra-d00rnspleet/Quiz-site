@@ -174,6 +174,14 @@ Boxen ontwerpen doet sitebeheer (zie hieronder voor inloggen): log in en ga naar
 
 Boxen staan in Firebase onder een nieuw pad mysterieboxen naast quizzen en sessies — zorg dat je de Firebase-regel hiervoor hebt toegevoegd (zie Stap 1 hierboven), anders kan de winkel niet laden of opslaan.
 
+Kist later te koop zetten of offline halen (nieuw)
+
+In het ontwerpvenster van een kist staat nu ook "Te koop vanaf (optioneel)": vul je hier een datum in de toekomst in, dan ziet alleen sitebeheer die kist alvast in de winkel (met een label "⏳ Te koop vanaf ..."); gewone spelers zien hem pas zodra die datum is aangebroken. Laat je het veld leeg, dan is de kist meteen te koop, zoals voorheen.
+
+Bij elke kist staat voor sitebeheer nu ook een knop "📴 Offline halen" / "📶 Online zetten". Offline gehaalde kisten ("🔒 Offline") zijn alleen nog zichtbaar voor sitebeheer, totdat ze weer online gezet worden — handig om een kist tijdelijk te verbergen zonder hem te verwijderen.
+
+In het ontwerpvenster staat bij elk dier en accessoire nu een getalletje als het al in een andere kist zit, zodat je in één oogopslag ziet wat al eerder gebruikt is.
+
 Host verlaat de quiz (nieuw)
 
 Zodra de quizmaster op "Terug" of "Afronden" klikt, of het tabblad sluit / de verbinding verliest (via Firebase onDisconnect), wordt de sessie verwijderd. Alle spelers die op dat moment meedoen, zien meteen een scherm dat de quiz gestopt is en kunnen terug naar start.
