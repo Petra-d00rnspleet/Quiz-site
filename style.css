@@ -1052,10 +1052,7 @@ label {
 /* ---------- Profiel: badge rechtsboven (gebruikersnaam + poppetje) ---------- */
 
 .profiel-badge {
-  position: fixed;
-  top: 14px;
-  right: 14px;
-  z-index: 500;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1179,8 +1176,7 @@ label {
 
 @media (max-width: 480px) {
   .profiel-badge {
-    top: 8px;
-    right: 8px;
+    position: relative;
     width: 42px;
     height: 42px;
   }
@@ -2210,4 +2206,213 @@ h2.titel-regenboog.host-resultaat-vraag {
   background: #1c1a33;
   box-shadow: 0 0 0 2px rgba(240, 192, 77, 0.4);
 }
-\n\n/* ---------- Vrienden, chat en dubbele verzameling ---------- */\n.vak-vrienden {\n  border-color: #6d4fc2;\n}\n.vrienden-lijst {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  margin: 10px 0 20px;\n}\n.vriend-zoekresultaat,\n.vriend-rij {\n  display: flex;\n  align-items: center;\n  gap: 10px;\n  padding: 10px;\n  background: #10152e;\n  border: 1px solid #3b3558;\n  border-radius: 12px;\n}\n.vriend-zoekresultaat strong,\n.vriend-rij strong {\n  flex: 1;\n  min-width: 0;\n  overflow-wrap: anywhere;\n}\n.vriend-mini-poppetje {\n  width: 44px;\n  height: 44px;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n}\n.vriend-mini-poppetje svg { width: 44px; height: 44px; }\n.sociaal-overlay { z-index: 900; }\n.sociaal-venster {\n  width: min(560px, 94vw);\n  max-height: calc(100vh - 40px);\n  overflow-y: auto;\n}\n.chat-berichten {\n  height: min(48vh, 420px);\n  overflow-y: auto;\n  padding: 10px;\n  background: #090d20;\n  border: 1px solid #3b3558;\n  border-radius: 12px;\n  margin-bottom: 10px;\n}\n.chat-bericht {\n  margin: 6px 0;\n  padding: 8px 10px;\n  background: #171b39;\n  border-radius: 10px;\n  overflow-wrap: anywhere;\n}\n.chat-bericht.eigen {\n  background: #2b2450;\n}\n.chat-invoer { display: flex; gap: 8px; margin-bottom: 10px; }\n.chat-invoer input { flex: 1; min-width: 0; }\n.stuur-vriend-knop { width: 100%; text-align: left; }\n.verzameling-item { position: relative; overflow: visible; }\n.dubbel-badge {\n  position: absolute;\n  top: 4px;\n  right: 4px;\n  min-width: 24px;\n  height: 24px;\n  padding: 2px 6px;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  border-radius: 999px;\n  background: #f0c04d;\n  color: #16120a;\n  font-size: 13px;\n  font-weight: 900;\n  box-sizing: border-box;\n}\n.verzameling-item.in-bezit { cursor: pointer; }\n.verzameling-item.in-bezit:hover { transform: translateY(-1px); }\n.verzameling-slot { font-size: 30px; opacity: .45; }\n@media (max-width: 520px) {\n  .vriend-zoekresultaat, .vriend-rij { align-items: flex-start; flex-wrap: wrap; }\n  .vriend-zoekresultaat .btn, .vriend-rij .btn { width: 100%; }\n  .vriend-mini-poppetje { width: 38px; height: 38px; }\n  .vriend-mini-poppetje svg { width: 38px; height: 38px; }\n  .chat-invoer { flex-direction: column; }\n  .chat-invoer .btn { width: 100%; }\n}\n\n\n/* ---------- Vriendenbalk naast profiel ---------- */\n.bovenbalk-knoppen {\n  position: fixed;\n  top: 14px;\n  right: 14px;\n  z-index: 500;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n}\n.vrienden-badge {\n  height: 46px;\n  padding: 0 13px;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  gap: 7px;\n  border: 1px solid #4a3c1a;\n  border-radius: 999px;\n  background: #10152e;\n  color: #e6cd8f;\n  cursor: pointer;\n  font: inherit;\n  font-size: 13px;\n  font-weight: 700;\n}\n.vrienden-badge:hover { border-color: #f0c04d; color: #f0c04d; }\n.vrienden-badge-aantal {\n  min-width: 20px;\n  height: 20px;\n  padding: 0 5px;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  border-radius: 999px;\n  background: #f0c04d;\n  color: #16120a;\n  font-size: 11px;\n  font-weight: 900;\n}\n.vrienden-badge-aantal[hidden] { display: none; }\n.vrienden-venster { max-width: 520px; }\n.vrienden-hoofdknoppen { display: flex; gap: 8px; }\n.vrienden-toevoegen-paneel {\n  padding: 12px;\n  border: 1px solid #3b3558;\n  border-radius: 14px;\n  background: #0f1430;\n}\n.vrienden-zoekrij { display: flex; gap: 8px; align-items: stretch; }\n.vrienden-zoekrij .zoekbalk { flex: 1; min-width: 0; }\n.vrienden-sectie-titel { margin: 10px 0 4px; }\n\n/* ---------- Profiel poppetje aanpassen: logisch naast elkaar ---------- */\n.profiel-venster { width: min(520px, 94vw); }\n.profiel-kiezer-tabs {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 8px;\n  width: 100%;\n  margin: 4px 0 12px;\n}\n.profiel-kiezer-tab { min-height: 42px; }\n.profiel-dieren-kiezer {\n  display: grid;\n  grid-template-columns: repeat(5, minmax(0, 1fr));\n  gap: 10px;\n  width: 100%;\n  max-width: none;\n  margin-top: 0;\n}\n.profiel-dieren-kiezer .dier-knop { min-width: 0; aspect-ratio: 1; }\n.profiel-dieren-kiezer .kiezer-groep-titel,\n.profiel-dieren-kiezer .kiezer-hint,\n.profiel-dieren-kiezer .kiezer-weg-knop { grid-column: 1 / -1; }\n@media (max-width: 520px) {\n  .bovenbalk-knoppen { top: 8px; right: 8px; gap: 6px; }\n  .vrienden-badge { height: 42px; padding: 0 10px; }\n  .vrienden-badge span:nth-child(2) { display: none; }\n  .profiel-badge { position: static; }\n  .profiel-dieren-kiezer { grid-template-columns: repeat(4, minmax(0, 1fr)); }\n  .profiel-dieren-kiezer.accessoires { grid-template-columns: repeat(3, minmax(0, 1fr)); }\n  .vrienden-zoekrij { flex-direction: column; }\n  .vrienden-zoekrij .btn { width: 100%; }\n}\n
+\n\n/* ---------- Vrienden, chat en dubbele verzameling ---------- */
+.vak-vrienden {
+  border-color: #6d4fc2;
+}
+.vrienden-lijst {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0 20px;
+}
+.vriend-zoekresultaat,
+.vriend-rij {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: #10152e;
+  border: 1px solid #3b3558;
+  border-radius: 12px;
+}
+.vriend-zoekresultaat strong,
+.vriend-rij strong {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.vriend-mini-poppetje {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.vriend-mini-poppetje svg { width: 44px; height: 44px; }
+.sociaal-overlay { z-index: 900; }
+.sociaal-venster {
+  width: min(560px, 94vw);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+.chat-berichten {
+  height: min(48vh, 420px);
+  overflow-y: auto;
+  padding: 10px;
+  background: #090d20;
+  border: 1px solid #3b3558;
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+.chat-bericht {
+  margin: 6px 0;
+  padding: 8px 10px;
+  background: #171b39;
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+}
+.chat-bericht.eigen {
+  background: #2b2450;
+}
+.chat-invoer { display: flex; gap: 8px; margin-bottom: 10px; }
+.chat-invoer input { flex: 1; min-width: 0; }
+.stuur-vriend-knop { width: 100%; text-align: left; }
+.verzameling-item { position: relative; overflow: visible; }
+.dubbel-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 24px;
+  height: 24px;
+  padding: 2px 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #f0c04d;
+  color: #16120a;
+  font-size: 13px;
+  font-weight: 900;
+  box-sizing: border-box;
+}
+.verzameling-item.in-bezit { cursor: pointer; }
+.verzameling-item.in-bezit:hover { transform: translateY(-1px); }
+.verzameling-slot { font-size: 30px; opacity: .45; }
+@media (max-width: 520px) {
+  .vriend-zoekresultaat, .vriend-rij { align-items: flex-start; flex-wrap: wrap; }
+  .vriend-zoekresultaat .btn, .vriend-rij .btn { width: 100%; }
+  .vriend-mini-poppetje { width: 38px; height: 38px; }
+  .vriend-mini-poppetje svg { width: 38px; height: 38px; }
+  .chat-invoer { flex-direction: column; }
+  .chat-invoer .btn { width: 100%; }
+}
+
+
+/* ---------- Vriendenbalk naast profiel ---------- */
+.bovenbalk-knoppen {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.vrienden-badge {
+  height: 46px;
+  padding: 0 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #4a3c1a;
+  border-radius: 999px;
+  background: #10152e;
+  color: #e6cd8f;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+.vrienden-badge:hover { border-color: #f0c04d; color: #f0c04d; }
+.vrienden-badge-aantal {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #f0c04d;
+  color: #16120a;
+  font-size: 11px;
+  font-weight: 900;
+}
+.vrienden-badge-aantal[hidden] { display: none; }
+.vrienden-venster { max-width: 520px; }
+.vrienden-hoofdknoppen { display: flex; gap: 8px; }
+.vrienden-toevoegen-paneel {
+  padding: 12px;
+  border: 1px solid #3b3558;
+  border-radius: 14px;
+  background: #0f1430;
+}
+.vrienden-zoekrij { display: flex; gap: 8px; align-items: stretch; }
+.vrienden-zoekrij .zoekbalk { flex: 1; min-width: 0; }
+.vrienden-sectie-titel { margin: 10px 0 4px; }
+
+/* ---------- Profiel poppetje aanpassen: logisch naast elkaar ---------- */
+.profiel-venster { width: min(520px, 94vw); }
+.profiel-kiezer-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+  margin: 4px 0 12px;
+}
+.profiel-kiezer-tab { min-height: 42px; }
+.profiel-dieren-kiezer {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  max-width: none;
+  margin-top: 0;
+}
+.profiel-dieren-kiezer .dier-knop { min-width: 0; aspect-ratio: 1; }
+.profiel-dieren-kiezer .kiezer-groep-titel,
+.profiel-dieren-kiezer .kiezer-hint,
+.profiel-dieren-kiezer .kiezer-weg-knop { grid-column: 1 / -1; }
+@media (max-width: 520px) {
+  .bovenbalk-knoppen { top: 8px; right: 8px; gap: 6px; }
+  .vrienden-badge { height: 42px; padding: 0 10px; }
+  .vrienden-badge span:nth-child(2) { display: none; }
+  .profiel-badge { position: static; }
+  .profiel-dieren-kiezer { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .profiel-dieren-kiezer.accessoires { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .vrienden-zoekrij { flex-direction: column; }
+  .vrienden-zoekrij .btn { width: 100%; }
+}
+
+/* ---------- Definitieve bovenbalk vrienden + profiel ---------- */
+.bovenbalk-knoppen {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px;
+  background: rgba(16, 21, 46, 0.96);
+  border: 1px solid #3b3558;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.22);
+  backdrop-filter: blur(8px);
+}
+.bovenbalk-knoppen .vrienden-badge {
+  border-color: transparent;
+  background: transparent;
+}
+.bovenbalk-knoppen .profiel-badge {
+  border-color: #4a3c1a;
+}
+@media (max-width: 520px) {
+  .bovenbalk-knoppen {
+    top: 8px;
+    right: 8px;
+    gap: 5px;
+    padding: 4px;
+  }
+}
