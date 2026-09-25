@@ -1,4 +1,3 @@
-
 // ---------- Sitebeheer (echt inloggen via Firebase Authentication) ----------
 //
 // De beheerder logt in met een e-mailadres + wachtwoord dat in de Firebase
@@ -4049,7 +4048,7 @@ function zoekGebruikersOpNaam(zoekterm) {
   if (!resultatenEl) return;
   if (q.length < 2) { resultatenEl.innerHTML = '<p class="subtitel">Typ minimaal 2 letters.</p>'; return; }
   resultatenEl.innerHTML = '<p class="subtitel">Zoeken...</p>';
-  db.ref(SOCIAAL_PROFIEL_PAD).orderByChild('gebruikersnaamZoek').startAt(q).endAt(q + '\\uf8ff').limitToFirst(20).once('value').then(snap => {
+  db.ref(SOCIAAL_PROFIEL_PAD).orderByChild('gebruikersnaamZoek').startAt(q).endAt(q + '\uf8ff').limitToFirst(20).once('value').then(snap => {
     resultatenEl.innerHTML = '';
     const eigenUid = profielFirebaseGebruiker() && profielFirebaseGebruiker().uid;
     let gevonden = 0;
@@ -4108,6 +4107,14 @@ function accepteerVriendschapsverzoek(fromUid, verzoek) {
   db.ref().update(updates).catch(() => alert('Accepteren is mislukt.'));
 }
 
+function updateVriendenBadge() {
+  const badge = document.getElementById('vrienden-badge-aantal');
+  if (!badge) return;
+  const aantal = Object.keys(socialeVerzoeken || {}).length;
+  badge.textContent = String(aantal);
+  badge.hidden = aantal === 0;
+}
+
 function renderVrienden() {
   const lijst = document.getElementById('vrienden-lijst');
   const verzoeken = document.getElementById('vrienden-verzoeken');
@@ -4137,6 +4144,7 @@ function renderVrienden() {
     rij.append(naam, knop); verzoeken.appendChild(rij);
   });
   if (!Object.keys(socialeVerzoeken).length) verzoeken.innerHTML = '<p class="subtitel">Geen nieuwe verzoeken.</p>';
+  updateVriendenBadge();
 }
 
 function openChat(uid, naam) {
@@ -4213,14 +4221,32 @@ function sluitStuurVriendOverlay() {
   document.getElementById('stuur-vriend-overlay').classList.remove('actief');
 }
 
-// Sociale pagina openen.
-document.getElementById('btn-naar-vrienden').addEventListener('click', () => {
-  metProfielVereist(() => { toonScherm('scherm-vrienden'); laadVriendenEnVerzoeken(); });
+// Vrienden openen vanuit de vaste balk rechtsboven.
+document.getElementById('btn-vrienden-badge').addEventListener('click', () => {
+  metProfielVereist(() => {
+    document.getElementById('vrienden-overlay').classList.add('actief');
+    laadVriendenEnVerzoeken();
+    updateVriendenBadge();
+  });
 });
 
-document.getElementById('input-zoek-vrienden').addEventListener('input', e => {
-  clearTimeout(socialeZoekTimer);
-  socialeZoekTimer = setTimeout(() => zoekGebruikersOpNaam(e.target.value), 250);
+document.getElementById('btn-vrienden-sluiten').addEventListener('click', () => {
+  document.getElementById('vrienden-overlay').classList.remove('actief');
+});
+
+document.getElementById('btn-vrienden-toevoegen').addEventListener('click', () => {
+  const paneel = document.getElementById('vrienden-toevoegen-paneel');
+  const open = !paneel.hidden;
+  paneel.hidden = open;
+  document.getElementById('btn-vrienden-toevoegen').textContent = open ? '➕ Toevoegen' : '✕ Toevoegen sluiten';
+  if (!open) document.getElementById('input-zoek-vrienden').focus();
+});
+
+document.getElementById('btn-vrienden-zoeken').addEventListener('click', () => {
+  zoekGebruikersOpNaam(document.getElementById('input-zoek-vrienden').value);
+});
+document.getElementById('input-zoek-vrienden').addEventListener('keydown', e => {
+  if (e.key === 'Enter') zoekGebruikersOpNaam(e.target.value);
 });
 document.getElementById('btn-chat-sluiten').addEventListener('click', () => {
   document.getElementById('chat-overlay').classList.remove('actief');
