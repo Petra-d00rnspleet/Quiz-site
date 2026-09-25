@@ -3504,7 +3504,7 @@ function laadAangepasteCatalogus() {
 }
 
 bouwKiezer();
-laadAangepasteCatalogus().then(() => { bouwKiezer(); bouwVerzamelingKiezer(); werkMuntenWeergaveBij(); });
+laadAangepasteCatalogus().then(() => { bouwKiezer(); bouwVerzamelingKiezer(); werkMuntenWeergaveBij(); werkProfielBadgeBij(); });
 werkMuntenWeergaveBij();
 
 // ---------- Bij het openen van de site: naam bij eigen quizzen zetten ----------
@@ -3522,35 +3522,212 @@ function werkVakSlotjesBij() {
   document.getElementById('profiel-vereist-hint').style.display = opSlot ? '' : 'none';
 }
 
+const PROFIEL_ACCESSOIRES_SLEUTEL = 'profielAccessoires';
+
+function huidigeProfielAccessoires() {
+  try {
+    return geldigeAccessoires(JSON.parse(localStorage.getItem(PROFIEL_ACCESSOIRES_SLEUTEL) || '{}'));
+  } catch (e) {
+    return {};
+  }
+}
+
+function slaProfielAccessoiresOp(accessoires) {
+  localStorage.setItem(PROFIEL_ACCESSOIRES_SLEUTEL, JSON.stringify(geldigeAccessoires(accessoires)));
+}
+
+function profielPoppetjeHtml() {
+  const dier = geldigDier(huidigProfielDier());
+  if (!dier) return '';
+  return poppetjeSvg(dier, huidigeProfielAccessoires());
+}
+
+function werkProfielPoppetjeWeergaveBij() {
+  const overlayPoppetjeEl = document.getElementById('profiel-overlay-poppetje');
+  const badgePoppetjeEl = document.getElementById('profiel-badge-poppetje');
+
+  if (heeftProfiel() && geldigDier(huidigProfielDier())) {
+    const svg = profielPoppetjeHtml();
+    overlayPoppetjeEl.innerHTML = svg;
+    badgePoppetjeEl.innerHTML = svg;
+  } else {
+    overlayPoppetjeEl.innerHTML = '';
+    badgePoppetjeEl.innerHTML = '';
+  }
+}
+
+// Werkt de badge rechtsboven bij.
+// Met een bestaand profiel zie je hier alleen je poppetje/gezichtje.
+function werkProfielBadgeBij() {
+  const poppetjeEl = document.getElementById('profiel-badge-poppetje');
+  const tekstEl = document.getElementById('profiel-badge-tekst');
+
+  if (heeftProfiel()) {
+    tekstEl.textContent = '';
+    werkProfielPoppetjeWeergaveBij();
+  } else {
+    poppetjeEl.innerHTML = '';
+    tekstEl.textContent = '👤 Profiel maken';
+  }
+}
+
 const profielOverlayEl = document.getElementById('profiel-overlay');
 const btnProfielPoppetjeWijzigenEl = document.getElementById('btn-profiel-poppetje-wijzigen');
-const profielOverlayDierenKiezerEl = document.getElementById('profiel-overlay-dieren-kiezer');
+const profielOverlayKiezerEl = document.getElementById('profiel-overlay-dieren-kiezer');
+
+let profielKiezerTab = 'dieren';
 
 function sluitProfielPoppetjeKiezer() {
-  profielOverlayDierenKiezerEl.style.display = 'none';
-  profielOverlayDierenKiezerEl.innerHTML = '';
+  profielOverlayKiezerEl.style.display = 'none';
+  profielOverlayKiezerEl.innerHTML = '';
   btnProfielPoppetjeWijzigenEl.textContent = '🔁 Poppetje wijzigen';
 }
 
+function werkProfielKiezerTabsBij(containerEl) {
+  containerEl.querySelectorAll('.profiel-kiezer-tab').forEach(tab => {
+    const actief = tab.dataset.tab === profielKiezerTab;
+    tab.classList.toggle('actief', actief);
+    tab.setAttribute('aria-selected', String(actief));
+  });
+}
+
+function bouwProfielKiezer() {
+  profielOverlayKiezerEl.innerHTML = '';
+  profielOverlayKiezerEl.classList.add('profiel-dieren-kiezer');
+  profielOverlayKiezerEl.classList.toggle('accessoires', profielKiezerTab === 'accessoires');
+
+  const tabs = document.createElement('div');
+  tabs.className = 'profiel-kiezer-tabs';
+  tabs.setAttribute('role', 'tablist');
+
+  const dierenTab = document.createElement('button');
+  dierenTab.type = 'button';
+  dierenTab.className = 'profiel-kiezer-tab';
+  dierenTab.dataset.tab = 'dieren';
+  dierenTab.textContent = '🐶 Dieren';
+  dierenTab.setAttribute('role', 'tab');
+  dierenTab.addEventListener('click', () => {
+    profielKiezerTab = 'dieren';
+    bouwProfielKiezer();
+  });
+
+  const accessoiresTab = document.createElement('button');
+  accessoiresTab.type = 'button';
+  accessoiresTab.className = 'profiel-kiezer-tab';
+  accessoiresTab.dataset.tab = 'accessoires';
+  accessoiresTab.textContent = '🎩 Accessoires';
+  accessoiresTab.setAttribute('role', 'tab');
+  accessoiresTab.addEventListener('click', () => {
+    profielKiezerTab = 'accessoires';
+    bouwProfielKiezer();
+  });
+
+  tabs.appendChild(dierenTab);
+  tabs.appendChild(accessoiresTab);
+  profielOverlayKiezerEl.appendChild(tabs);
+  werkProfielKiezerTabsBij(tabs);
+
+  const bezitDieren = haalBezitDieren();
+  const bezitAccessoires = haalBezitAccessoires();
+  const huidigDier = geldigDier(huidigProfielDier()) || bezitDieren[0] || DIEREN[0];
+  const huidigeAccessoires = huidigeProfielAccessoires();
+
+  if (profielKiezerTab === 'dieren') {
+    bezitDieren.forEach(dier => {
+      const knop = document.createElement('button');
+      knop.type = 'button';
+      knop.className = 'dier-knop';
+      knop.innerHTML = poppetjeSvg(dier, huidigeAccessoires);
+      knop.dataset.dier = dier;
+      knop.classList.toggle('gekozen', dier === huidigDier);
+      knop.setAttribute('aria-label', 'Kies ' + dier + ' als profielfoto');
+      knop.addEventListener('click', () => {
+        localStorage.setItem(PROFIEL_DIER_SLEUTEL, dier);
+        werkProfielBadgeBij();
+        werkProfielPoppetjeWeergaveBij();
+        bouwProfielKiezer();
+      });
+      profielOverlayKiezerEl.appendChild(knop);
+    });
+  } else {
+    ACCESSOIRE_GROEPEN.forEach(groep => {
+      const items = groep.items.filter(item => bezitAccessoires.indexOf(item) !== -1);
+      if (!items.length) return;
+
+      const kop = document.createElement('div');
+      kop.className = 'kiezer-groep-titel';
+      kop.textContent = groep.titel;
+      profielOverlayKiezerEl.appendChild(kop);
+
+      items.forEach(emoji => {
+        const voorbeeld = {};
+        voorbeeld[groep.plek] = emoji;
+
+        const knop = document.createElement('button');
+        knop.type = 'button';
+        knop.className = 'dier-knop';
+        knop.innerHTML = poppetjeSvg(huidigDier, voorbeeld);
+        knop.dataset.plek = groep.plek;
+        knop.dataset.acc = emoji;
+        knop.classList.toggle('gekozen', huidigeAccessoires[groep.plek] === emoji);
+        knop.setAttribute('aria-label', 'Kies ' + ((ACCESSOIRES[emoji] && ACCESSOIRES[emoji].naam) || 'accessoire'));
+
+        knop.addEventListener('click', () => {
+          const acc = Object.assign({}, huidigeProfielAccessoires());
+          if (acc[groep.plek] === emoji) {
+            delete acc[groep.plek];
+          } else {
+            acc[groep.plek] = emoji;
+          }
+          slaProfielAccessoiresOp(acc);
+          werkProfielBadgeBij();
+          werkProfielPoppetjeWeergaveBij();
+          bouwProfielKiezer();
+        });
+
+        profielOverlayKiezerEl.appendChild(knop);
+      });
+    });
+
+    const wegKnop = document.createElement('button');
+    wegKnop.type = 'button';
+    wegKnop.className = 'kiezer-weg-knop';
+    wegKnop.textContent = 'Alle accessoires weghalen';
+    wegKnop.addEventListener('click', () => {
+      slaProfielAccessoiresOp({});
+      werkProfielBadgeBij();
+      werkProfielPoppetjeWeergaveBij();
+      bouwProfielKiezer();
+    });
+    profielOverlayKiezerEl.appendChild(wegKnop);
+  }
+
+  if (!bezitDieren.length) {
+    const hint = document.createElement('p');
+    hint.className = 'kiezer-hint';
+    hint.textContent = 'Je hebt nog geen poppetje om te kiezen.';
+    profielOverlayKiezerEl.appendChild(hint);
+  }
+}
+
 btnProfielPoppetjeWijzigenEl.addEventListener('click', () => {
-  const isOpen = profielOverlayDierenKiezerEl.style.display !== 'none';
+  const isOpen = profielOverlayKiezerEl.style.display !== 'none';
+
   if (isOpen) {
     sluitProfielPoppetjeKiezer();
     return;
   }
-  bouwPoppetjeKiezer(profielOverlayDierenKiezerEl, huidigProfielDier(), (dier) => {
-    localStorage.setItem(PROFIEL_DIER_SLEUTEL, dier);
-    werkProfielBadgeBij();
-    document.getElementById('profiel-overlay-poppetje').textContent = dier;
-  });
-  profielOverlayDierenKiezerEl.style.display = '';
+
+  profielKiezerTab = 'dieren';
+  bouwProfielKiezer();
+  profielOverlayKiezerEl.style.display = '';
   btnProfielPoppetjeWijzigenEl.textContent = 'Kiezer sluiten';
 });
 
 document.getElementById('btn-profiel-badge').addEventListener('click', () => {
   if (heeftProfiel()) {
-    document.getElementById('profiel-overlay-poppetje').textContent = huidigProfielDier();
     document.getElementById('profiel-overlay-naam').textContent = 'Ingelogd als ' + huidigeMakerNaam();
+    werkProfielPoppetjeWeergaveBij();
     sluitProfielPoppetjeKiezer();
     profielOverlayEl.classList.add('actief');
   } else {
@@ -3561,6 +3738,7 @@ document.getElementById('btn-profiel-badge').addEventListener('click', () => {
 
 document.getElementById('btn-profiel-overlay-sluiten').addEventListener('click', () => {
   profielOverlayEl.classList.remove('actief');
+  sluitProfielPoppetjeKiezer();
 });
 
 werkProfielBadgeBij();
