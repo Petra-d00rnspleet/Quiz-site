@@ -437,7 +437,7 @@
   <div id="wiel-bewerken-overlay" class="sitebeheer-overlay">
     <div class="sitebeheer-venster wiel-venster">
       <h3>Geluksrad aanpassen</h3>
-      <p class="subtitel">Elke rij is één vak op het rad. Bij "kans" geef je aan hoe groot dat vak wordt: een hoger getal = een groter vak = vaker gewonnen. Zet overal hetzelfde getal voor evenveel kans op elk vak.</p>
+      <p class="subtitel">Elke rij is één vak op het rad: kies eerst wat je erop wilt zetten (munten, een dier of een accessoire). Bij "kans" geef je aan hoe groot dat vak wordt: een hoger getal = een groter vak = vaker gewonnen. Zet overal hetzelfde getal voor evenveel kans op elk vak.</p>
 
       <div id="wiel-segmenten-lijst" class="wiel-segmenten-lijst"></div>
       <button type="button" class="btn btn-secondary" id="btn-wiel-segment-toevoegen">+ Vak toevoegen</button>
@@ -453,10 +453,21 @@
   <!-- Sjabloon voor één vak-rij in het geluksrad-bewerkvenster (wordt door JS gekloond) -->
   <template id="sjabloon-wiel-segment-rij">
     <div class="wiel-segment-rij">
-      <input type="text" class="wiel-segment-naam" placeholder="Naam (leeg = automatisch)" maxlength="24">
-      <input type="number" class="wiel-segment-munten" min="0" step="5" placeholder="Munten">
-      <input type="number" class="wiel-segment-kans" min="1" step="1" placeholder="Kans" value="1">
-      <button type="button" class="wiel-segment-verwijderen" title="Vak verwijderen">✕</button>
+      <div class="wiel-segment-rij-boven">
+        <select class="wiel-segment-type">
+          <option value="munten">💰 Munten</option>
+          <option value="dier">🐾 Dier</option>
+          <option value="accessoire">🎩 Accessoire</option>
+        </select>
+        <input type="text" class="wiel-segment-naam" placeholder="Naam (leeg = automatisch)" maxlength="24">
+        <button type="button" class="wiel-segment-verwijderen" title="Vak verwijderen">✕</button>
+      </div>
+      <div class="wiel-segment-rij-onder">
+        <input type="number" class="wiel-segment-munten" min="0" step="5" placeholder="Aantal munten" value="10">
+        <select class="wiel-segment-dier" style="display:none"></select>
+        <select class="wiel-segment-accessoire" style="display:none"></select>
+        <input type="number" class="wiel-segment-kans" min="1" step="1" placeholder="Kans" value="1">
+      </div>
     </div>
   </template>
 
