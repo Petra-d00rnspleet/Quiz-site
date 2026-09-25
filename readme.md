@@ -33,6 +33,10 @@ Zet de database (tijdelijk, voor testen) in testmodus, of gebruik deze regels �
     "mysterieboxen": {
       ".read": true,
       ".write": true
+    },
+    "geluksrad": {
+      ".read": true,
+      ".write": true
     }
   }
 }
@@ -176,13 +180,21 @@ Boxen staan in Firebase onder een nieuw pad mysterieboxen naast quizzen en sessi
 
 Kist later te koop zetten of offline halen (nieuw)
 
-In het ontwerpvenster van een kist staat nu ook "Te koop vanaf (optioneel)": vul je hier een datum in de toekomst in, dan is de kist standaard nog helemaal onzichtbaar voor spelers totdat die datum is aangebroken. Daaronder staat het vinkje "Spelers mogen al zien dat deze kist eraan komt (naam, prijs en datum), maar kunnen hem nog niet kopen": zet je dat aan, dan verschijnt de kist alvast in de winkel bij spelers met het label "⏳ Binnenkort — te koop vanaf ...", met een uitgegrijsde "Nog niet te koop"-knop (zonder dat ze zien wat erin zit). Laat je het vinkje uit, dan blijft de kist volledig verborgen tot de vanaf-datum, zoals voorheen. Boven de winkel-lijst staat voor sitebeheer een inklapbaar overzicht "🔜 Kisten die nog komen", met alle kisten die nog een toekomstige vanaf-datum hebben, op datum gesorteerd (eerstkomende bovenaan) en met een aanduiding of spelers hem al kunnen zien.
+In het ontwerpvenster van een kist staat nu ook "Te koop vanaf (optioneel)": vul je hier een datum in de toekomst in, dan is de kist standaard nog helemaal onzichtbaar voor spelers totdat die datum is aangebroken. Daaronder staat het vinkje "Spelers mogen al zien dat deze kist eraan komt (naam, prijs en datum), maar kunnen hem nog niet kopen": zet je dat aan, dan verschijnt de kist alvast in de winkel bij spelers met het label "⏳ Binnenkort — te koop vanaf ...", met een uitgegrijsde "Nog niet te koop"-knop (zonder dat ze zien wat erin zit). Heb je bij die kist ook een "Automatisch offline vanaf"-datum ingesteld, dan zien spelers er meteen bij tot wanneer de kist er dan zal zijn ("⏳ Binnenkort — te koop van ... tot ..."). Is een kist eenmaal gewoon te koop en heeft hij zo'n tot-datum, dan blijven spelers ook daarna zien "⏳ Nog te koop tot ...", zodat ze weten hoelang ze nog de tijd hebben. Laat je het vinkje uit, dan blijft de kist volledig verborgen tot de vanaf-datum, zoals voorheen. Boven de winkel-lijst staat voor sitebeheer een inklapbaar overzicht "🔜 Kisten die nog komen", met alle kisten die nog een toekomstige vanaf-datum hebben, op datum gesorteerd (eerstkomende bovenaan) en met een aanduiding of spelers hem al kunnen zien.
 
 Daarnaast staat er "Automatisch offline vanaf (optioneel)": vul je hier een datum in, dan verdwijnt de kist die dag vanzelf uit de winkel voor gewone spelers (net als bij handmatig "Offline halen"), met een label "🔒 Automatisch offline sinds ..." voor sitebeheer. Laat je dit veld leeg, dan blijft de kist gewoon online totdat je hem zelf offline haalt of verwijdert.
 
 Bij elke kist staat voor sitebeheer nu ook een knop "📴 Offline halen" / "📶 Online zetten". Offline gehaalde kisten ("🔒 Offline") zijn alleen nog zichtbaar voor sitebeheer, totdat ze weer online gezet worden — handig om een kist tijdelijk te verbergen zonder hem te verwijderen.
 
 In het ontwerpvenster staat bij elk dier en accessoire nu een getalletje als het al in een andere kist zit, zodat je in één oogopslag ziet wat al eerder gebruikt is.
+
+Geluksrad (nieuw)
+
+Op het startscherm staat nu ook de knop 🎡 Geluksrad. Iedereen (ook zonder in te loggen) mag daar 1 keer per dag gratis aan het rad draaien door op de knop in het midden te klikken: het rad draait een paar rondjes en komt vanzelf op een vak uit, en dat aantal munten krijg je meteen. Draai je vandaag al eens, dan zie je een teller "Kom morgen terug" en is de knop uitgegrijsd tot de volgende dag (bijgehouden per browser, net als de munten zelf — geen account nodig).
+
+Sitebeheer ontwerpt de vakken op het rad: log in en ga naar het Geluksrad, daar staat nu de knop "⚙ Rad aanpassen". In dat venster staat per vak een rij met een naam (optioneel, bijv. "Jackpot!" — leeg laten toont gewoon "X munten"), het aantal munten dat dat vak oplevert, en een "kans"-getal. Dat kans-getal bepaalt hoe groot het vak op het rad wordt getekend: een vak met kans 3 is drie keer zo breed (en wordt dus drie keer zo vaak gewonnen) als een vak met kans 1. Zo bepaal jij precies waar het rad het vaakst en het minst op moet uitkomen, gewoon door de vakken groter of kleiner te maken. Met "+ Vak toevoegen" en de ✕ bij elke rij voeg je vakken toe of haal je ze weg (minimaal 2 vakken nodig). Is er nog nooit iets ingesteld, dan gebruikt het rad een standaardset vakken zodat het meteen werkt.
+
+Het rad staat in Firebase onder een nieuw pad geluksrad naast mysterieboxen, quizzen en sessies — zorg dat je ook hiervoor de Firebase-regel hebt toegevoegd (zie Stap 1 hierboven), anders kan het rad niet laden of opslaan.
 
 Host verlaat de quiz (nieuw)
 
@@ -206,6 +218,10 @@ Tip voor betere prestaties bij veel quizzen: voeg in de Firebase-regels een inde
       ".write": true
     },
     "mysterieboxen": {
+      ".read": true,
+      ".write": true
+    },
+    "geluksrad": {
       ".read": true,
       ".write": true
     }
