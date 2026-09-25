@@ -4006,7 +4006,7 @@ function bouwVerzamelingKiezer() {
     }
     if (heeft) {
       const badge = document.createElement('span');
-      badge.className = 'dubbel-badge';
+      badge.className = 'dier-knop-badge';
       badge.textContent = String(aantal);
       badge.title = aantal + ' exemplaar' + (aantal === 1 ? '' : 's');
       knop.appendChild(badge);
@@ -4097,7 +4097,11 @@ function stuurVriendschapsverzoek(toUid, naam) {
   }).then(() => {
     alert('Vriendschapsverzoek verstuurd naar ' + naam + '.');
     zoekGebruikersOpNaam(document.getElementById('input-zoek-vrienden').value);
-  }).catch(() => alert('Het vriendschapsverzoek kon niet worden verstuurd.'));
+  }).catch(err => {
+    console.error('Vriendschapsverzoek versturen mislukt:', err);
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    alert('Het vriendschapsverzoek kon niet worden verstuurd' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd en of Anonieme aanmelding aan staat.');
+  });
 }
 
 function accepteerVriendschapsverzoek(fromUid, verzoek) {
@@ -4107,7 +4111,11 @@ function accepteerVriendschapsverzoek(fromUid, verzoek) {
   updates['vrienden/' + gebruiker.uid + '/' + fromUid] = { gebruikersnaam: verzoek.gebruikersnaam || 'Vriend', sinds: firebase.database.ServerValue.TIMESTAMP };
   updates['vrienden/' + fromUid + '/' + gebruiker.uid] = { gebruikersnaam: huidigeMakerNaam(), sinds: firebase.database.ServerValue.TIMESTAMP };
   updates['vriendschapsverzoeken/' + gebruiker.uid + '/' + fromUid] = null;
-  db.ref().update(updates).catch(() => alert('Accepteren is mislukt.'));
+  db.ref().update(updates).catch(err => {
+    console.error('Vriendschapsverzoek accepteren mislukt:', err);
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    alert('Accepteren is mislukt' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.');
+  });
 }
 
 function updateVriendenBadge() {
