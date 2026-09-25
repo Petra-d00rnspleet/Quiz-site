@@ -1651,21 +1651,58 @@ h2.titel-regenboog.host-resultaat-vraag {
 }
 
 .wiel-segment-rij {
-  display: grid;
-  grid-template-columns: 1fr 84px 70px 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid #4a3c1a;
+  border-radius: 12px;
+  background: #10152e;
+}
+
+.wiel-segment-rij-boven,
+.wiel-segment-rij-onder {
+  display: flex;
   gap: 6px;
   align-items: center;
 }
 
-.wiel-segment-rij input {
-  width: 100%;
+.wiel-segment-rij-boven .wiel-segment-type {
+  flex: 0 0 110px;
+}
+
+.wiel-segment-rij-boven .wiel-segment-naam {
+  flex: 1;
+  min-width: 0;
+}
+
+.wiel-segment-rij-onder .wiel-segment-munten,
+.wiel-segment-rij-onder .wiel-segment-dier,
+.wiel-segment-rij-onder .wiel-segment-accessoire {
+  flex: 1;
+  min-width: 0;
+}
+
+.wiel-segment-rij-onder .wiel-segment-kans {
+  flex: 0 0 64px;
+}
+
+.wiel-segment-rij select {
+  padding: 12px 10px;
+  border-radius: 10px;
+  border: 1px solid #4a3c1a;
+  background: #10152e;
+  color: #f2f2f5;
+  font-size: 15px;
 }
 
 .wiel-segment-verwijderen {
+  flex: 0 0 auto;
   background: #34131a;
   border: 1px solid #ff5c72;
   color: #ffb0bc;
   border-radius: 10px;
+  width: 40px;
   height: 44px;
   cursor: pointer;
   font-weight: 700;
@@ -1676,15 +1713,14 @@ h2.titel-regenboog.host-resultaat-vraag {
 }
 
 @media (max-width: 420px) {
-  .wiel-segment-rij {
-    grid-template-columns: 1fr 1fr;
-    grid-template-areas: "naam naam" "munten kans" "verwijderen verwijderen";
+  .wiel-segment-rij-boven {
+    flex-wrap: wrap;
   }
 
-  .wiel-segment-naam { grid-area: naam; }
-  .wiel-segment-munten { grid-area: munten; }
-  .wiel-segment-kans { grid-area: kans; }
-  .wiel-segment-verwijderen { grid-area: verwijderen; }
+  .wiel-segment-rij-boven .wiel-segment-naam {
+    flex-basis: 100%;
+    order: 3;
+  }
 }
 
 
