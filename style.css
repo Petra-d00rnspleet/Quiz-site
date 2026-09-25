@@ -915,6 +915,18 @@ label {
   color: #f0c04d;
 }
 
+.box-status {
+  font-weight: 600;
+}
+
+.box-status-offline {
+  color: #ff8fa0;
+}
+
+.box-status-vanaf {
+  color: #ffb066;
+}
+
 .quiz-item-knoppen {
   display: flex;
   flex-wrap: wrap;
@@ -1622,6 +1634,7 @@ h2.titel-regenboog.host-resultaat-vraag {
 }
 
 .dier-knop {
+  position: relative;
   font-size: 50px;
   line-height: 1;
   padding: 6px 0;
@@ -1629,6 +1642,21 @@ h2.titel-regenboog.host-resultaat-vraag {
   border: 2px solid #4a3c1a;
   background: #10152e;
   cursor: pointer;
+}
+
+.dier-knop-badge {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  background: #f0c04d;
+  color: #10152e;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 999px;
+  pointer-events: none;
 }
 
 /* In het accessoires-tabblad iets grotere knoppen, zodat je goed ziet hoe het staat */
