@@ -3773,7 +3773,7 @@ const BEZIT_AANTALLEN_SLEUTEL = 'quizAppBezitAantallen';
 const SOCIAAL_PROFIEL_PAD = 'gebruikers';
 
 function normaliseerGebruikersnaam(naam) {
-  return String(naam || '').trim().toLowerCase().replace(/\\s+/g, ' ');
+  return String(naam || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 function profielFirebaseGebruiker() {
@@ -4080,7 +4080,10 @@ function zoekGebruikersOpNaam(zoekterm) {
       resultatenEl.appendChild(rij);
     });
     if (!gevonden) resultatenEl.innerHTML = '<p class="subtitel">Geen gebruiker gevonden.</p>';
-  }).catch(() => { resultatenEl.innerHTML = '<p class="foutmelding">Zoeken lukt nu niet.</p>'; });
+  }).catch(err => {
+    console.error('Gebruikers zoeken mislukt:', err);
+    resultatenEl.innerHTML = '<p class="foutmelding">Zoeken lukt nu niet. Controleer of de nieuwste Firebase-regels zijn ingesteld.</p>';
+  });
 }
 
 function stuurVriendschapsverzoek(toUid, naam) {
