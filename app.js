@@ -1696,6 +1696,30 @@ function haalBezitAccessoires() {
   return Array.isArray(opgeslagen) && opgeslagen.length ? opgeslagen : STANDAARD_ACCESSOIRES.slice();
 }
 
+// Laatst opgehaalde volledige lijst mysterieboxen (ongefilterd), gebruikt om in het
+// bewerkformulier te kunnen tonen in hoeveel andere kisten een dier/accessoire al zit.
+let alleMysterieboxenCache = {};
+
+// Datum (YYYY-MM-DD) van vandaag, voor vergelijking met box.vanafDatum. Puur op datumtekst
+// vergelijken voorkomt gedoe met tijdzones/uren.
+function huidigeDatumTekst() {
+  const nu = new Date();
+  return nu.getFullYear() + '-' + String(nu.getMonth() + 1).padStart(2, '0') + '-' + String(nu.getDate()).padStart(2, '0');
+}
+
+// Is deze kist nog niet te koop omdat de ingestelde "vanaf"-datum in de toekomst ligt?
+function boxIsNogNietTeKoop(box) {
+  return !!(box && box.vanafDatum && box.vanafDatum > huidigeDatumTekst());
+}
+
+// Nette weergave van een YYYY-MM-DD datum, bijv. "5 oktober 2026".
+function formatBoxDatum(datumTekst) {
+  if (!datumTekst) return '';
+  const datum = new Date(datumTekst + 'T00:00:00');
+  if (isNaN(datum.getTime())) return datumTekst;
+  return datum.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 function haalGekochteBoxen() {
   const opgeslagen = JSON.parse(localStorage.getItem(GEKOCHTE_BOXEN_SLEUTEL) || 'null');
   return Array.isArray(opgeslagen) ? opgeslagen : [];
@@ -1728,7 +1752,13 @@ document.getElementById('btn-naar-winkel').addEventListener('click', () => {
 
 function bouwBoxKaartHtml(boxId, box) {
   const aantalItems = (box.dieren || []).length + (box.accessoires || []).length;
-  const genoegMunten = haalMunten() >= (box.prijs || 0);
+  const isOffline = !!box.offline;
+  const nogNietTeKoop = boxIsNogNietTeKoop(box);
+  // Spelers zien deze kaart sowieso alleen als de kist al zichtbaar is (zie het filteren
+  // in laadWinkelBoxen), dus voor hen is kopen altijd toegestaan. Sitebeheer ziet ook
+  // offline/nog-niet-te-koop kisten, maar kan ze hier niet per ongeluk kopen.
+  const nietTeKoopVoorBeheer = sitebeheerActief && (isOffline || nogNietTeKoop);
+  const genoegMunten = !nietTeKoopVoorBeheer && haalMunten() >= (box.prijs || 0);
   const algemeenAlGekocht = haalGekochteBoxen().indexOf(boxId) !== -1;
   let html = '<div class="quiz-item-body">' +
     '<div class="quiz-item-info"><strong>🎁 ' + escapeHtml(box.naam || 'Mysteriebox') + '</strong>' +
@@ -1738,13 +1768,20 @@ function bouwBoxKaartHtml(boxId, box) {
   }
   if (sitebeheerActief) {
     html += '<span class="box-aantal-gekocht">🛒 ' + (box.aantalGekocht || 0) + 'x gekocht (door alle spelers)</span>';
+    if (isOffline) {
+      html += '<span class="box-status box-status-offline">🔒 Offline — alleen jij ziet deze kist</span>';
+    } else if (nogNietTeKoop) {
+      html += '<span class="box-status box-status-vanaf">⏳ Te koop vanaf ' + escapeHtml(formatBoxDatum(box.vanafDatum)) + '</span>';
+    }
   }
   html += '</div>' +
     '<div class="quiz-item-knoppen">' +
     '<button class="btn btn-primary btn-koop-box" data-box="' + boxId + '"' + (genoegMunten ? '' : ' disabled') + '>' +
-    (genoegMunten ? 'Kopen' : 'Niet genoeg munten') + '</button>';
+    (nietTeKoopVoorBeheer ? 'Nog niet te koop' : (genoegMunten ? 'Kopen' : 'Niet genoeg munten')) + '</button>';
   if (sitebeheerActief) {
+    const offlineKnopTekst = isOffline ? '📶 Online zetten' : '📴 Offline halen';
     html += '<button type="button" class="btn-aanpassen-quiz btn-aanpassen-box" data-box="' + boxId + '">Aanpassen</button>' +
+      '<button type="button" class="btn-blokkeren-quiz btn-offline-box' + (isOffline ? ' is-geblokkeerd' : '') + '" data-box="' + boxId + '">' + offlineKnopTekst + '</button>' +
       '<button type="button" class="btn-verwijderen-quiz btn-verwijderen-box" data-box="' + boxId + '">Verwijderen</button>';
   }
   html += '</div></div>';
@@ -1760,7 +1797,15 @@ function laadWinkelBoxen() {
   geenBoxenEl.style.display = 'none';
 
   db.ref('mysterieboxen').once('value').then(snapshot => {
-    const boxen = snapshot.val() || {};
+    const alleBoxen = snapshot.val() || {};
+    alleMysterieboxenCache = alleBoxen;
+    // Gewone spelers zien geen offline kisten, en geen kisten waarvan de "vanaf"-datum
+    // nog in de toekomst ligt — die zijn alleen zichtbaar voor sitebeheer.
+    const boxen = sitebeheerActief ? alleBoxen : Object.keys(alleBoxen).reduce((resultaat, boxId) => {
+      const box = alleBoxen[boxId];
+      if (!box.offline && !boxIsNogNietTeKoop(box)) resultaat[boxId] = box;
+      return resultaat;
+    }, {});
     const boxIds = Object.keys(boxen);
     lijstEl.innerHTML = '';
     geenBoxenEl.style.display = boxIds.length ? 'none' : 'block';
@@ -1782,8 +1827,18 @@ function laadWinkelBoxen() {
     lijstEl.querySelectorAll('.btn-verwijderen-box').forEach(knop => {
       knop.addEventListener('click', () => verwijderMysteriebox(knop.dataset.box));
     });
+    lijstEl.querySelectorAll('.btn-offline-box').forEach(knop => {
+      knop.addEventListener('click', () => zetBoxOffline(knop.dataset.box, !boxen[knop.dataset.box].offline));
+    });
   }).catch(() => {
     lijstEl.innerHTML = '<p class="subtitel">De boxen konden niet geladen worden.</p>';
+  });
+}
+
+// Zet een kist offline (alleen sitebeheer ziet hem dan nog) of weer online.
+function zetBoxOffline(boxId, offline) {
+  db.ref('mysterieboxen/' + boxId + '/offline').set(!!offline).then(laadWinkelBoxen).catch(() => {
+    alert('Dit is niet gelukt. Probeer het opnieuw.');
   });
 }
 
@@ -1792,6 +1847,11 @@ function koopMysteriebox(boxId) {
     const box = snapshot.val();
     if (!box) {
       alert('Deze mysteriebox bestaat niet meer.');
+      laadWinkelBoxen();
+      return;
+    }
+    if (!sitebeheerActief && (box.offline || boxIsNogNietTeKoop(box))) {
+      alert('Deze mysteriebox is nu niet te koop.');
       laadWinkelBoxen();
       return;
     }
@@ -1829,13 +1889,29 @@ document.getElementById('btn-winkel-nieuwe-box').addEventListener('click', () =>
 // ---------- Mysteriebox ontwerpen (alleen sitebeheer) ----------
 
 let bewerkteBoxId = null;
+let bewerkteBoxOffline = false;
 let boxGeselecteerdeDieren = [];
 let boxGeselecteerdeAccessoires = [];
 
 const boxBewerkenOverlayEl = document.getElementById('box-bewerken-overlay');
 const inputBoxNaamEl = document.getElementById('input-box-naam');
 const inputBoxPrijsEl = document.getElementById('input-box-prijs');
+const inputBoxVanafEl = document.getElementById('input-box-vanaf');
 const boxBewerkenFoutmeldingEl = document.getElementById('box-bewerken-foutmelding');
+
+// Telt in hoeveel andere kisten (dus niet de kist die nu bewerkt wordt) een bepaald
+// dier of accessoire al zit, zodat sitebeheer dat ziet als een getalletje op de knop.
+function telGebruikInAndereBoxen(soort, waarde) {
+  let aantal = 0;
+  Object.keys(alleMysterieboxenCache).forEach(boxId => {
+    if (boxId === bewerkteBoxId) return;
+    const andereBox = alleMysterieboxenCache[boxId];
+    if (andereBox && Array.isArray(andereBox[soort]) && andereBox[soort].indexOf(waarde) !== -1) {
+      aantal++;
+    }
+  });
+  return aantal;
+}
 
 // Bouwt de kiesknoppen voor élk dier en élk accessoire uit de hele catalogus
 // (niet alleen wat de sitebeheerder zelf al bezit): sitebeheer ontwerpt hier
@@ -1848,6 +1924,10 @@ function bouwBoxItemsKiezer() {
     knop.type = 'button';
     knop.className = 'dier-knop';
     knop.innerHTML = poppetjeSvg(dier, {});
+    const gebruiktIn = telGebruikInAndereBoxen('dieren', dier);
+    if (gebruiktIn > 0) {
+      knop.innerHTML += '<span class="dier-knop-badge" title="Zit al in ' + gebruiktIn + ' andere kist(en)">' + gebruiktIn + '</span>';
+    }
     knop.classList.toggle('gekozen', boxGeselecteerdeDieren.indexOf(dier) !== -1);
     knop.setAttribute('aria-label', 'Kies ' + dier);
     knop.addEventListener('click', () => {
@@ -1870,6 +1950,10 @@ function bouwBoxItemsKiezer() {
       knop.className = 'dier-knop';
       knop.innerHTML = poppetjeSvg(voorbeeldDier, voorbeeld);
       knop.title = ACCESSOIRES[emoji].naam;
+      const gebruiktIn = telGebruikInAndereBoxen('accessoires', emoji);
+      if (gebruiktIn > 0) {
+        knop.innerHTML += '<span class="dier-knop-badge" title="Zit al in ' + gebruiktIn + ' andere kist(en)">' + gebruiktIn + '</span>';
+      }
       knop.setAttribute('aria-label', 'Kies ' + ACCESSOIRES[emoji].naam);
       knop.classList.toggle('gekozen', boxGeselecteerdeAccessoires.indexOf(emoji) !== -1);
       knop.addEventListener('click', () => {
@@ -1884,12 +1968,14 @@ function bouwBoxItemsKiezer() {
 
 function openBoxBewerken(boxId, box) {
   bewerkteBoxId = boxId;
+  bewerkteBoxOffline = box ? !!box.offline : false;
   boxGeselecteerdeDieren = (box && box.dieren) ? box.dieren.slice() : [];
   boxGeselecteerdeAccessoires = (box && box.accessoires) ? box.accessoires.slice() : [];
 
   document.getElementById('box-bewerken-titel').textContent = boxId ? 'Mysteriebox aanpassen' : 'Nieuwe mysteriebox';
   inputBoxNaamEl.value = box ? (box.naam || '') : '';
   inputBoxPrijsEl.value = box ? (box.prijs || 0) : 100;
+  inputBoxVanafEl.value = box ? (box.vanafDatum || '') : '';
   boxBewerkenFoutmeldingEl.textContent = '';
   document.getElementById('btn-box-verwijderen').style.display = boxId ? 'inline-block' : 'none';
 
@@ -1929,7 +2015,9 @@ document.getElementById('btn-box-opslaan').addEventListener('click', () => {
     naam: naam,
     prijs: prijs,
     dieren: boxGeselecteerdeDieren,
-    accessoires: boxGeselecteerdeAccessoires
+    accessoires: boxGeselecteerdeAccessoires,
+    vanafDatum: inputBoxVanafEl.value || null,
+    offline: bewerkteBoxOffline
   };
 
   const ref = bewerkteBoxId ? db.ref('mysterieboxen/' + bewerkteBoxId) : db.ref('mysterieboxen').push();
