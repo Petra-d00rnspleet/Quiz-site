@@ -2152,14 +2152,16 @@ const WIEL_DRAAI_DUUR_MS = 4200;
 const WIEL_KLEUREN = ['#f2c14e', '#3fc6f0', '#e0459a', '#8b3fe0', '#f0524a', '#f2933e', '#39c98f', '#4a6bf0'];
 
 const STANDAARD_WIEL_SEGMENTEN = [
-  { naam: '5 munten', munten: 5, kans: 3 },
-  { naam: '10 munten', munten: 10, kans: 3 },
-  { naam: '2 munten', munten: 2, kans: 4 },
-  { naam: '20 munten', munten: 20, kans: 2 },
-  { naam: '5 munten', munten: 5, kans: 3 },
-  { naam: '50 munten', munten: 50, kans: 1 },
-  { naam: '10 munten', munten: 10, kans: 3 },
-  { naam: '100 munten', munten: 100, kans: 1 }
+  { naam: '5 munten', type: 'munten', munten: 5, kans: 3 },
+  { naam: '10 munten', type: 'munten', munten: 10, kans: 3 },
+  { naam: '2 munten', type: 'munten', munten: 2, kans: 4 },
+  { naam: '20 munten', type: 'munten', munten: 20, kans: 2 },
+  { naam: '🐶', type: 'dier', dier: '🐶', kans: 1 },
+  { naam: '5 munten', type: 'munten', munten: 5, kans: 3 },
+  { naam: '50 munten', type: 'munten', munten: 50, kans: 1 },
+  { naam: '10 munten', type: 'munten', munten: 10, kans: 3 },
+  { naam: '🐱', type: 'dier', dier: '🐱', kans: 1 },
+  { naam: '100 munten', type: 'munten', munten: 100, kans: 1 }
 ];
 
 let wielSegmentenCache = STANDAARD_WIEL_SEGMENTEN;
@@ -2176,7 +2178,10 @@ function berekenWielHoeken(segmenten) {
   return segmenten.map((s, i) => {
     const gewicht = s.kans > 0 ? s.kans : 1;
     const breedte = totaalKans > 0 ? (gewicht / totaalKans) * 360 : (360 / segmenten.length);
-    const metHoek = { naam: s.naam, munten: s.munten, kans: s.kans, kleur: WIEL_KLEUREN[i % WIEL_KLEUREN.length], startHoek: cursor, breedteHoek: breedte };
+    const metHoek = {
+      naam: s.naam, type: s.type || 'munten', munten: s.munten, dier: s.dier, accessoire: s.accessoire,
+      kans: s.kans, kleur: WIEL_KLEUREN[i % WIEL_KLEUREN.length], startHoek: cursor, breedteHoek: breedte
+    };
     cursor += breedte;
     return metHoek;
   });
@@ -2291,7 +2296,13 @@ function draaiRad() {
     wielDraaitNu = false;
     localStorage.setItem(WIEL_LAATSTE_DRAAI_SLEUTEL, vandaag);
     localStorage.setItem(WIEL_LAATSTE_RESULTAAT_SLEUTEL, gekozenSegment.naam);
-    if (gekozenSegment.munten) geefMunten(gekozenSegment.munten);
+    if (gekozenSegment.type === 'dier' && gekozenSegment.dier) {
+      voegBezitToe([gekozenSegment.dier], []);
+    } else if (gekozenSegment.type === 'accessoire' && gekozenSegment.accessoire) {
+      voegBezitToe([], [gekozenSegment.accessoire]);
+    } else if (gekozenSegment.munten) {
+      geefMunten(gekozenSegment.munten);
+    }
     document.getElementById('wiel-resultaat').textContent = '🎉 Je hebt gewonnen: ' + gekozenSegment.naam + '!';
     werkWielStatusBij();
   }, WIEL_DRAAI_DUUR_MS);
@@ -2306,12 +2317,53 @@ const wielSegmentenLijstEl = document.getElementById('wiel-segmenten-lijst');
 const sjabloonWielSegmentRij = document.getElementById('sjabloon-wiel-segment-rij');
 const wielBewerkenFoutmeldingEl = document.getElementById('wiel-bewerken-foutmelding');
 
+// Vult de dier- en accessoire-keuzelijst van één rij met de hele catalogus (net als bij
+// het maken van een mysteriebox: ook de dieren/accessoires die niet standaard te kiezen zijn).
+function vulWielDierAccessoireSelects(rij) {
+  const dierSelectEl = rij.querySelector('.wiel-segment-dier');
+  DIEREN.forEach(dier => {
+    const optie = document.createElement('option');
+    optie.value = dier;
+    optie.textContent = dier;
+    dierSelectEl.appendChild(optie);
+  });
+
+  const accSelectEl = rij.querySelector('.wiel-segment-accessoire');
+  ACCESSOIRE_GROEPEN.forEach(groep => {
+    groep.items.forEach(emoji => {
+      const optie = document.createElement('option');
+      optie.value = emoji;
+      optie.textContent = emoji + ' ' + ACCESSOIRES[emoji].naam;
+      accSelectEl.appendChild(optie);
+    });
+  });
+}
+
+// Laat bij een rij alleen het invoerveld zien dat bij het gekozen type hoort
+// (munten-aantal, dier-keuze of accessoire-keuze).
+function werkWielSegmentTypeWeergaveBij(rij) {
+  const type = rij.querySelector('.wiel-segment-type').value;
+  rij.querySelector('.wiel-segment-munten').style.display = type === 'munten' ? '' : 'none';
+  rij.querySelector('.wiel-segment-dier').style.display = type === 'dier' ? '' : 'none';
+  rij.querySelector('.wiel-segment-accessoire').style.display = type === 'accessoire' ? '' : 'none';
+}
+
 function voegWielSegmentRijToe(segment) {
   const kloon = sjabloonWielSegmentRij.content.cloneNode(true);
   const rij = kloon.querySelector('.wiel-segment-rij');
+  const type = segment ? (segment.type || 'munten') : 'munten';
+
+  vulWielDierAccessoireSelects(rij);
+
+  rij.querySelector('.wiel-segment-type').value = type;
   rij.querySelector('.wiel-segment-naam').value = segment ? (segment.naam || '') : '';
   rij.querySelector('.wiel-segment-munten').value = segment ? (segment.munten || 0) : 10;
+  if (segment && segment.dier) rij.querySelector('.wiel-segment-dier').value = segment.dier;
+  if (segment && segment.accessoire) rij.querySelector('.wiel-segment-accessoire').value = segment.accessoire;
   rij.querySelector('.wiel-segment-kans').value = segment ? (segment.kans || 1) : 1;
+
+  werkWielSegmentTypeWeergaveBij(rij);
+  rij.querySelector('.wiel-segment-type').addEventListener('change', () => werkWielSegmentTypeWeergaveBij(rij));
   rij.querySelector('.wiel-segment-verwijderen').addEventListener('click', () => rij.remove());
   wielSegmentenLijstEl.appendChild(kloon);
 }
@@ -2340,12 +2392,24 @@ document.getElementById('btn-wiel-opslaan').addEventListener('click', () => {
 
   rijen.forEach(rij => {
     if (fout) return;
+    const type = rij.querySelector('.wiel-segment-type').value;
     const naamRuw = rij.querySelector('.wiel-segment-naam').value.trim();
-    const munten = parseInt(rij.querySelector('.wiel-segment-munten').value, 10);
     const kans = parseInt(rij.querySelector('.wiel-segment-kans').value, 10);
-    if (isNaN(munten) || munten < 0) { fout = 'Vul bij elk vak een geldig aantal munten in (0 of meer).'; return; }
     if (isNaN(kans) || kans < 1) { fout = 'Vul bij elk vak een kans van minstens 1 in.'; return; }
-    segmenten.push({ naam: naamRuw || (munten + ' munten'), munten: munten, kans: kans });
+
+    if (type === 'dier') {
+      const dier = rij.querySelector('.wiel-segment-dier').value;
+      if (!dier) { fout = 'Kies bij elk "dier"-vak welk dier het is.'; return; }
+      segmenten.push({ naam: naamRuw || dier, type: 'dier', dier: dier, kans: kans });
+    } else if (type === 'accessoire') {
+      const accessoire = rij.querySelector('.wiel-segment-accessoire').value;
+      if (!accessoire) { fout = 'Kies bij elk "accessoire"-vak welk accessoire het is.'; return; }
+      segmenten.push({ naam: naamRuw || accessoire, type: 'accessoire', accessoire: accessoire, kans: kans });
+    } else {
+      const munten = parseInt(rij.querySelector('.wiel-segment-munten').value, 10);
+      if (isNaN(munten) || munten < 0) { fout = 'Vul bij elk "munten"-vak een geldig aantal munten in (0 of meer).'; return; }
+      segmenten.push({ naam: naamRuw || (munten + ' munten'), type: 'munten', munten: munten, kans: kans });
+    }
   });
 
   if (!fout && segmenten.length < 2) {
