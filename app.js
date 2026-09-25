@@ -1782,8 +1782,18 @@ function bouwBoxKaartHtml(boxId, box) {
     } else if (nogNietTeKoop) {
       html += '<span class="box-status box-status-vanaf">⏳ Te koop vanaf ' + escapeHtml(formatBoxDatum(box.vanafDatum)) +
         (box.teaserZichtbaar ? ' · spelers zien alvast dat hij eraan komt' : ' · nog helemaal onzichtbaar voor spelers') + '</span>';
-    } else if (box.totDatum) {
-      html += '<span class="box-status box-status-vanaf">⏳ Gaat automatisch offline op ' + escapeHtml(formatBoxDatum(box.totDatum)) + '</span>';
+    } else if (box.vanafDatum || box.totDatum) {
+      // Kist is nu gewoon te koop, maar heeft een vanaf- en/of tot-datum ingesteld:
+      // laat de hele looptijd zien, niet alleen de tot-datum.
+      let looptijdTekst;
+      if (box.vanafDatum && box.totDatum) {
+        looptijdTekst = 'Te koop van ' + formatBoxDatum(box.vanafDatum) + ' tot ' + formatBoxDatum(box.totDatum);
+      } else if (box.vanafDatum) {
+        looptijdTekst = 'Te koop sinds ' + formatBoxDatum(box.vanafDatum);
+      } else {
+        looptijdTekst = 'Te koop tot ' + formatBoxDatum(box.totDatum);
+      }
+      html += '<span class="box-status box-status-vanaf">📅 ' + escapeHtml(looptijdTekst) + '</span>';
     }
   } else if (nogNietTeKoop) {
     // Spelers zien deze kaart bij een nog-niet-te-koop kist alleen als sitebeheer
@@ -1838,10 +1848,11 @@ function toonKomendeKistenOverzicht(alleBoxen) {
   const rijenHtml = komendeKisten.map(box => {
     const offlineNotitie = box.offline ? ' · staat daarnaast ook nog handmatig offline' : '';
     const teaserNotitie = box.teaserZichtbaar ? ' · 👀 spelers zien hem al' : ' · 🙈 nog onzichtbaar voor spelers';
+    const totNotitie = box.totDatum ? (' · daarna automatisch offline op ' + escapeHtml(formatBoxDatum(box.totDatum))) : '';
     return '<div class="sitebeheer-maker-rij">' +
       '<div class="sitebeheer-maker-naam-rij"><strong>🎁 ' + escapeHtml(box.naam || 'Mysteriebox') + '</strong>' +
       '<span class="sitebeheer-maker-telling">' + (box.prijs || 0) + ' munten</span></div>' +
-      '<span class="sitebeheer-maker-telling">⏳ Te koop vanaf ' + escapeHtml(formatBoxDatum(box.vanafDatum)) + teaserNotitie + offlineNotitie + '</span>' +
+      '<span class="sitebeheer-maker-telling">⏳ Te koop vanaf ' + escapeHtml(formatBoxDatum(box.vanafDatum)) + totNotitie + teaserNotitie + offlineNotitie + '</span>' +
       '</div>';
   }).join('');
 
