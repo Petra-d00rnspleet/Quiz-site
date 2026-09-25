@@ -2269,22 +2269,9 @@ h2.titel-regenboog.host-resultaat-vraag {
 .chat-invoer input { flex: 1; min-width: 0; }
 .stuur-vriend-knop { width: 100%; text-align: left; }
 .verzameling-item { position: relative; overflow: visible; }
-.dubbel-badge {
-  position: absolute;
-  top: 4px;
+.verzameling-item .dier-knop-badge {
+  top: 2px;
   right: 4px;
-  min-width: 24px;
-  height: 24px;
-  padding: 2px 6px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: #f0c04d;
-  color: #16120a;
-  font-size: 13px;
-  font-weight: 900;
-  box-sizing: border-box;
 }
 .verzameling-item.in-bezit { cursor: pointer; }
 .verzameling-item.in-bezit:hover { transform: translateY(-1px); }
