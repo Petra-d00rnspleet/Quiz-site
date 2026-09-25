@@ -23,6 +23,7 @@
         <button class="vak vak-meedoen" id="btn-naar-meedoen">🙋 Meedoen aan quiz</button>
         <button class="vak vak-winkel" id="btn-naar-winkel">🎁 Winkel</button>
         <button class="vak vak-dierentuin" id="btn-naar-dierentuin">🐾 Dierenverzameling</button>
+        <button class="vak vak-wiel" id="btn-naar-wiel">🎡 Geluksrad</button>
       </div>
     </section>
 
@@ -319,6 +320,25 @@
       <p id="winkel-geen-boxen" class="subtitel" style="display:none">Er zijn nog geen mysterieboxen. Kom later nog eens terug!</p>
     </section>
 
+    <!-- SCHERM: GELUKSRAD (1x per dag gratis draaien voor munten) -->
+    <section id="scherm-wiel" class="scherm scherm-gecentreerd">
+      <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
+      <h2 class="titel-regenboog">Geluksrad</h2>
+      <p class="subtitel">Draai 1 keer per dag gratis aan het rad en win munten. Klik op de knop in het midden!</p>
+      <div class="munten-weergave">💰 <span class="munten-aantal">0</span> munten</div>
+
+      <div class="wiel-omgeving">
+        <div class="wiel-wijzer">▼</div>
+        <div class="wiel-schijf" id="wiel-schijf"></div>
+        <button type="button" class="wiel-knop-midden" id="btn-wiel-draaien">DRAAI</button>
+      </div>
+
+      <p id="wiel-status" class="subtitel"></p>
+      <p id="wiel-resultaat" class="wiel-resultaat-tekst"></p>
+
+      <button class="btn btn-secondary" id="btn-wiel-aanpassen" type="button" style="display:none">⚙ Rad aanpassen</button>
+    </section>
+
     <button class="btn-sitebeheer" id="btn-sitebeheer" type="button">⚙ Sitebeheer</button>
 
   </div>
@@ -412,6 +432,33 @@
       </div>
     </div>
   </div>
+
+  <!-- GELUKSRAD: vakken/beloningen aanpassen (alleen zichtbaar voor sitebeheer) -->
+  <div id="wiel-bewerken-overlay" class="sitebeheer-overlay">
+    <div class="sitebeheer-venster wiel-venster">
+      <h3>Geluksrad aanpassen</h3>
+      <p class="subtitel">Elke rij is één vak op het rad. Bij "kans" geef je aan hoe groot dat vak wordt: een hoger getal = een groter vak = vaker gewonnen. Zet overal hetzelfde getal voor evenveel kans op elk vak.</p>
+
+      <div id="wiel-segmenten-lijst" class="wiel-segmenten-lijst"></div>
+      <button type="button" class="btn btn-secondary" id="btn-wiel-segment-toevoegen">+ Vak toevoegen</button>
+
+      <p id="wiel-bewerken-foutmelding" class="foutmelding"></p>
+      <div class="sitebeheer-knoppen">
+        <button class="btn btn-secondary" id="btn-wiel-annuleren" type="button">Annuleren</button>
+        <button class="btn btn-primary" id="btn-wiel-opslaan" type="button">Opslaan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sjabloon voor één vak-rij in het geluksrad-bewerkvenster (wordt door JS gekloond) -->
+  <template id="sjabloon-wiel-segment-rij">
+    <div class="wiel-segment-rij">
+      <input type="text" class="wiel-segment-naam" placeholder="Naam (leeg = automatisch)" maxlength="24">
+      <input type="number" class="wiel-segment-munten" min="0" step="5" placeholder="Munten">
+      <input type="number" class="wiel-segment-kans" min="1" step="1" placeholder="Kans" value="1">
+      <button type="button" class="wiel-segment-verwijderen" title="Vak verwijderen">✕</button>
+    </div>
+  </template>
 
   <!-- Sjabloon voor één vraagblok (wordt door JS gekloond) -->
   <template id="sjabloon-vraag-blok">
