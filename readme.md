@@ -178,6 +178,8 @@ Kist later te koop zetten of offline halen (nieuw)
 
 In het ontwerpvenster van een kist staat nu ook "Te koop vanaf (optioneel)": vul je hier een datum in de toekomst in, dan ziet alleen sitebeheer die kist alvast in de winkel (met een label "⏳ Te koop vanaf ..."); gewone spelers zien hem pas zodra die datum is aangebroken. Laat je het veld leeg, dan is de kist meteen te koop, zoals voorheen.
 
+Daarnaast staat er "Automatisch offline vanaf (optioneel)": vul je hier een datum in, dan verdwijnt de kist die dag vanzelf uit de winkel voor gewone spelers (net als bij handmatig "Offline halen"), met een label "🔒 Automatisch offline sinds ..." voor sitebeheer. Laat je dit veld leeg, dan blijft de kist gewoon online totdat je hem zelf offline haalt of verwijdert.
+
 Bij elke kist staat voor sitebeheer nu ook een knop "📴 Offline halen" / "📶 Online zetten". Offline gehaalde kisten ("🔒 Offline") zijn alleen nog zichtbaar voor sitebeheer, totdat ze weer online gezet worden — handig om een kist tijdelijk te verbergen zonder hem te verwijderen.
 
 In het ontwerpvenster staat bij elk dier en accessoire nu een getalletje als het al in een andere kist zit, zodat je in één oogopslag ziet wat al eerder gebruikt is.
