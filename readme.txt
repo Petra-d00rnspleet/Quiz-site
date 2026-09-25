@@ -1,33 +1,13 @@
-NIEUW: VRIENDEN / CHAT / DUBBELE POPPETJES
+BELANGRIJK VOOR DE VRIENDENFUNCTIE
 
-Gewijzigde bestanden:
-- index.html
-- style.css
-- app.js
+1. Gebruik de bestanden uit deze ZIP.
+2. Zet in Firebase Authentication > Sign-in method > Anonymous / Anoniem aan.
+3. Zet in Firebase Realtime Database > Rules de inhoud van firebase-rules.json en klik op Publiceren.
+4. Herlaad de website daarna.
 
-Ongewijzigd:
-- poppetjes.js
-- firebase-config.js
+WAAROM DE REGELS ZIJN AANGEPAST:
+De ontvanger van een vriendschapsverzoek moet het verzoek kunnen verwijderen zodra het wordt geaccepteerd. De vorige regel liet alleen de afzender schrijven naar het verzoek, waardoor accepteren kon mislukken.
 
-Nieuw:
-- firebase-rules.json
 
-Firebase-instelling:
-1. Ga in Firebase Console naar Authentication -> Sign-in method.
-2. Zet Anonymous (Anoniem) aan.
-3. Open Realtime Database -> Rules en gebruik firebase-rules.json als basis.
-4. Publiceer de regels.
-
-Nieuwe functies:
-- Gebruikers zoeken op gebruikersnaam.
-- Vriendschapsverzoeken sturen en accepteren.
-- Chatten met geaccepteerde vrienden.
-- Dieren/accessoires kunnen dubbel voorkomen.
-- Bij een dubbel item staat een getalletje (bijv. 2).
-- Klik op een item in de verzameling om 1 exemplaar te verkopen of te sturen.
-- Versturen kan alleen naar geaccepteerde vrienden.
-
-Let op:
-De huidige website gebruikte de inventaris oorspronkelijk lokaal. De nieuwe code houdt de aantallen ook bij in Firebase zodat verstuurde items tussen gebruikers kunnen worden uitgewisseld.
-
-BELANGRIJK: publiceer de meegeleverde firebase-rules.json in Realtime Database -> Rules; anders werkt gebruikers zoeken niet.
+KISTEN HERSTELD
+De meegeleverde firebase-rules.json bevat ook weer de oorspronkelijke regels voor quizzen, sessies, mysterieboxen, geluksrad en aangepastePoppetjes. Publiceer deze volledige regels in Firebase.
