@@ -1802,8 +1802,17 @@ function bouwBoxKaartHtml(boxId, box) {
     }
   } else if (nogNietTeKoop) {
     // Spelers zien deze kaart bij een nog-niet-te-koop kist alleen als sitebeheer
-    // "teaserZichtbaar" heeft aangezet (zie het filteren in laadWinkelBoxen).
-    html += '<span class="box-status box-status-vanaf">⏳ Binnenkort — te koop vanaf ' + escapeHtml(formatBoxDatum(box.vanafDatum)) + '</span>';
+    // "teaserZichtbaar" heeft aangezet (zie het filteren in laadWinkelBoxen). Is er ook
+    // een "tot"-datum ingesteld, dan laten we spelers meteen zien tot wanneer de kist
+    // er dan zal zijn, niet alleen wanneer hij begint.
+    const teaserTekst = box.totDatum
+      ? 'Binnenkort — te koop van ' + formatBoxDatum(box.vanafDatum) + ' tot ' + formatBoxDatum(box.totDatum)
+      : 'Binnenkort — te koop vanaf ' + formatBoxDatum(box.vanafDatum);
+    html += '<span class="box-status box-status-vanaf">⏳ ' + escapeHtml(teaserTekst) + '</span>';
+  } else if (box.totDatum) {
+    // Kist is nu gewoon te koop en heeft een tot-datum: laat spelers ook zien tot
+    // wanneer ze hem nog kunnen kopen.
+    html += '<span class="box-status box-status-vanaf">⏳ Nog te koop tot ' + escapeHtml(formatBoxDatum(box.totDatum)) + '</span>';
   }
   html += '</div>' +
     '<div class="quiz-item-knoppen">' +
