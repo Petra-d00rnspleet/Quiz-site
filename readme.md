@@ -18,13 +18,15 @@ Ga naar https://console.firebase.google.com en maak een nieuw project.
 
 Ga naar Build → Realtime Database en maak een database aan (kies een regio, bijv. Europe).
 
-Zet de database (tijdelijk, voor testen) in testmodus, of gebruik deze regels — let op: er is nu ook een sessies-pad en een mysterieboxen-pad nodig naast quizzen:
+Zet de database (tijdelijk, voor testen) in testmodus, of gebruik deze regels. Dit zijn alle paden die de app gebruikt (quizzen, sessies, mysterieboxen, geluksrad en aangepastePoppetjes) — ga naar Realtime Database → Regels en plak dit er in zijn geheel overheen:
 
+```json
 {
   "rules": {
     "quizzen": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      ".indexOn": ["openbaar"]
     },
     "sessies": {
       ".read": true,
@@ -37,9 +39,14 @@ Zet de database (tijdelijk, voor testen) in testmodus, of gebruik deze regels �
     "geluksrad": {
       ".read": true,
       ".write": true
+    },
+    "aangepastePoppetjes": {
+      ".read": true,
+      ".write": true
     }
   }
 }
+```
 
 Let op: dit is open voor iedereen. Voor een echt project wil je later regels toevoegen die misbruik voorkomen.
 
@@ -204,31 +211,7 @@ Speelbare quizzen (nieuw)
 
 Bij het maken (of bewerken) van een quiz kun je een vinkje "Deze quiz openbaar maken" aanzetten. Zo'n quiz verschijnt dan voor iedereen onder de nieuwe knop "Speelbare quizzen" op het startscherm, met omslagfoto en al. Iedereen kan daar op "Spelen" klikken om zelf een wachtkamer voor die quiz te openen (net als bij "Mijn quizzen" → Spelen) — je hoeft de code niet meer te kennen of te delen.
 
-Tip voor betere prestaties bij veel quizzen: voeg in de Firebase-regels een index toe op het openbaar-veld:
-
-{
-  "rules": {
-    "quizzen": {
-      ".read": true,
-      ".write": true,
-      ".indexOn": ["openbaar"]
-    },
-    "sessies": {
-      ".read": true,
-      ".write": true
-    },
-    "mysterieboxen": {
-      ".read": true,
-      ".write": true
-    },
-    "geluksrad": {
-      ".read": true,
-      ".write": true
-    }
-  }
-}
-
-Zonder deze index werkt alles ook gewoon, Firebase geeft dan alleen een waarschuwing in de console bij grotere datasets.
+Tip voor betere prestaties bij veel quizzen: de complete regels bij Stap 1 hierboven bevatten al een index op het openbaar-veld (".indexOn": ["openbaar"]). Zonder die index werkt alles ook gewoon, Firebase geeft dan alleen een waarschuwing in de console bij grotere datasets.
 
 Sitebeheer (nieuw, met echt account via Firebase Authentication)
 
@@ -282,8 +265,6 @@ Eigen poppetjes maken zit nu gewoon in het scherm waar je een kist (mysteriebox)
 
 Eronder staat op dezelfde manier "🎨 Nieuw accessoire toevoegen": kies eerst de plek (🎩 bovenop het hoofd, 👓 op het gezicht, of ✨ naast het hoofd) en klik dan op een emoji — die komt er meteen op die plek bij, ook weer meteen aangevinkt in de kist.
 
-Nieuwe Firebase-tak: aangepastePoppetjes. Voeg naast de bestaande databasepaden deze regel toe:
-
-"aangepastePoppetjes": { ".read": true, ".write": true }
+Nieuwe Firebase-tak: aangepastePoppetjes — zit al in het complete regel-blok bij Stap 1 hierboven.
 
 Voor een echte openbare site zijn strengere Firebase-regels aan te raden.
