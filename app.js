@@ -1712,6 +1712,12 @@ function boxIsNogNietTeKoop(box) {
   return !!(box && box.vanafDatum && box.vanafDatum > huidigeDatumTekst());
 }
 
+// Is deze kist automatisch offline gegaan omdat de ingestelde "offline vanaf"-datum
+// al bereikt of gepasseerd is?
+function boxIsAutomatischOffline(box) {
+  return !!(box && box.totDatum && box.totDatum <= huidigeDatumTekst());
+}
+
 // Nette weergave van een YYYY-MM-DD datum, bijv. "5 oktober 2026".
 function formatBoxDatum(datumTekst) {
   if (!datumTekst) return '';
@@ -1754,10 +1760,12 @@ function bouwBoxKaartHtml(boxId, box) {
   const aantalItems = (box.dieren || []).length + (box.accessoires || []).length;
   const isOffline = !!box.offline;
   const nogNietTeKoop = boxIsNogNietTeKoop(box);
+  const automatischOffline = boxIsAutomatischOffline(box);
   // Spelers zien deze kaart sowieso alleen als de kist al zichtbaar is (zie het filteren
   // in laadWinkelBoxen), dus voor hen is kopen altijd toegestaan. Sitebeheer ziet ook
-  // offline/nog-niet-te-koop kisten, maar kan ze hier niet per ongeluk kopen.
-  const nietTeKoopVoorBeheer = sitebeheerActief && (isOffline || nogNietTeKoop);
+  // offline/nog-niet-te-koop/automatisch-offline kisten, maar kan ze hier niet per
+  // ongeluk kopen.
+  const nietTeKoopVoorBeheer = sitebeheerActief && (isOffline || nogNietTeKoop || automatischOffline);
   const genoegMunten = !nietTeKoopVoorBeheer && haalMunten() >= (box.prijs || 0);
   const algemeenAlGekocht = haalGekochteBoxen().indexOf(boxId) !== -1;
   let html = '<div class="quiz-item-body">' +
@@ -1770,8 +1778,12 @@ function bouwBoxKaartHtml(boxId, box) {
     html += '<span class="box-aantal-gekocht">🛒 ' + (box.aantalGekocht || 0) + 'x gekocht (door alle spelers)</span>';
     if (isOffline) {
       html += '<span class="box-status box-status-offline">🔒 Offline — alleen jij ziet deze kist</span>';
+    } else if (automatischOffline) {
+      html += '<span class="box-status box-status-offline">🔒 Automatisch offline sinds ' + escapeHtml(formatBoxDatum(box.totDatum)) + '</span>';
     } else if (nogNietTeKoop) {
       html += '<span class="box-status box-status-vanaf">⏳ Te koop vanaf ' + escapeHtml(formatBoxDatum(box.vanafDatum)) + '</span>';
+    } else if (box.totDatum) {
+      html += '<span class="box-status box-status-vanaf">⏳ Gaat automatisch offline op ' + escapeHtml(formatBoxDatum(box.totDatum)) + '</span>';
     }
   }
   html += '</div>' +
@@ -1803,7 +1815,7 @@ function laadWinkelBoxen() {
     // nog in de toekomst ligt — die zijn alleen zichtbaar voor sitebeheer.
     const boxen = sitebeheerActief ? alleBoxen : Object.keys(alleBoxen).reduce((resultaat, boxId) => {
       const box = alleBoxen[boxId];
-      if (!box.offline && !boxIsNogNietTeKoop(box)) resultaat[boxId] = box;
+      if (!box.offline && !boxIsNogNietTeKoop(box) && !boxIsAutomatischOffline(box)) resultaat[boxId] = box;
       return resultaat;
     }, {});
     const boxIds = Object.keys(boxen);
@@ -1850,7 +1862,7 @@ function koopMysteriebox(boxId) {
       laadWinkelBoxen();
       return;
     }
-    if (!sitebeheerActief && (box.offline || boxIsNogNietTeKoop(box))) {
+    if (!sitebeheerActief && (box.offline || boxIsNogNietTeKoop(box) || boxIsAutomatischOffline(box))) {
       alert('Deze mysteriebox is nu niet te koop.');
       laadWinkelBoxen();
       return;
@@ -1897,6 +1909,7 @@ const boxBewerkenOverlayEl = document.getElementById('box-bewerken-overlay');
 const inputBoxNaamEl = document.getElementById('input-box-naam');
 const inputBoxPrijsEl = document.getElementById('input-box-prijs');
 const inputBoxVanafEl = document.getElementById('input-box-vanaf');
+const inputBoxTotEl = document.getElementById('input-box-tot');
 const boxBewerkenFoutmeldingEl = document.getElementById('box-bewerken-foutmelding');
 
 // Telt in hoeveel andere kisten (dus niet de kist die nu bewerkt wordt) een bepaald
@@ -1976,6 +1989,7 @@ function openBoxBewerken(boxId, box) {
   inputBoxNaamEl.value = box ? (box.naam || '') : '';
   inputBoxPrijsEl.value = box ? (box.prijs || 0) : 100;
   inputBoxVanafEl.value = box ? (box.vanafDatum || '') : '';
+  inputBoxTotEl.value = box ? (box.totDatum || '') : '';
   boxBewerkenFoutmeldingEl.textContent = '';
   document.getElementById('btn-box-verwijderen').style.display = boxId ? 'inline-block' : 'none';
 
@@ -2010,6 +2024,10 @@ document.getElementById('btn-box-opslaan').addEventListener('click', () => {
     boxBewerkenFoutmeldingEl.textContent = 'Kies minstens één dier of accessoire voor in de box.';
     return;
   }
+  if (inputBoxVanafEl.value && inputBoxTotEl.value && inputBoxTotEl.value <= inputBoxVanafEl.value) {
+    boxBewerkenFoutmeldingEl.textContent = '"Automatisch offline vanaf" moet na "Te koop vanaf" liggen.';
+    return;
+  }
 
   const boxData = {
     naam: naam,
@@ -2017,6 +2035,7 @@ document.getElementById('btn-box-opslaan').addEventListener('click', () => {
     dieren: boxGeselecteerdeDieren,
     accessoires: boxGeselecteerdeAccessoires,
     vanafDatum: inputBoxVanafEl.value || null,
+    totDatum: inputBoxTotEl.value || null,
     offline: bewerkteBoxOffline
   };
 
