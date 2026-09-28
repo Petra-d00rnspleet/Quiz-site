@@ -578,17 +578,42 @@
     </div>
   </div>
 
-  <!-- CHAT -->
-  <div id="chat-overlay" class="sitebeheer-overlay sociaal-overlay">
-    <div class="sitebeheer-venster sociaal-venster">
-      <div class="sitebeheer-icoon">💬</div>
+  <!-- CHAT (beeldvullend) -->
+  <div id="chat-overlay" class="chat-scherm" data-tekst="licht">
+    <div class="chat-kop">
+      <button id="btn-chat-sluiten" class="chat-kop-knop" type="button" title="Terug">←</button>
       <h3 id="chat-titel">Chat</h3>
-      <div id="chat-berichten" class="chat-berichten"></div>
-      <div class="chat-invoer">
-        <input id="chat-input" type="text" maxlength="500" placeholder="Typ een bericht...">
-        <button id="btn-chat-sturen" class="btn btn-primary" type="button">Sturen</button>
+      <button id="btn-chat-stijl" class="chat-kop-knop" type="button" title="Achtergrond en tekstkleur">🎨</button>
+    </div>
+
+    <div id="chat-stijl-paneel" class="chat-paneel chat-stijl-paneel" hidden>
+      <p class="chat-paneel-titel">Achtergrond</p>
+      <div id="chat-achtergronden" class="chat-keuzes"></div>
+      <p class="chat-paneel-titel">Tekstkleur</p>
+      <div id="chat-tekstkleuren" class="chat-keuzes"></div>
+    </div>
+
+    <div id="chat-berichten" class="chat-berichten"></div>
+
+    <div id="chat-poppetjes-paneel" class="chat-paneel chat-poppetjes-paneel" hidden>
+      <div class="chat-poppetjes-tabs">
+        <button id="chat-tab-dieren" class="chat-tab actief" type="button">Dieren</button>
+        <button id="chat-tab-accessoires" class="chat-tab" type="button">Accessoires</button>
       </div>
-      <button id="btn-chat-sluiten" class="btn btn-secondary" type="button">Sluiten</button>
+      <div id="chat-poppetjes-lijst" class="chat-poppetjes-lijst"></div>
+      <div class="chat-poppetjes-actie">
+        <span id="chat-poppetjes-keuze" class="chat-poppetjes-keuze">Kies een poppetje om te versturen</span>
+        <button id="btn-chat-poppetje-verzenden" class="btn btn-primary" type="button" disabled>🎁 Verzenden</button>
+      </div>
+    </div>
+
+    <div class="chat-invoer">
+      <button id="btn-chat-poppetje" class="chat-poppetje-knop" type="button" title="Poppetje versturen">
+        <span class="chat-poppetje-knop-plaatje" id="chat-poppetje-knop-plaatje"></span>
+        <span class="chat-poppetje-knop-plus">+</span>
+      </button>
+      <input id="chat-input" type="text" maxlength="500" placeholder="Typ een bericht..." autocomplete="off">
+      <button id="btn-chat-sturen" class="btn btn-primary" type="button">Sturen</button>
     </div>
   </div>
 
