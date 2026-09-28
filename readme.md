@@ -52,7 +52,7 @@ Naam invullen (verplicht, eenmalig)
 
 Voordat je voor het eerst op "Quiz maken" klikt, vraagt de site om je naam. Die naam:
 
-wordt lokaal onthouden in je browser en kan daarna niet meer gewijzigd worden;
+wordt lokaal onthouden in je browser en kan daarna wel gewijzigd worden via je profiel (rechtsboven);
 
 komt automatisch bij elke quiz die je maakt te staan (ook quizzen die je later nog toevoegt);
 
@@ -222,6 +222,10 @@ Bij "Speelbare quizzen" staat, naast "Aanpassen" en "Verwijderen", nu ook een kn
 In het inklapbare overzicht "Alle quizmakers" (bovenaan "Speelbare quizzen") staat bij élke quiz — ook niet-openbare — een klein knopje "Blokkeren" of "Deblokkeren". Dit is de plek om een quiz te blokkeren die nog niet (of niet meer) openbaar staat, zodat hij ook in de toekomst niet openbaar gezet kan worden.
 
 De maker zelf ziet bij "Mijn quizzen" een gele melding op een geblokkeerde quiz ("Deze quiz is geblokkeerd door sitebeheer en kan niet openbaar gezet worden.") en kan gewoon spelen/hosten, maar niet meer op "openbaar" zetten.
+
+Gebruikersnaam wijzigen en vrienden zoeken (nieuw)
+
+Je gebruikersnaam is nu te wijzigen: klik rechtsboven op je poppetje en kies "Gebruikersnaam wijzigen". De nieuwe naam moet nog vrij zijn; je oude naam komt daarna weer vrij. De naam wordt ook bijgewerkt bij je vrienden en bij je eigen quizzen. Vrienden zoeken werkt nu zoals quizzen zoeken: live terwijl je typt, hoofdletterongevoelig en op elk deel van de naam. Publiceer daarvoor de nieuwste firebase-rules.json.
 
 Vrienden en chat (nieuw)
 
