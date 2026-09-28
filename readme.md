@@ -223,13 +223,17 @@ In het inklapbare overzicht "Alle quizmakers" (bovenaan "Speelbare quizzen") sta
 
 De maker zelf ziet bij "Mijn quizzen" een gele melding op een geblokkeerde quiz ("Deze quiz is geblokkeerd door sitebeheer en kan niet openbaar gezet worden.") en kan gewoon spelen/hosten, maar niet meer op "openbaar" zetten.
 
+Poppetje wijzigen (nieuw)
+
+Rechtsboven op je poppetje > "Poppetje wijzigen" opent een beeldvullend scherm met een groot voorbeeld, wat je nu aanhebt, en tabbladen voor Dieren, Hoeden, Brillen en Extra. Tik op een kaartje om te kiezen. Publiceer voor het verwijderen van berichten de nieuwste firebase-rules.json.
+
 Gebruikersnaam wijzigen en vrienden zoeken (nieuw)
 
 Je gebruikersnaam is nu te wijzigen: klik rechtsboven op je poppetje en kies "Gebruikersnaam wijzigen". De nieuwe naam moet nog vrij zijn; je oude naam komt daarna weer vrij. De naam wordt ook bijgewerkt bij je vrienden en bij je eigen quizzen. Vrienden zoeken werkt nu zoals quizzen zoeken: live terwijl je typt, hoofdletterongevoelig en op elk deel van de naam. Publiceer daarvoor de nieuwste firebase-rules.json.
 
 Vrienden en chat (nieuw)
 
-De chat met een vriend is beeldvullend. Met 🎨 bovenin kies je een achtergrond en een tekstkleur (wordt per chat onthouden in je browser). Naast het schrijfvak staat een knopje met je poppetje en een plusje: daar kies je een dier of accessoire uit je verzameling en verstuur je het. Het staat als cadeaukaart in de chat; de ander kan accepteren of weigeren. Pas bij accepteren heeft de verzender er één minder en de ontvanger er één erbij. Je laatste dier of accessoire kun je niet versturen.
+De chat met een vriend is beeldvullend. Met 🎨 bovenin kies je een achtergrond en de kleur van de tekstvakjes, apart voor je eigen berichten en die van je vriend (wordt per chat onthouden in je browser). Je eigen berichten kun je verwijderen met de 🗑. Bij de chat-knop van een vriend staat een cijfertje met het aantal ongelezen berichten; bij de knop "Vrienden" rechtsboven staan de nieuwe berichten en verzoeken samen. Naast het schrijfvak staat een knopje met je poppetje en een plusje: daar kies je een dier of accessoire uit je verzameling en verstuur je het. Het staat als cadeaukaart in de chat; de ander kan accepteren of weigeren. Pas bij accepteren heeft de verzender er één minder en de ontvanger er één erbij. Je laatste dier of accessoire kun je niet versturen.
 
 Mogelijke volgende stappen
 
