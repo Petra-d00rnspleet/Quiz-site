@@ -12,25 +12,48 @@ poppetjes.js — de getekende dieren, hoeden, brillen en hartjes (SVG) en hoe di
 
 firebase-config.js — hier vul je jouw eigen Firebase-gegevens in (ongewijzigd)
 
-Stap 1: Firebase instellen
+firebase-rules.json — de volledige Firebase-regels (dezelfde tekst staat ook onderaan deze readme)
 
-Ga naar https://console.firebase.google.com en maak een nieuw project.
+Stap 1: Firebase instellen (uitgebreid)
 
-Ga naar Build → Realtime Database en maak een database aan (kies een regio, bijv. Europe).
+Alles hieronder doe je één keer in de Firebase Console (https://console.firebase.google.com). Doe je iets veranderen aan de regels, dan publiceer je ze opnieuw (zie "Firebase-regels" verderop).
 
-Ga naar Realtime Database → Regels en plak de VOLLEDIGE inhoud van firebase-rules.json er overheen (Publiceren). Dat bestand bevat alle paden die de app gebruikt: quizzen, sessies, mysterieboxen, geluksrad, aangepastePoppetjes, gebruikers, gebruikersnamen, vrienden, vriendschapsverzoeken en chats.
+1A. Project en database
+1. Maak een project (of open je bestaande project "quizwebsite").
+2. Build → Realtime Database → Database maken. Kies een regio (bijv. Europe) en start in "vergrendelde modus"; de regels vervang je zo meteen.
 
-Let op: quizzen, sessies, mysterieboxen, geluksrad en aangepastePoppetjes zijn open voor iedereen. Voor een echt project wil je later strengere regels.
+1B. Web-app koppelen
+3. Project instellingen (tandwiel) → Algemeen → Jouw apps → Web-app (</>) → registreer een app.
+4. Kopieer de firebaseConfig naar firebase-config.js. Let op dat databaseURL erin staat.
 
-Zet ook bij Authentication → Sign-in method de provider Anoniem aan (nodig voor vrienden en chat).
+1C. Aanmelden (Authentication) — hier gaat het het vaakst mis
+5. Build → Authentication → Aan de slag.
+6. Tabblad "Sign-in method" → zet **Anoniem** aan → Opslaan. Gewone spelers krijgen hiermee een eigen onzichtbaar account. ZONDER DIT WERKEN VRIENDEN EN CHAT ALLEEN VOOR SITEBEHEER.
+7. Zet op dezelfde plek **E-mail/Wachtwoord** aan (voor het sitebeheer-account).
+8. Tabblad "Users" → Add user → maak het beheerdersaccount (e-mail + wachtwoord voor het Sitebeheer-knopje). Het staat alleen in Firebase, nergens in de code.
+9. Tabblad "Instellingen" → "Geautoriseerde domeinen": zorg dat het domein van je site erin staat, bijv. jouwnaam.github.io (localhost staat er standaard al in). Staat je domein er niet in, dan mislukt aanmelden op je echte site.
 
-Ga naar Project instellingen → Algemeen → Jouw apps → Web app (</> icoon) en registreer een app.
+1D. Regels publiceren
+10. Realtime Database → tabblad "Regels".
+11. Verwijder ALLES wat er staat en plak de volledige regels uit het kopje "Firebase-regels (volledig)" hieronder (of de inhoud van firebase-rules.json).
+12. Klik op "Publiceren". Zie je een rode fout, dan is er niet alles geplakt of iets extra's meegekopieerd.
 
-Kopieer de firebaseConfig gegevens naar firebase-config.js in dit project.
+1E. Website bijwerken
+13. Zet de nieuwste index.html, style.css, app.js, poppetjes.js en firebase-config.js op GitHub (of je hostingplek), wacht een minuut en herlaad de site met Ctrl+F5 (op telefoon: cache wissen of privévenster).
 
-Ga naar Build → Authentication → Sign-in method en zet de provider E-mail/Wachtwoord aan.
+Zo test je of vrienden en chat werken voor gewone spelers
+- Open de site in twee verschillende browsers (of één gewoon venster en één privévenster), NIET ingelogd bij sitebeheer.
+- Maak in elk een profiel met een andere naam, zoek elkaar bij Vrienden → Toevoegen, stuur een verzoek, accepteer en chat.
+- Wil je zien wat er misgaat: druk op F12 → tabblad Console. Firebase noemt daar de foutcode.
 
-Ga naar Authentication → Users → Add user en maak het beheerdersaccount aan: vul het e-mailadres en wachtwoord in waarmee jij (of wie de site beheert) later via het "Sitebeheer"-knopje wil inloggen. Dit account staat alleen in Firebase, nergens in de broncode.
+Wat betekent welke foutmelding?
+- auth/operation-not-allowed of "Anoniem" in de melding bij Vrienden → stap 6 is niet gedaan (Anoniem staat uit).
+- auth/unauthorized-domain → stap 9: je domein staat niet bij Geautoriseerde domeinen.
+- PERMISSION_DENIED (bij zoeken, vriendschapsverzoek, chatten) → de regels zijn niet (volledig) gepubliceerd, of er staat een oude/eigen regel tussen. Plak de regels hieronder opnieuw.
+- Alles werkt alleen als je bij sitebeheer bent ingelogd → bijna altijd stap 6 of 9. Ingelogd als beheerder heb je namelijk wel een account; gewone spelers niet.
+- Een speler heeft na wissen van browsergegevens ineens een nieuw account: anonieme accounts leven in de browser. Wis je de browserdata, dan is het oude account weg (vrienden en chat van dat account dus ook). Dat is normaal bij anoniem aanmelden.
+
+Let op: quizzen, sessies, mysterieboxen, geluksrad en aangepastePoppetjes zijn open voor iedereen (zoals eerder). Voor een echt project wil je later strengere regels.
 
 Stap 2: Lokaal testen
 
@@ -233,7 +256,7 @@ Je gebruikersnaam is nu te wijzigen: klik rechtsboven op je poppetje en kies "Ge
 
 Vrienden en chat (nieuw)
 
-De chat met een vriend is beeldvullend. Met 🎨 bovenin kies je een achtergrond en de kleur van de tekstvakjes, apart voor je eigen berichten en die van je vriend (wordt per chat onthouden in je browser). Je eigen berichten kun je verwijderen met de 🗑. Met 📝 naast het schrijfvak stuur je een quiz: als je vriend accepteert staat hij ook bij zijn Mijn quizzen (dezelfde quiz, dus jullie kunnen hem allebei aanpassen). Bij de chat-knop van een vriend staat een cijfertje met het aantal ongelezen berichten; bij de knop "Vrienden" rechtsboven staan de nieuwe berichten en verzoeken samen. Naast het schrijfvak staat een knopje met je poppetje en een plusje: daar kies je een dier of accessoire uit je verzameling en verstuur je het. Het staat als cadeaukaart in de chat; de ander kan accepteren of weigeren. Pas bij accepteren heeft de verzender er één minder en de ontvanger er één erbij. Je laatste dier of accessoire kun je niet versturen.
+De chat met een vriend is beeldvullend. Met 🎨 bovenin kies je een achtergrond en de kleur van de tekstvakjes, apart voor je eigen berichten en die van je vriend (wordt per chat onthouden in je browser). Je eigen berichten kun je verwijderen met de 🗑. Met 📝 naast het schrijfvak stuur je een quiz: als je vriend accepteert staat hij ook bij zijn Mijn quizzen (dezelfde quiz, dus jullie kunnen hem allebei aanpassen). Bij de chat-knop van een vriend staat een cijfertje met het aantal ongelezen berichten; bij de knop "Vrienden" rechtsboven staan de nieuwe berichten en verzoeken samen. Naast het schrijfvak staat een knopje met je poppetje en een plusje: daar kies je een dier of accessoire uit je verzameling en verstuur je het. Het staat als cadeaukaart in de chat; de ander kan accepteren of weigeren. Pas bij accepteren heeft de verzender er één minder en de ontvanger er één erbij. Je laatste dier of accessoire kun je niet versturen. In de chat staat het poppetje van je vriend (en van jezelf) voor de naam, in de kop, bij elk bericht en in de vriendenlijst.
 
 Mogelijke volgende stappen
 
@@ -254,3 +277,112 @@ Eronder staat op dezelfde manier "🎨 Nieuw accessoire toevoegen": kies eerst d
 Nieuwe Firebase-tak: aangepastePoppetjes — zit al in het complete regel-blok bij Stap 1 hierboven.
 
 Voor een echte openbare site zijn strengere Firebase-regels aan te raden.
+
+Firebase-regels (volledig)
+
+Plak dit in Realtime Database → Regels → Publiceren. Dezelfde tekst staat in firebase-rules.json. Bij elke wijziging in de app die nieuwe regels nodig heeft, wordt dit blok en het wijzigingslogboek hieronder bijgewerkt.
+
+```json
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "quizzen": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": [
+        "openbaar"
+      ]
+    },
+    "sessies": {
+      ".read": true,
+      ".write": true
+    },
+    "mysterieboxen": {
+      ".read": true,
+      ".write": true
+    },
+    "geluksrad": {
+      ".read": true,
+      ".write": true
+    },
+    "aangepastePoppetjes": {
+      ".read": true,
+      ".write": true
+    },
+    "gebruikers": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid",
+        "bezit": {
+          "dieren": {
+            "$item": {
+              ".write": "auth != null",
+              ".validate": "newData.isNumber() && newData.val() >= 0"
+            }
+          },
+          "accessoires": {
+            "$item": {
+              ".write": "auth != null",
+              ".validate": "newData.isNumber() && newData.val() >= 0"
+            }
+          }
+        }
+      }
+    },
+    "gebruikersnamen": {
+      ".read": "auth != null",
+      "$naam": {
+        ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid) || (data.exists() && data.val() === auth.uid))",
+        ".validate": "newData.isString()"
+      }
+    },
+    "vrienden": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$vriend": {
+          ".write": "auth != null && (auth.uid === $uid || (auth.uid === $vriend && (data.exists() || root.child('vriendschapsverzoeken').child(auth.uid).child($uid).exists())))"
+        }
+      }
+    },
+    "vriendschapsverzoeken": {
+      "$ontvanger": {
+        ".read": "auth != null && auth.uid === $ontvanger",
+        "$afzender": {
+          ".read": "auth != null && auth.uid === $afzender",
+          ".write": "auth != null && (auth.uid === $afzender || auth.uid === $ontvanger)",
+          ".validate": "!newData.exists() || newData.child('uid').val() === $afzender"
+        }
+      }
+    },
+    "chats": {
+      "$chatId": {
+        ".read": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid))",
+        "berichten": {
+          "$key": {
+            ".write": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid)) && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid && data.child('status').val() !== 'bezig') || (data.exists() && newData.exists() && newData.child('uid').val() === data.child('uid').val() && newData.child('tekst').val() === data.child('tekst').val() && newData.child('type').val() === data.child('type').val() && newData.child('item').val() === data.child('item').val() && newData.child('soort').val() === data.child('soort').val() && newData.child('code').val() === data.child('code').val() && newData.child('aan').val() === data.child('aan').val()))",
+            ".validate": "newData.hasChildren(['uid', 'gebruikersnaam']) && (!newData.hasChild('tekst') || (newData.child('tekst').isString() && newData.child('tekst').val().length <= 500)) && (!newData.hasChild('status') || newData.child('status').val() === 'open' || newData.child('status').val() === 'bezig' || newData.child('status').val() === 'geaccepteerd' || newData.child('status').val() === 'geweigerd' || newData.child('status').val() === 'mislukt')"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Wat de regels doen (kort)
+- quizzen, sessies, mysterieboxen, geluksrad, aangepastePoppetjes: open voor iedereen (lezen en schrijven), zoals altijd. quizzen heeft een index op "openbaar".
+- gebruikers/<uid>: elke ingelogde gebruiker mag het profiel lezen (nodig voor zoeken en het poppetje bij de naam in de chat). Alleen de eigenaar schrijft, behalve de aantallen onder bezit/dieren/<item> en bezit/accessoires/<item>: die mag elke ingelogde gebruiker aanpassen (getal van 0 of hoger), omdat de ontvanger van een cadeau ook het aantal van de verzender verlaagt.
+- gebruikersnamen: ingelogde gebruikers mogen alle namen lezen. Een naam kun je alleen claimen als hij vrij is, en alleen jijzelf kunt hem weer vrijgeven.
+- vrienden/<uid>: alleen jijzelf leest je lijst. Jij schrijft in je eigen lijst. Een ander mag alleen jou toevoegen aan zijn lijst als er een vriendschapsverzoek van jou is (dit gebeurt bij accepteren), of een bestaande vriendschap bijwerken (naamswijziging).
+- vriendschapsverzoeken/<ontvanger>/<afzender>: de ontvanger leest en verwijdert; de afzender schrijft en leest zijn eigen verzoek (voor "Verzoek gestuurd").
+- chats/<chatId>/berichten: alleen de twee deelnemers (hun uid staat in de chatId) lezen en schrijven. Een nieuw bericht moet je eigen uid dragen. Bij een bestaand bericht mag alleen het veld status veranderen. Je mag je eigen bericht verwijderen, behalve tijdens "bezig" (het accepteren van een cadeau of quiz). Tekst maximaal 500 tekens.
+- Alles wat niet genoemd wordt is dicht.
+
+Bekende beperkingen (bewust zo gelaten)
+- Het versturen van een cadeau (aantallen aanpassen) gebeurt in de browser van de ontvanger; wie de code handmatig aanpast, kan dus vals spelen. Echt afdwingen kan alleen met een server (Cloud Functions).
+- Wie in de chat het status-veld van een ander-cadeau zelf op "geaccepteerd" zet, krijgt daar geen poppetje mee; alleen het kaartje verandert.
+
+Wijzigingslogboek
+- 2026-09-28: regels volledig in de readme gezet. Vrienden en chat werken nu voor iedereen met een anoniem account (niet alleen sitebeheer). Het profielpoppetje wordt gelezen uit gebruikers/<uid>; die regel bestond al. Nieuwe of aangescherpte regels: chats-validatie (status, tekstlengte), vrienden (toevoegen alleen bij een verzoek), gebruikersnamen (alleen eigen naam vrijgeven).
+- 2026-09-28 (app): profielpoppetje voor de naam in de chat, vriendenlijst en verzoeken; duidelijke melding als anoniem aanmelden mislukt; foutmelding bij een chatbericht dat niet verstuurd kan worden. Bestanden: app.js, index.html, style.css.
