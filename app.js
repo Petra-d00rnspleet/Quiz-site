@@ -4024,6 +4024,13 @@ let socialeVerzoeken = {};
 let socialeZoekTimer = null;
 let huidigChatUid = '';
 let huidigChatNaam = '';
+let chatBerichtenQuery = null;      // de open chat (zodat we hem netjes kunnen stoppen)
+let chatOngelezen = {};             // vriend-uid -> aantal ongelezen berichten
+let chatOngelezenQueries = {};      // vriend-uid -> luisteraar voor ongelezen berichten
+const CHAT_GELEZEN_SLEUTEL = 'quizAppChatGelezen';
+let vriendenRef = null;
+let verzoekenRef = null;
+let vriendenLuisteraarUid = '';
 
 function chatIdVoor(a, b) { return [a, b].sort().join('_'); }
 
@@ -4032,14 +4039,90 @@ function veiligeChatTekst(tekst) { return String(tekst || '').trim().slice(0, 50
 function laadVriendenEnVerzoeken() {
   const gebruiker = profielFirebaseGebruiker();
   if (!gebruiker || !heeftProfiel()) return;
-  db.ref('vrienden/' + gebruiker.uid).on('value', snap => {
+  if (vriendenLuisteraarUid === gebruiker.uid) return; // luistert al (live)
+  // Ander account (bijv. na inloggen als beheerder): oude luisteraars netjes stoppen.
+  if (vriendenRef) vriendenRef.off();
+  if (verzoekenRef) verzoekenRef.off();
+  Object.keys(chatOngelezenQueries).forEach(fuid => { chatOngelezenQueries[fuid].off(); });
+  chatOngelezenQueries = {}; chatOngelezen = {};
+  vriendenLuisteraarUid = gebruiker.uid;
+
+  vriendenRef = db.ref('vrienden/' + gebruiker.uid);
+  vriendenRef.on('value', snap => {
     socialeVrienden = snap.val() || {};
+    synchroniseerChatOngelezen();
     renderVrienden();
   });
-  db.ref('vriendschapsverzoeken/' + gebruiker.uid).on('value', snap => {
+  verzoekenRef = db.ref('vriendschapsverzoeken/' + gebruiker.uid);
+  verzoekenRef.on('value', snap => {
     socialeVerzoeken = snap.val() || {};
     renderVrienden();
   });
+}
+
+// ---------------- Ongelezen berichten (het cijfertje bij de chat) ----------------
+
+function laadChatGelezen() {
+  try { return JSON.parse(localStorage.getItem(CHAT_GELEZEN_SLEUTEL) || '{}') || {}; } catch (e) { return {}; }
+}
+
+function zetChatGelezen(chatId, tijd) {
+  if (!tijd) return;
+  const alle = laadChatGelezen();
+  if ((Number(alle[chatId]) || 0) >= tijd) return;
+  alle[chatId] = tijd;
+  try { localStorage.setItem(CHAT_GELEZEN_SLEUTEL, JSON.stringify(alle)); } catch (e) {}
+}
+
+function totaalOngelezenChatBerichten() {
+  return Object.keys(chatOngelezen).reduce((som, uid) => som + (socialeVrienden[uid] ? (chatOngelezen[uid] || 0) : 0), 0);
+}
+
+// Luistert bij elke vriend naar nieuwe berichten en telt wat je nog niet hebt gelezen.
+function synchroniseerChatOngelezen() {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker) return;
+  Object.keys(chatOngelezenQueries).forEach(fuid => {
+    if (!socialeVrienden[fuid]) {
+      chatOngelezenQueries[fuid].off();
+      delete chatOngelezenQueries[fuid];
+      delete chatOngelezen[fuid];
+    }
+  });
+  Object.keys(socialeVrienden).forEach(fuid => {
+    if (chatOngelezenQueries[fuid]) return;
+    const chatId = chatIdVoor(gebruiker.uid, fuid);
+    const query = db.ref('chats/' + chatId + '/berichten').limitToLast(50);
+    chatOngelezenQueries[fuid] = query;
+    query.on('value', snap => {
+      let nieuwste = 0;
+      let aantal = 0;
+      const gelezen = Number(laadChatGelezen()[chatId]) || 0;
+      snap.forEach(c => {
+        const b = c.val() || {};
+        const t = Number(b.tijd) || 0;
+        if (t > nieuwste) nieuwste = t;
+        if (b.uid !== gebruiker.uid && t > gelezen) aantal++;
+      });
+      const chatIsOpen = huidigChatUid === fuid && document.getElementById('chat-overlay').classList.contains('actief');
+      if (chatIsOpen) { zetChatGelezen(chatId, nieuwste); aantal = 0; }
+      chatOngelezen[fuid] = aantal;
+      renderVrienden();
+    }, err => { console.error('Ongelezen berichten tellen mislukt:', err); });
+  });
+}
+
+// Wordt aangeroepen zodra de open chat berichten binnenkrijgt: alles is dan gelezen.
+function markeerChatGelezen(snap) {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker || !huidigChatUid) return;
+  let nieuwste = 0;
+  snap.forEach(c => { const t = Number((c.val() || {}).tijd) || 0; if (t > nieuwste) nieuwste = t; });
+  zetChatGelezen(chatIdVoor(gebruiker.uid, huidigChatUid), nieuwste);
+  if (chatOngelezen[huidigChatUid]) {
+    chatOngelezen[huidigChatUid] = 0;
+    renderVrienden();
+  }
 }
 
 // Zoeken werkt net als bij quizzen: live terwijl je typt, hoofdletterongevoelig
@@ -4173,9 +4256,12 @@ function accepteerVriendschapsverzoek(fromUid, verzoek) {
 function updateVriendenBadge() {
   const badge = document.getElementById('vrienden-badge-aantal');
   if (!badge) return;
-  const aantal = Object.keys(socialeVerzoeken || {}).length;
-  badge.textContent = String(aantal);
-  badge.hidden = aantal === 0;
+  const verzoeken = Object.keys(socialeVerzoeken || {}).length;
+  const berichten = totaalOngelezenChatBerichten();
+  const totaal = verzoeken + berichten;
+  badge.textContent = totaal > 99 ? '99+' : String(totaal);
+  badge.title = verzoeken + ' vriendschapsverzoek(en), ' + berichten + ' nieuw(e) bericht(en)';
+  badge.hidden = totaal === 0;
 }
 
 function renderVrienden() {
@@ -4183,16 +4269,26 @@ function renderVrienden() {
   const verzoeken = document.getElementById('vrienden-verzoeken');
   if (!lijst || !verzoeken) return;
   lijst.innerHTML = '';
-  Object.entries(socialeVrienden).forEach(([uid, info]) => {
-    const rij = document.createElement('div');
-    rij.className = 'vriend-rij';
-    const naam = document.createElement('strong');
-    naam.textContent = info.gebruikersnaam || 'Vriend';
-    const chat = document.createElement('button');
-    chat.type = 'button'; chat.className = 'btn btn-secondary'; chat.textContent = '💬 Chat';
-    chat.addEventListener('click', () => openChat(uid, info.gebruikersnaam || 'Vriend'));
-    rij.append(naam, chat); lijst.appendChild(rij);
-  });
+  Object.entries(socialeVrienden)
+    .sort((x, y) => (chatOngelezen[y[0]] || 0) - (chatOngelezen[x[0]] || 0))
+    .forEach(([uid, info]) => {
+      const rij = document.createElement('div');
+      rij.className = 'vriend-rij';
+      const naam = document.createElement('strong');
+      naam.textContent = info.gebruikersnaam || 'Vriend';
+      const chat = document.createElement('button');
+      chat.type = 'button'; chat.className = 'btn btn-secondary chat-knop'; chat.textContent = '💬 Chat';
+      const ongelezen = chatOngelezen[uid] || 0;
+      if (ongelezen > 0) {
+        const badge = document.createElement('span');
+        badge.className = 'chat-knop-badge';
+        badge.textContent = ongelezen > 99 ? '99+' : String(ongelezen);
+        badge.title = ongelezen + ' nieuw(e) bericht(en)';
+        chat.appendChild(badge);
+      }
+      chat.addEventListener('click', () => openChat(uid, info.gebruikersnaam || 'Vriend'));
+      rij.append(naam, chat); lijst.appendChild(rij);
+    });
   if (!Object.keys(socialeVrienden).length) lijst.innerHTML = '<p class="subtitel">Je hebt nog geen vrienden.</p>';
 
   verzoeken.innerHTML = '';
@@ -4377,10 +4473,7 @@ function openChat(uid, naam) {
 }
 
 function sluitChat() {
-  const gebruiker = profielFirebaseGebruiker();
-  if (gebruiker && huidigChatUid) {
-    db.ref('chats/' + chatIdVoor(gebruiker.uid, huidigChatUid) + '/berichten').off();
-  }
+  if (chatBerichtenQuery) { chatBerichtenQuery.off(); chatBerichtenQuery = null; }
   document.getElementById('chat-overlay').classList.remove('actief');
   document.body.classList.remove('chat-open');
   huidigChatUid = '';
@@ -4397,8 +4490,10 @@ function laadChatBerichten() {
   const ref = chatBerichtenRef();
   if (!gebruiker || !ref) return;
   const lijst = document.getElementById('chat-berichten');
-  ref.off();
-  ref.limitToLast(100).on('value', snap => {
+  if (chatBerichtenQuery) chatBerichtenQuery.off();
+  chatBerichtenQuery = ref.limitToLast(100);
+  chatBerichtenQuery.on('value', snap => {
+    markeerChatGelezen(snap);
     const onderaan = lijst.scrollHeight - lijst.scrollTop - lijst.clientHeight < 80 || !lijst.childElementCount;
     lijst.innerHTML = '';
     snap.forEach(child => {
