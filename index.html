@@ -36,7 +36,6 @@
         <p id="profiel-naam-foutmelding" class="foutmelding"></p>
       </div>
       <button class="btn btn-secondary" id="btn-profiel-poppetje-wijzigen" type="button">🔁 Poppetje wijzigen</button>
-      <div id="profiel-overlay-dieren-kiezer" class="dieren-kiezer" style="display:none;"></div>
       <button class="btn btn-secondary" id="btn-profiel-overlay-sluiten" type="button">Sluiten</button>
     </div>
   </div>
@@ -583,19 +582,36 @@
     </div>
   </div>
 
+  <!-- POPPETJE WIJZIGEN (beeldvullend) -->
+  <div id="poppetje-editor" class="poppetje-editor">
+    <div class="chat-kop">
+      <button id="btn-pe-terug" class="chat-kop-knop" type="button" title="Terug">←</button>
+      <h3>Mijn poppetje</h3>
+      <button id="btn-pe-klaar" class="chat-kop-knop" type="button" title="Klaar">✓</button>
+    </div>
+    <div class="pe-voorbeeld">
+      <div id="pe-voorbeeld-poppetje" class="pe-voorbeeld-poppetje"></div>
+      <div id="pe-chips" class="pe-chips"></div>
+    </div>
+    <div id="pe-tabs" class="pe-tabs"></div>
+    <div id="pe-inhoud" class="pe-inhoud"></div>
+  </div>
+
   <!-- CHAT (beeldvullend) -->
-  <div id="chat-overlay" class="chat-scherm" data-tekst="licht">
+  <div id="chat-overlay" class="chat-scherm">
     <div class="chat-kop">
       <button id="btn-chat-sluiten" class="chat-kop-knop" type="button" title="Terug">←</button>
       <h3 id="chat-titel">Chat</h3>
-      <button id="btn-chat-stijl" class="chat-kop-knop" type="button" title="Achtergrond en tekstkleur">🎨</button>
+      <button id="btn-chat-stijl" class="chat-kop-knop" type="button" title="Achtergrond en tekstvakjes">🎨</button>
     </div>
 
     <div id="chat-stijl-paneel" class="chat-paneel chat-stijl-paneel" hidden>
       <p class="chat-paneel-titel">Achtergrond</p>
       <div id="chat-achtergronden" class="chat-keuzes"></div>
-      <p class="chat-paneel-titel">Tekstkleur</p>
-      <div id="chat-tekstkleuren" class="chat-keuzes"></div>
+      <p class="chat-paneel-titel">Mijn tekstvakjes</p>
+      <div id="chat-vak-eigen" class="chat-keuzes"></div>
+      <p class="chat-paneel-titel">Tekstvakjes van je vriend</p>
+      <div id="chat-vak-vriend" class="chat-keuzes"></div>
     </div>
 
     <div id="chat-berichten" class="chat-berichten"></div>
