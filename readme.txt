@@ -19,6 +19,15 @@ WAT IS ER NIEUW IN DE CHAT
   en status ("open", "bezig", "geaccepteerd", "geweigerd" of "mislukt").
 
 
+GEBRUIKERSNAAM WIJZIGEN EN VRIENDEN ZOEKEN
+- Klik rechtsboven op je poppetje > "Gebruikersnaam wijzigen". Is de nieuwe naam nog vrij, dan wordt hij meteen je naam.
+  Je oude naam komt weer vrij voor anderen. De nieuwe naam verschijnt ook in de vriendenlijst van je vrienden en bij je eigen quizzen.
+  Twee mensen kunnen nooit dezelfde naam hebben (hoofdletters maken geen verschil).
+- Vrienden zoeken werkt nu zoals quizzen zoeken: je ziet de resultaten terwijl je typt, hoofdletters maken niet uit
+  en je hoeft niet het begin van de naam te typen (een stukje van de naam is genoeg).
+- Heeft iemand jou al een verzoek gestuurd, dan staat er bij die persoon "Accepteren". Heb je zelf al een verzoek gestuurd, dan staat er "Verzoek gestuurd".
+
+
 WAAROM DE REGELS ZIJN AANGEPAST
 - Vriendschapsverzoeken: de ontvanger moet het verzoek kunnen verwijderen zodra het wordt geaccepteerd.
   De vorige regel liet alleen de afzender schrijven naar het verzoek, waardoor accepteren kon mislukken.
@@ -26,6 +35,8 @@ WAAROM DE REGELS ZIJN AANGEPAST
   (dat is nodig om een poppetje te accepteren of te weigeren).
 - Poppetjes versturen: bij accepteren schrijft de ontvanger ook naar het aantal poppetjes van de verzender (gebruikers/<uid>/bezit),
   daarom mag elke ingelogde gebruiker naar losse items onder bezit/dieren en bezit/accessoires schrijven (alleen getallen van 0 of hoger).
+- Gebruikersnaam wijzigen: je mag je eigen naam vrijgeven (verwijderen) uit "gebruikersnamen", en je mag je eigen naam
+  bijwerken in de vriendenlijst van je vrienden. De afzender van een vriendschapsverzoek mag dat verzoek ook lezen (voor "Verzoek gestuurd").
 - gebruikers, gebruikersnamen, vrienden en vriendschapsverzoeken staan ook in firebase-rules.json.
   Zonder die regels kan het zoeken en toevoegen van vrienden niet werken.
 
