@@ -3772,6 +3772,11 @@ werkVakSlotjesBij();
 const BEZIT_AANTALLEN_SLEUTEL = 'quizAppBezitAantallen';
 const SOCIAAL_PROFIEL_PAD = 'gebruikers';
 
+// Firebase-sleutels mogen geen punt bevatten, dus die vervangen we ook.
+function naamSleutel(zoeknaam) {
+  return encodeURIComponent(zoeknaam).replace(/\./g, '%2E');
+}
+
 function normaliseerGebruikersnaam(naam) {
   return String(naam || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
@@ -3845,7 +3850,7 @@ function registreerSociaalProfiel() {
   const zoeknaam = normaliseerGebruikersnaam(naam);
   const dier = geldigDier(huidigProfielDier()) || '';
   const accessoires = huidigeProfielAccessoires ? huidigeProfielAccessoires() : {};
-  const naamRef = db.ref('gebruikersnamen/' + encodeURIComponent(zoeknaam));
+  const naamRef = db.ref('gebruikersnamen/' + naamSleutel(zoeknaam));
   return naamRef.transaction(v => v || gebruiker.uid).then(result => {
     const eigenaar = result.snapshot.val();
     if (eigenaar && eigenaar !== gebruiker.uid) {
@@ -4042,47 +4047,99 @@ function laadVriendenEnVerzoeken() {
   });
 }
 
-function zoekGebruikersOpNaam(zoekterm) {
+// Zoeken werkt net als bij quizzen: live terwijl je typt, hoofdletterongevoelig
+// en op elk deel van de naam. De lijst met namen wordt één keer opgehaald en
+// daarna in de browser gefilterd.
+let socialeNamenCache = null;
+let socialeNamenTijd = 0;
+let socialeNamenLaadt = null;
+let socialeZoekToken = 0;
+
+function laadSocialeNamen(forceer) {
+  const vers = socialeNamenCache && (Date.now() - socialeNamenTijd < 60000);
+  if (!forceer && vers) return Promise.resolve(socialeNamenCache);
+  if (socialeNamenLaadt) return socialeNamenLaadt;
+  socialeNamenLaadt = db.ref('gebruikersnamen').once('value').then(snap => {
+    const lijst = [];
+    snap.forEach(c => {
+      if (typeof c.val() !== 'string') return;
+      let zoek = c.key;
+      try { zoek = decodeURIComponent(c.key); } catch (e) {}
+      lijst.push({ zoek: zoek, uid: c.val() });
+    });
+    socialeNamenCache = lijst;
+    socialeNamenTijd = Date.now();
+    socialeNamenLaadt = null;
+    return lijst;
+  }).catch(err => { socialeNamenLaadt = null; throw err; });
+  return socialeNamenLaadt;
+}
+
+function zoekGebruikersOpNaam(zoekterm, forceer) {
   const q = normaliseerGebruikersnaam(zoekterm);
   const resultatenEl = document.getElementById('vrienden-zoekresultaten');
   if (!resultatenEl) return;
-  if (q.length < 2) { resultatenEl.innerHTML = '<p class="subtitel">Typ minimaal 2 letters.</p>'; return; }
+  const token = ++socialeZoekToken;
+  if (!q) { resultatenEl.innerHTML = '<p class="subtitel">Typ een naam (of een stukje van een naam) om te zoeken.</p>'; return; }
   resultatenEl.innerHTML = '<p class="subtitel">Zoeken...</p>';
-  db.ref(SOCIAAL_PROFIEL_PAD).orderByChild('gebruikersnaamZoek').startAt(q).endAt(q + '\uf8ff').limitToFirst(20).once('value').then(snap => {
-    resultatenEl.innerHTML = '';
-    const eigenUid = profielFirebaseGebruiker() && profielFirebaseGebruiker().uid;
-    let gevonden = 0;
-    snap.forEach(child => {
-      const p = child.val() || {};
-      if (child.key === eigenUid) return;
-      gevonden++;
-      const rij = document.createElement('div');
-      rij.className = 'vriend-zoekresultaat';
-      const pop = document.createElement('div');
-      pop.className = 'vriend-mini-poppetje';
-      if (geldigDier(p.dier)) pop.innerHTML = poppetjeSvg(p.dier, geldigeAccessoires(p.accessoires));
-      const naam = document.createElement('strong');
-      naam.textContent = p.gebruikersnaam || 'Onbekende gebruiker';
-      const knop = document.createElement('button');
-      knop.className = 'btn btn-secondary';
-      knop.type = 'button';
-      if (socialeVrienden[child.key]) {
-        knop.textContent = '✓ Vriend';
-        knop.disabled = true;
-      } else if (socialeVerzoeken[child.key]) {
-        knop.textContent = '✓ Verzoek gestuurd';
-        knop.disabled = true;
-      } else {
-        knop.textContent = '➕ Vriendschapsverzoek';
-        knop.addEventListener('click', () => stuurVriendschapsverzoek(child.key, p.gebruikersnaam || 'gebruiker'));
-      }
-      rij.append(pop, naam, knop);
-      resultatenEl.appendChild(rij);
+  const eigenUid = profielFirebaseGebruiker() && profielFirebaseGebruiker().uid;
+
+  laadSocialeNamen(forceer).then(lijst => {
+    if (token !== socialeZoekToken) return null;
+    const treffers = lijst
+      .filter(n => n.uid !== eigenUid && n.zoek.includes(q))
+      .sort((x, y) => (x.zoek.startsWith(q) ? 0 : 1) - (y.zoek.startsWith(q) ? 0 : 1) || x.zoek.localeCompare(y.zoek))
+      .slice(0, 20);
+    if (!treffers.length) {
+      resultatenEl.innerHTML = '<p class="subtitel">Geen gebruiker gevonden voor "' + escapeHtml(String(zoekterm).trim()) + '".</p>';
+      return null;
+    }
+    return Promise.all(treffers.map(t => Promise.all([
+      db.ref(SOCIAAL_PROFIEL_PAD + '/' + t.uid).once('value'),
+      eigenUid ? db.ref('vriendschapsverzoeken/' + t.uid + '/' + eigenUid).once('value').catch(() => null) : Promise.resolve(null)
+    ]).then(([profielSnap, verzoekSnap]) => ({
+      uid: t.uid, p: profielSnap.val(), verstuurd: !!(verzoekSnap && verzoekSnap.exists())
+    })))).then(resultaten => {
+      if (token !== socialeZoekToken) return;
+      resultatenEl.innerHTML = '';
+      let gevonden = 0;
+      resultaten.forEach(r => {
+        const p = r.p;
+        if (!p || !p.gebruikersnaam) return;
+        gevonden++;
+        const rij = document.createElement('div');
+        rij.className = 'vriend-zoekresultaat';
+        const pop = document.createElement('div');
+        pop.className = 'vriend-mini-poppetje';
+        if (geldigDier(p.dier)) pop.innerHTML = poppetjeSvg(p.dier, geldigeAccessoires(p.accessoires));
+        const naam = document.createElement('strong');
+        naam.textContent = p.gebruikersnaam;
+        const knop = document.createElement('button');
+        knop.className = 'btn btn-secondary';
+        knop.type = 'button';
+        if (socialeVrienden[r.uid]) {
+          knop.textContent = '✓ Vriend';
+          knop.disabled = true;
+        } else if (socialeVerzoeken[r.uid]) {
+          knop.className = 'btn btn-primary';
+          knop.textContent = '✓ Accepteren';
+          knop.addEventListener('click', () => { knop.disabled = true; accepteerVriendschapsverzoek(r.uid, socialeVerzoeken[r.uid]); });
+        } else if (r.verstuurd) {
+          knop.textContent = '✓ Verzoek gestuurd';
+          knop.disabled = true;
+        } else {
+          knop.textContent = '➕ Vriendschapsverzoek';
+          knop.addEventListener('click', () => stuurVriendschapsverzoek(r.uid, p.gebruikersnaam));
+        }
+        rij.append(pop, naam, knop);
+        resultatenEl.appendChild(rij);
+      });
+      if (!gevonden) resultatenEl.innerHTML = '<p class="subtitel">Geen gebruiker gevonden voor "' + escapeHtml(String(zoekterm).trim()) + '".</p>';
     });
-    if (!gevonden) resultatenEl.innerHTML = '<p class="subtitel">Geen gebruiker gevonden.</p>';
   }).catch(err => {
     console.error('Gebruikers zoeken mislukt:', err);
-    resultatenEl.innerHTML = '<p class="foutmelding">Zoeken lukt nu niet. Controleer of de nieuwste Firebase-regels zijn ingesteld.</p>';
+    if (token !== socialeZoekToken) return;
+    resultatenEl.innerHTML = '<p class="foutmelding">Zoeken lukt nu niet. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.</p>';
   });
 }
 
@@ -4599,6 +4656,98 @@ function sluitStuurVriendOverlay() {
   document.getElementById('stuur-vriend-overlay').classList.remove('actief');
 }
 
+// ---------------- Gebruikersnaam wijzigen ----------------
+
+function wijzigGebruikersnaam(nieuweNaamRaw) {
+  const gebruiker = profielFirebaseGebruiker();
+  const nieuweNaam = String(nieuweNaamRaw || '').trim().replace(/\s+/g, ' ').slice(0, 30);
+  const oudeNaam = huidigeMakerNaam() || '';
+  if (!nieuweNaam) return Promise.reject(new Error('Vul een gebruikersnaam in.'));
+  if (nieuweNaam === oudeNaam) return Promise.resolve(false);
+  if (!gebruiker) return Promise.reject(new Error('Je profiel is nog niet verbonden. Probeer het over een paar seconden opnieuw.'));
+
+  const nieuweZoek = normaliseerGebruikersnaam(nieuweNaam);
+  const oudeZoek = normaliseerGebruikersnaam(oudeNaam);
+
+  // Stap 1: de nieuwe naam reserveren (tenzij alleen hoofdletters veranderen).
+  const reserveer = nieuweZoek === oudeZoek
+    ? Promise.resolve()
+    : db.ref('gebruikersnamen/' + naamSleutel(nieuweZoek)).transaction(v => v || gebruiker.uid).then(res => {
+        if (res.snapshot.val() !== gebruiker.uid) throw new Error('Deze gebruikersnaam is al in gebruik. Kies een andere naam.');
+      });
+
+  return reserveer
+    // Stap 2: online profiel bijwerken.
+    .then(() => db.ref(SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid).update({
+      gebruikersnaam: nieuweNaam,
+      gebruikersnaamZoek: nieuweZoek
+    }))
+    // Stap 3: de oude naam vrijgeven, zodat een ander hem weer kan kiezen.
+    .then(() => {
+      if (oudeZoek && oudeZoek !== nieuweZoek) {
+        return db.ref('gebruikersnamen/' + naamSleutel(oudeZoek)).transaction(v => (v === gebruiker.uid ? null : v)).catch(() => {});
+      }
+    })
+    .then(() => {
+      localStorage.setItem(MAKER_NAAM_SLEUTEL, nieuweNaam);
+      socialeNamenCache = null;
+
+      // Stap 4: je naam in de vriendenlijsten van je vrienden bijwerken.
+      const updates = {};
+      Object.keys(socialeVrienden || {}).forEach(fuid => {
+        updates['vrienden/' + fuid + '/' + gebruiker.uid + '/gebruikersnaam'] = nieuweNaam;
+      });
+      if (Object.keys(updates).length) db.ref().update(updates).catch(() => {});
+
+      // Stap 5: de naam bij je eigen quizzen bijwerken.
+      let eigenQuizzen = [];
+      try { eigenQuizzen = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]'); } catch (e) {}
+      eigenQuizzen.forEach(q => {
+        db.ref('quizzen/' + q.code).once('value').then(snap => {
+          if (!snap.child('titel').exists()) return;
+          const huidig = snap.child('makerNaam').val();
+          if (!huidig || huidig === oudeNaam) return db.ref('quizzen/' + q.code + '/makerNaam').set(nieuweNaam);
+        }).catch(() => {});
+      });
+      return true;
+    });
+}
+
+function sluitNaamWijzigenPaneel() {
+  const paneel = document.getElementById('profiel-naam-wijzigen-paneel');
+  if (paneel) paneel.hidden = true;
+  const fout = document.getElementById('profiel-naam-foutmelding');
+  if (fout) fout.textContent = '';
+}
+
+document.getElementById('btn-profiel-naam-wijzigen').addEventListener('click', () => {
+  const paneel = document.getElementById('profiel-naam-wijzigen-paneel');
+  const input = document.getElementById('input-profiel-nieuwe-naam');
+  document.getElementById('profiel-naam-foutmelding').textContent = '';
+  paneel.hidden = !paneel.hidden;
+  if (!paneel.hidden) { input.value = huidigeMakerNaam() || ''; input.focus(); input.select(); }
+});
+
+function slaNieuweGebruikersnaamOp() {
+  const input = document.getElementById('input-profiel-nieuwe-naam');
+  const fout = document.getElementById('profiel-naam-foutmelding');
+  const knop = document.getElementById('btn-profiel-naam-opslaan');
+  fout.textContent = '';
+  knop.disabled = true;
+  wijzigGebruikersnaam(input.value).then(gewijzigd => {
+    knop.disabled = false;
+    if (gewijzigd) document.getElementById('profiel-overlay-naam').textContent = 'Ingelogd als ' + huidigeMakerNaam();
+    sluitNaamWijzigenPaneel();
+  }).catch(err => {
+    knop.disabled = false;
+    fout.textContent = (err && err.message) || 'Naam wijzigen is mislukt.';
+  });
+}
+document.getElementById('btn-profiel-naam-opslaan').addEventListener('click', slaNieuweGebruikersnaamOp);
+document.getElementById('input-profiel-nieuwe-naam').addEventListener('keydown', e => { if (e.key === 'Enter') slaNieuweGebruikersnaamOp(); });
+document.getElementById('btn-profiel-badge').addEventListener('click', sluitNaamWijzigenPaneel);
+document.getElementById('btn-profiel-overlay-sluiten').addEventListener('click', sluitNaamWijzigenPaneel);
+
 // Vrienden openen vanuit de vaste balk rechtsboven.
 document.getElementById('btn-vrienden-badge').addEventListener('click', () => {
   metProfielVereist(() => {
@@ -4617,14 +4766,23 @@ document.getElementById('btn-vrienden-toevoegen').addEventListener('click', () =
   const open = !paneel.hidden;
   paneel.hidden = open;
   document.getElementById('btn-vrienden-toevoegen').textContent = open ? '➕ Toevoegen' : '✕ Toevoegen sluiten';
-  if (!open) document.getElementById('input-zoek-vrienden').focus();
+  if (!open) {
+    document.getElementById('input-zoek-vrienden').focus();
+    laadSocialeNamen(true).catch(() => {});
+    zoekGebruikersOpNaam(document.getElementById('input-zoek-vrienden').value);
+  }
 });
 
 document.getElementById('btn-vrienden-zoeken').addEventListener('click', () => {
-  zoekGebruikersOpNaam(document.getElementById('input-zoek-vrienden').value);
+  zoekGebruikersOpNaam(document.getElementById('input-zoek-vrienden').value, true);
+});
+document.getElementById('input-zoek-vrienden').addEventListener('input', e => {
+  clearTimeout(socialeZoekTimer);
+  const waarde = e.target.value;
+  socialeZoekTimer = setTimeout(() => zoekGebruikersOpNaam(waarde), 150);
 });
 document.getElementById('input-zoek-vrienden').addEventListener('keydown', e => {
-  if (e.key === 'Enter') zoekGebruikersOpNaam(e.target.value);
+  if (e.key === 'Enter') { clearTimeout(socialeZoekTimer); zoekGebruikersOpNaam(e.target.value, true); }
 });
 document.getElementById('btn-chat-sluiten').addEventListener('click', sluitChat);
 document.getElementById('btn-chat-sturen').addEventListener('click', verstuurChatBericht);
