@@ -29,7 +29,12 @@
       <h3>Jouw profiel</h3>
       <div id="profiel-overlay-poppetje" class="profiel-overlay-poppetje" aria-hidden="true"></div>
       <p id="profiel-overlay-naam" class="subtitel"></p>
-      <p class="subtitel">Je gebruikersnaam kun je niet meer wijzigen, maar je poppetje wel.</p>
+      <button class="btn btn-secondary" id="btn-profiel-naam-wijzigen" type="button">✏️ Gebruikersnaam wijzigen</button>
+      <div id="profiel-naam-wijzigen-paneel" class="profiel-naam-paneel" hidden>
+        <input type="text" id="input-profiel-nieuwe-naam" maxlength="30" placeholder="Nieuwe gebruikersnaam" autocomplete="off">
+        <button class="btn btn-primary" id="btn-profiel-naam-opslaan" type="button">Opslaan</button>
+        <p id="profiel-naam-foutmelding" class="foutmelding"></p>
+      </div>
       <button class="btn btn-secondary" id="btn-profiel-poppetje-wijzigen" type="button">🔁 Poppetje wijzigen</button>
       <div id="profiel-overlay-dieren-kiezer" class="dieren-kiezer" style="display:none;"></div>
       <button class="btn btn-secondary" id="btn-profiel-overlay-sluiten" type="button">Sluiten</button>
@@ -152,7 +157,7 @@
     <section id="scherm-naam-invullen" class="scherm">
       <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
       <h2 class="titel-regenboog">Maak je profiel</h2>
-      <p class="subtitel">Bedenk een gebruikersnaam en kies een poppetje als profielfoto. Dit wordt lokaal in je browser onthouden (geen wachtwoord nodig). Gewone bezoekers zien je naam niet; alleen sitebeheer kan zien wie een quiz heeft gemaakt. Let op: je gebruikersnaam kun je hierna niet meer wijzigen; je poppetje later nog wel, via de knop rechtsboven.</p>
+      <p class="subtitel">Bedenk een gebruikersnaam en kies een poppetje als profielfoto. Dit wordt lokaal in je browser onthouden (geen wachtwoord nodig). Gewone bezoekers zien je naam niet; alleen sitebeheer kan zien wie een quiz heeft gemaakt. Je gebruikersnaam en je poppetje kun je later nog wijzigen via de knop rechtsboven.</p>
       <label for="input-maker-naam">Gebruikersnaam</label>
       <input type="text" id="input-maker-naam" placeholder="Bijv. Sam" maxlength="30">
       <label>Kies je poppetje (profielfoto)</label>
@@ -565,7 +570,7 @@
       <div id="vrienden-toevoegen-paneel" class="vrienden-toevoegen-paneel" hidden>
         <label for="input-zoek-vrienden">Gebruikersnaam zoeken</label>
         <div class="vrienden-zoekrij">
-          <input type="text" id="input-zoek-vrienden" class="zoekbalk" placeholder="Typ een gebruikersnaam..." maxlength="30">
+          <input type="text" id="input-zoek-vrienden" class="zoekbalk" placeholder="🔍 Zoek op naam..." maxlength="30" autocomplete="off">
           <button id="btn-vrienden-zoeken" class="btn btn-secondary" type="button">Zoeken</button>
         </div>
         <div id="vrienden-zoekresultaten" class="vrienden-lijst"></div>
