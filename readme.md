@@ -18,37 +18,11 @@ Ga naar https://console.firebase.google.com en maak een nieuw project.
 
 Ga naar Build → Realtime Database en maak een database aan (kies een regio, bijv. Europe).
 
-Zet de database (tijdelijk, voor testen) in testmodus, of gebruik deze regels. Dit zijn alle paden die de app gebruikt (quizzen, sessies, mysterieboxen, geluksrad en aangepastePoppetjes) — ga naar Realtime Database → Regels en plak dit er in zijn geheel overheen:
+Ga naar Realtime Database → Regels en plak de VOLLEDIGE inhoud van firebase-rules.json er overheen (Publiceren). Dat bestand bevat alle paden die de app gebruikt: quizzen, sessies, mysterieboxen, geluksrad, aangepastePoppetjes, gebruikers, gebruikersnamen, vrienden, vriendschapsverzoeken en chats.
 
-```json
-{
-  "rules": {
-    "quizzen": {
-      ".read": true,
-      ".write": true,
-      ".indexOn": ["openbaar"]
-    },
-    "sessies": {
-      ".read": true,
-      ".write": true
-    },
-    "mysterieboxen": {
-      ".read": true,
-      ".write": true
-    },
-    "geluksrad": {
-      ".read": true,
-      ".write": true
-    },
-    "aangepastePoppetjes": {
-      ".read": true,
-      ".write": true
-    }
-  }
-}
-```
+Let op: quizzen, sessies, mysterieboxen, geluksrad en aangepastePoppetjes zijn open voor iedereen. Voor een echt project wil je later strengere regels.
 
-Let op: dit is open voor iedereen. Voor een echt project wil je later regels toevoegen die misbruik voorkomen.
+Zet ook bij Authentication → Sign-in method de provider Anoniem aan (nodig voor vrienden en chat).
 
 Ga naar Project instellingen → Algemeen → Jouw apps → Web app (</> icoon) en registreer een app.
 
@@ -248,6 +222,10 @@ Bij "Speelbare quizzen" staat, naast "Aanpassen" en "Verwijderen", nu ook een kn
 In het inklapbare overzicht "Alle quizmakers" (bovenaan "Speelbare quizzen") staat bij élke quiz — ook niet-openbare — een klein knopje "Blokkeren" of "Deblokkeren". Dit is de plek om een quiz te blokkeren die nog niet (of niet meer) openbaar staat, zodat hij ook in de toekomst niet openbaar gezet kan worden.
 
 De maker zelf ziet bij "Mijn quizzen" een gele melding op een geblokkeerde quiz ("Deze quiz is geblokkeerd door sitebeheer en kan niet openbaar gezet worden.") en kan gewoon spelen/hosten, maar niet meer op "openbaar" zetten.
+
+Vrienden en chat (nieuw)
+
+De chat met een vriend is beeldvullend. Met 🎨 bovenin kies je een achtergrond en een tekstkleur (wordt per chat onthouden in je browser). Naast het schrijfvak staat een knopje met je poppetje en een plusje: daar kies je een dier of accessoire uit je verzameling en verstuur je het. Het staat als cadeaukaart in de chat; de ander kan accepteren of weigeren. Pas bij accepteren heeft de verzender er één minder en de ontvanger er één erbij. Je laatste dier of accessoire kun je niet versturen.
 
 Mogelijke volgende stappen
 
