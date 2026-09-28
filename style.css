@@ -2639,3 +2639,15 @@ body.chat-open { overflow: hidden; }
 @media (max-width: 520px) {
   .pe-raster { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+
+/* ---------- Cijfertje bij de chat (ongelezen berichten) ---------- */
+.vriend-rij .chat-knop { position: relative; overflow: visible; }
+.chat-knop-badge {
+  position: absolute; top: -8px; right: -8px;
+  min-width: 22px; height: 22px; padding: 0 6px;
+  border-radius: 999px; box-sizing: border-box;
+  background: #ff5c72; color: #fff;
+  font: 800 13px/22px 'Segoe UI', Arial, sans-serif; text-align: center;
+  box-shadow: 0 0 0 2px #10152e;
+}
