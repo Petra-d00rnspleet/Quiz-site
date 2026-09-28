@@ -8,8 +8,11 @@ BELANGRIJK VOOR DE VRIENDENFUNCTIE EN DE CHAT
 
 WAT IS ER NIEUW IN DE CHAT
 - De chat met een vriend is nu beeldvullend (het hele scherm).
-- Met de knop 🎨 bovenin kies je een achtergrond (13 keuzes) en een tekstkleur (8 kleuren + eigen kleur).
-  Dit wordt per chat onthouden in je eigen browser. Je vriend ziet jouw achtergrond niet.
+- Met de knop 🎨 bovenin kies je een achtergrond (13 keuzes) en de kleur van de tekstvakjes: apart voor je eigen berichten
+  en voor de berichten van je vriend (12 kleuren + eigen kleur). De tekst in het vakje wordt vanzelf licht of donker,
+  zodat je hem altijd kunt lezen. Dit wordt per chat onthouden in je eigen browser. Je vriend ziet jouw instellingen niet.
+- Berichten verwijderen: bij je eigen berichten staat een 🗑. Een cadeau dat nog niet is geaccepteerd trek je zo ook in.
+  Je kunt alleen je eigen berichten verwijderen.
 - Naast het schrijfvak staat een knopje met je poppetje en een plusje. Klik erop, kies een dier of accessoire
   uit je eigen verzameling en klik op "Verzenden". Het poppetje staat dan als cadeaukaart in de chat.
 - De ander kan het Accepteren of Weigeren. Pas bij accepteren heeft de verzender er een minder en de ontvanger er een erbij.
@@ -18,6 +21,16 @@ WAT IS ER NIEUW IN DE CHAT
 - Een chatbericht met een poppetje heeft in Firebase: type "poppetje", soort ("dier" of "accessoire"), item, aan (uid ontvanger)
   en status ("open", "bezig", "geaccepteerd", "geweigerd" of "mislukt").
 
+- Nieuwe berichten: bij de knop "💬 Chat" van een vriend staat een cijfertje met het aantal berichten dat je nog niet hebt gelezen
+  (1 bij een bericht, 2 bij twee, enzovoort). Vrienden met nieuwe berichten staan bovenaan de lijst. Het cijfertje bij de knop
+  "Vrienden" rechtsboven telt de nieuwe berichten en de vriendschapsverzoeken samen. Zodra je de chat opent, verdwijnt het cijfertje.
+  Wat je gelezen hebt wordt onthouden in je eigen browser, dus op een ander apparaat telt het opnieuw.
+
+POPPETJE WIJZIGEN
+- Klik rechtsboven op je poppetje > "Poppetje wijzigen". Er opent een beeldvullend scherm met bovenin een groot voorbeeld
+  en wat je nu aanhebt (tik op een label om het weg te halen). Daaronder staan tabbladen: Dieren, Hoeden, Brillen en Extra.
+  Tik op een kaartje om te kiezen; het gekozen kaartje heeft een vinkje. Bij accessoires kies je "Geen" om het weg te halen.
+  Je ziet er ook bij hoeveel je er hebt van het totaal. Alles wordt meteen opgeslagen.
 
 GEBRUIKERSNAAM WIJZIGEN EN VRIENDEN ZOEKEN
 - Klik rechtsboven op je poppetje > "Gebruikersnaam wijzigen". Is de nieuwe naam nog vrij, dan wordt hij meteen je naam.
@@ -32,7 +45,7 @@ WAAROM DE REGELS ZIJN AANGEPAST
 - Vriendschapsverzoeken: de ontvanger moet het verzoek kunnen verwijderen zodra het wordt geaccepteerd.
   De vorige regel liet alleen de afzender schrijven naar het verzoek, waardoor accepteren kon mislukken.
 - Chats: alleen de twee deelnemers kunnen berichten lezen en schrijven. Bij een bestaand bericht mag alleen het veld "status" veranderen
-  (dat is nodig om een poppetje te accepteren of te weigeren).
+  (dat is nodig om een poppetje te accepteren of te weigeren). Je mag je eigen bericht verwijderen, behalve tijdens het accepteren van een poppetje.
 - Poppetjes versturen: bij accepteren schrijft de ontvanger ook naar het aantal poppetjes van de verzender (gebruikers/<uid>/bezit),
   daarom mag elke ingelogde gebruiker naar losse items onder bezit/dieren en bezit/accessoires schrijven (alleen getallen van 0 of hoger).
 - Gebruikersnaam wijzigen: je mag je eigen naam vrijgeven (verwijderen) uit "gebruikersnamen", en je mag je eigen naam
