@@ -18,7 +18,14 @@ const SPELER_MAIL_DOMEIN = '@spelers.quizapp.example';
 function isSpelerAccount(u) {
   return !!u && !!u.email && u.email.toLowerCase().endsWith(SPELER_MAIL_DOMEIN);
 }
-// Beheerder = ingelogd met een echt account (niet anoniem en geen speleralias).
+// Het sitebeheer logt in via een APARTE Firebase-verbinding ('beheer'). Zo blijft je
+// speleraccount (naam, vrienden, chat, poppetjes) gewoon actief terwijl je beheerder bent,
+// en verlies je je speleraccount niet als je uit- of inlogt bij Sitebeheer.
+const beheerApp = firebase.apps.find(a => a.name === 'beheer') || firebase.initializeApp(firebase.app().options, 'beheer');
+const beheerAuth = beheerApp.auth();
+
+// Een echt (niet-anoniem, geen speleralias) account op de gewone verbinding is een
+// oude beheerderslogin van vóór deze aanpassing; die ruimen we op.
 function isBeheerderAccount(u) {
   return !!u && !u.isAnonymous && !isSpelerAccount(u);
 }
@@ -107,7 +114,7 @@ function werkSitebeheerKnopBij() {
 btnSitebeheerEl.addEventListener('click', () => {
   if (sitebeheerActief) {
     // Al ingelogd: nogmaals klikken logt meteen uit.
-    auth.signOut();
+    beheerAuth.signOut();
     return;
   }
   openSitebeheerOverlay();
@@ -130,9 +137,9 @@ function probeerSitebeheerInloggen() {
   btnSitebeheerBevestigenEl.disabled = true;
   btnSitebeheerBevestigenEl.textContent = 'Bezig...';
 
-  auth.signInWithEmailAndPassword(email, wachtwoord)
+  beheerAuth.signInWithEmailAndPassword(email, wachtwoord)
     .then(() => {
-      // sitebeheerActief wordt automatisch gezet via onAuthStateChanged hieronder.
+      // sitebeheerActief wordt automatisch gezet via beheerAuth.onAuthStateChanged hieronder.
       sluitSitebeheerOverlay();
     })
     .catch(() => {
@@ -154,12 +161,8 @@ btnSitebeheerBevestigenEl.addEventListener('click', probeerSitebeheerInloggen);
   });
 });
 
-auth.onAuthStateChanged(gebruiker => {
-  sitebeheerActief = isBeheerderAccount(gebruiker);
-  werkSitebeheerKnopBij();
-  if (!gebruiker) {
-    zorgVoorSocialeGebruiker();
-  }
+// Verversen van de quizlijsten zodra de login (speler of beheerder) verandert.
+function verversNaLoginWissel() {
   if (typeof laadSocialeGegevens === 'function') laadSocialeGegevens();
   if (document.getElementById('scherm-speelbare-quizzen').classList.contains('actief')) {
     laadOpenbareQuizzen();
@@ -167,6 +170,27 @@ auth.onAuthStateChanged(gebruiker => {
   if (document.getElementById('scherm-quizmaken').classList.contains('actief')) {
     laadEigenQuizzen();
   }
+}
+
+// Sitebeheer: aan zodra de aparte beheer-login een gebruiker heeft.
+beheerAuth.onAuthStateChanged(beheerder => {
+  sitebeheerActief = !!beheerder;
+  werkSitebeheerKnopBij();
+  verversNaLoginWissel();
+});
+
+// Speler: anoniem of met wachtwoord.
+auth.onAuthStateChanged(gebruiker => {
+  if (isBeheerderAccount(gebruiker)) {
+    // Oude beheerderslogin op de gewone verbinding (van vóór deze aanpassing): uitloggen,
+    // dan wordt er weer een gewoon speleraccount gestart. Opnieuw inloggen bij Sitebeheer kan daarna.
+    auth.signOut().catch(() => {});
+    return;
+  }
+  if (!gebruiker) {
+    zorgVoorSocialeGebruiker();
+  }
+  verversNaLoginWissel();
 });
 
 // (De anonieme login wordt gestart door onAuthStateChanged hierboven, pas als Firebase
@@ -345,9 +369,6 @@ const naamInvullenFoutmeldingEl = document.getElementById('naam-invullen-foutmel
 function reserveerNaamVoorProfiel(naam) {
   const zoek = normaliseerGebruikersnaam(naam);
   return wachtOpAuth().then(u => {
-    if (isBeheerderAccount(u)) {
-      throw new Error('Je bent ingelogd als sitebeheer. Log eerst uit bij Sitebeheer om een profiel te maken.');
-    }
     return metTijdslimiet(db.ref('gebruikersnamen/' + naamSleutel(zoek)).transaction(v => v || u.uid), 12000).then(res => {
       const eigenaar = res.snapshot.val();
       if (eigenaar && eigenaar !== u.uid) {
@@ -3880,12 +3901,9 @@ function normaliseerGebruikersnaam(naam) {
   return String(naam || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
-// De gebruiker voor vrienden/chat. Is het sitebeheer ingelogd, dan is dat geen speler
-// en doen vrienden en chat even niet mee (anders zou de beheerder per ongeluk een naam claimen).
+// De gebruiker voor vrienden/chat. Ook als sitebeheer is ingelogd blijft dit gewoon je speleraccount.
 function profielFirebaseGebruiker() {
-  if (typeof auth === 'undefined') return null;
-  const u = auth.currentUser;
-  return u && !isBeheerderAccount(u) ? u : null;
+  return typeof auth !== 'undefined' ? auth.currentUser : null;
 }
 
 function huidigeBezitAantallen() {
@@ -5174,7 +5192,7 @@ function beveiligProfielMetWachtwoord(wachtwoord) {
   }
   return wachtOpAuth().then(u => {
     if (isSpelerAccount(u)) return u;
-    if (!u.isAnonymous) throw new Error('Je bent ingelogd als sitebeheer. Log eerst uit bij Sitebeheer.');
+    if (!u.isAnonymous) throw new Error('Dit account kan geen wachtwoord meer krijgen. Log opnieuw in of ververs de pagina.');
     const alias = nieuweInlogAlias();
     const gegevens = firebase.auth.EmailAuthProvider.credential(alias, wachtwoord);
     return metTijdslimiet(u.linkWithCredential(gegevens), 15000)
@@ -5218,7 +5236,6 @@ function inloggenMetNaam(naamRaw, wachtwoord) {
   if (!wachtwoord) return Promise.reject(new Error('Vul je wachtwoord in.'));
   let uid = null;
   return wachtOpAuth().then(u => {
-    if (isBeheerderAccount(u)) throw new Error('Je bent ingelogd als sitebeheer. Log eerst uit bij Sitebeheer.');
     return db.ref('gebruikersnamen/' + naamSleutel(zoek)).once('value');
   }).then(snap => {
     uid = snap.val();
@@ -5325,9 +5342,6 @@ function werkWachtwoordBlokBij() {
   if (isSpelerAccount(u)) {
     uitleg.textContent = '🔒 Je profiel is beveiligd met een wachtwoord. Op een ander apparaat log je in met je gebruikersnaam en wachtwoord.';
     formulier.hidden = true;
-  } else if (isBeheerderAccount(u)) {
-    uitleg.textContent = 'Je bent ingelogd als sitebeheer.';
-    formulier.hidden = true;
   } else {
     uitleg.textContent = '🔓 Je profiel heeft nog geen wachtwoord. Stel er een in, dan raak je je profiel, vrienden en poppetjes nooit meer kwijt.';
     formulier.hidden = false;
@@ -5385,8 +5399,6 @@ function werkSociaalStatusBij() {
       { label: '🔑 Inloggen', primair: true, klik: () => openInlogOverlay('bezet') },
       { label: '✏️ Nieuwe naam', klik: openNaamWijzigenPaneel }
     ];
-  } else if (u && isBeheerderAccount(u)) {
-    tekst = 'Je bent ingelogd als sitebeheer, dus vrienden en chat staan uit. Klik op Sitebeheer om uit te loggen.';
   } else if (!u || (sociaalStatus && (sociaalStatus.soort === 'verbinding' || sociaalStatus.soort === 'fout'))) {
     if (sociaalStatus && sociaalStatus.code === 'PERMISSION_DENIED') {
       tekst = '⚠️ De server weigert toegang. Controleer in Firebase of Anoniem inloggen aanstaat en of de nieuwste regels zijn gepubliceerd.';
