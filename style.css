@@ -2668,3 +2668,12 @@ body.chat-open { overflow: hidden; }
 .chat-quiz-rij .btn { flex: 0 0 auto; padding: 8px 12px; }
 .chat-quiz-icoon { font-size: 44px; line-height: 1; }
 .chat-quiz-sub { font-size: 12px; opacity: .8; }
+
+
+/* Profielpoppetjes bij namen in de chat en vriendenlijst */
+.chat-kop-poppetje { width: 40px; height: 40px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; }
+.chat-kop-poppetje svg { width: 40px; height: 40px; }
+.chat-bericht-poppetje { width: 26px; height: 26px; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; }
+.chat-bericht-poppetje svg { width: 26px; height: 26px; }
+.chat-bericht-naam { display: inline-flex; align-items: center; gap: 6px; }
+.mini-poppetje-leeg { opacity: .6; }
