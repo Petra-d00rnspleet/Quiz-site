@@ -3591,157 +3591,152 @@ function werkProfielBadgeBij() {
 }
 
 const profielOverlayEl = document.getElementById('profiel-overlay');
-const btnProfielPoppetjeWijzigenEl = document.getElementById('btn-profiel-poppetje-wijzigen');
-const profielOverlayKiezerEl = document.getElementById('profiel-overlay-dieren-kiezer');
+const PE_TAB_NAMEN = { boven: 'Hoeden', gezicht: 'Brillen', hoek: 'Extra' };
+const PE_TAB_ICONEN = { dieren: '🐾', boven: '🎩', gezicht: '👓', hoek: '✨' };
+let peTab = 'dieren';
 
-let profielKiezerTab = 'dieren';
-
-function sluitProfielPoppetjeKiezer() {
-  profielOverlayKiezerEl.style.display = 'none';
-  profielOverlayKiezerEl.innerHTML = '';
-  btnProfielPoppetjeWijzigenEl.textContent = '🔁 Poppetje wijzigen';
+function openPoppetjeEditor() {
+  peTab = 'dieren';
+  document.getElementById('poppetje-editor').classList.add('actief');
+  document.body.classList.add('chat-open');
+  bouwPoppetjeEditor();
 }
 
-function werkProfielKiezerTabsBij(containerEl) {
-  containerEl.querySelectorAll('.profiel-kiezer-tab').forEach(tab => {
-    const actief = tab.dataset.tab === profielKiezerTab;
-    tab.classList.toggle('actief', actief);
-    tab.setAttribute('aria-selected', String(actief));
-  });
+function sluitPoppetjeEditor() {
+  document.getElementById('poppetje-editor').classList.remove('actief');
+  if (!document.getElementById('chat-overlay').classList.contains('actief')) document.body.classList.remove('chat-open');
+  werkProfielPoppetjeWeergaveBij();
 }
 
-function bouwProfielKiezer() {
-  profielOverlayKiezerEl.innerHTML = '';
-  profielOverlayKiezerEl.classList.add('profiel-dieren-kiezer');
-  profielOverlayKiezerEl.classList.toggle('accessoires', profielKiezerTab === 'accessoires');
+// Oude naam blijft bestaan, want andere plekken in de code sluiten hiermee de kiezer.
+function sluitProfielPoppetjeKiezer() { sluitPoppetjeEditor(); }
 
-  const tabs = document.createElement('div');
-  tabs.className = 'profiel-kiezer-tabs';
-  tabs.setAttribute('role', 'tablist');
+function peKaart(svg, label, gekozen, onKlik) {
+  const knop = document.createElement('button');
+  knop.type = 'button';
+  knop.className = 'pe-kaart' + (gekozen ? ' gekozen' : '');
+  const plaat = document.createElement('div');
+  plaat.className = 'pe-kaart-plaat';
+  plaat.innerHTML = svg;
+  knop.appendChild(plaat);
+  if (label) {
+    const l = document.createElement('div');
+    l.className = 'pe-kaart-label';
+    l.textContent = label;
+    knop.appendChild(l);
+  }
+  if (gekozen) {
+    const vink = document.createElement('span');
+    vink.className = 'pe-vink';
+    vink.textContent = '✓';
+    knop.appendChild(vink);
+  }
+  knop.addEventListener('click', onKlik);
+  return knop;
+}
 
-  const dierenTab = document.createElement('button');
-  dierenTab.type = 'button';
-  dierenTab.className = 'profiel-kiezer-tab';
-  dierenTab.dataset.tab = 'dieren';
-  dierenTab.textContent = '🐶 Dieren';
-  dierenTab.setAttribute('role', 'tab');
-  dierenTab.addEventListener('click', () => {
-    profielKiezerTab = 'dieren';
-    bouwProfielKiezer();
-  });
+function peNaLetter() {
+  werkProfielBadgeBij();
+  werkProfielPoppetjeWeergaveBij();
+  bouwPoppetjeEditor();
+}
 
-  const accessoiresTab = document.createElement('button');
-  accessoiresTab.type = 'button';
-  accessoiresTab.className = 'profiel-kiezer-tab';
-  accessoiresTab.dataset.tab = 'accessoires';
-  accessoiresTab.textContent = '🎩 Accessoires';
-  accessoiresTab.setAttribute('role', 'tab');
-  accessoiresTab.addEventListener('click', () => {
-    profielKiezerTab = 'accessoires';
-    bouwProfielKiezer();
-  });
-
-  tabs.appendChild(dierenTab);
-  tabs.appendChild(accessoiresTab);
-  profielOverlayKiezerEl.appendChild(tabs);
-  werkProfielKiezerTabsBij(tabs);
-
+function bouwPoppetjeEditor() {
   const bezitDieren = haalBezitDieren();
-  const bezitAccessoires = haalBezitAccessoires();
-  const huidigDier = geldigDier(huidigProfielDier()) || bezitDieren[0] || DIEREN[0];
-  const huidigeAccessoires = huidigeProfielAccessoires();
+  const bezitAcc = haalBezitAccessoires();
+  const dier = geldigDier(huidigProfielDier()) || bezitDieren[0] || DIEREN[0];
+  const acc = huidigeProfielAccessoires();
 
-  if (profielKiezerTab === 'dieren') {
-    bezitDieren.forEach(dier => {
-      const knop = document.createElement('button');
-      knop.type = 'button';
-      knop.className = 'dier-knop';
-      knop.innerHTML = poppetjeSvg(dier, huidigeAccessoires);
-      knop.dataset.dier = dier;
-      knop.classList.toggle('gekozen', dier === huidigDier);
-      knop.setAttribute('aria-label', 'Kies ' + dier + ' als profielfoto');
-      knop.addEventListener('click', () => {
-        localStorage.setItem(PROFIEL_DIER_SLEUTEL, dier);
-        werkProfielBadgeBij();
-        werkProfielPoppetjeWeergaveBij();
-        bouwProfielKiezer();
-      });
-      profielOverlayKiezerEl.appendChild(knop);
+  // Groot voorbeeld + chips met wat je nu aan hebt
+  document.getElementById('pe-voorbeeld-poppetje').innerHTML = poppetjeSvg(dier, acc);
+  const chips = document.getElementById('pe-chips');
+  chips.innerHTML = '';
+  let aantalChips = 0;
+  ACCESSOIRE_GROEPEN.forEach(groep => {
+    const emoji = acc[groep.plek];
+    if (!emoji) return;
+    aantalChips++;
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'pe-chip';
+    chip.textContent = PE_TAB_ICONEN[groep.plek] + ' ' + ((ACCESSOIRES[emoji] && ACCESSOIRES[emoji].naam) || 'accessoire') + '  ✕';
+    chip.title = 'Weghalen';
+    chip.addEventListener('click', () => {
+      const nieuw = Object.assign({}, huidigeProfielAccessoires());
+      delete nieuw[groep.plek];
+      slaProfielAccessoiresOp(nieuw);
+      peNaLetter();
     });
+    chips.appendChild(chip);
+  });
+  if (!aantalChips) {
+    const leeg = document.createElement('span');
+    leeg.className = 'pe-chips-leeg';
+    leeg.textContent = 'Nog geen accessoires aan';
+    chips.appendChild(leeg);
+  }
+
+  // Tabbladen
+  const tabs = document.getElementById('pe-tabs');
+  tabs.innerHTML = '';
+  const tabLijst = [{ id: 'dieren', naam: 'Dieren' }].concat(ACCESSOIRE_GROEPEN.map(g => ({ id: g.plek, naam: PE_TAB_NAMEN[g.plek] || g.titel })));
+  tabLijst.forEach(t => {
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'pe-tab' + (t.id === peTab ? ' actief' : '');
+    knop.innerHTML = '<span class="pe-tab-icoon">' + PE_TAB_ICONEN[t.id] + '</span><span>' + t.naam + '</span>';
+    knop.addEventListener('click', () => { peTab = t.id; bouwPoppetjeEditor(); });
+    tabs.appendChild(knop);
+  });
+
+  // Inhoud van het gekozen tabblad
+  const inhoud = document.getElementById('pe-inhoud');
+  inhoud.innerHTML = '';
+  const raster = document.createElement('div');
+  raster.className = 'pe-raster';
+  const hint = document.createElement('p');
+  hint.className = 'pe-hint';
+
+  if (peTab === 'dieren') {
+    bezitDieren.forEach(d => {
+      raster.appendChild(peKaart(poppetjeSvg(d, acc), '', d === dier, () => {
+        localStorage.setItem(PROFIEL_DIER_SLEUTEL, d);
+        peNaLetter();
+      }));
+    });
+    hint.textContent = 'Je hebt ' + bezitDieren.length + ' van de ' + DIEREN.length + ' dieren. Meer dieren krijg je in de Winkel en bij het Geluksrad.';
   } else {
-    ACCESSOIRE_GROEPEN.forEach(groep => {
-      const items = groep.items.filter(item => bezitAccessoires.indexOf(item) !== -1);
-      if (!items.length) return;
-
-      const kop = document.createElement('div');
-      kop.className = 'kiezer-groep-titel';
-      kop.textContent = groep.titel;
-      profielOverlayKiezerEl.appendChild(kop);
-
+    const groep = ACCESSOIRE_GROEPEN.find(g => g.plek === peTab);
+    if (groep) {
+      const items = groep.items.filter(i => bezitAcc.indexOf(i) !== -1);
+      const zonder = Object.assign({}, acc);
+      delete zonder[groep.plek];
+      raster.appendChild(peKaart(poppetjeSvg(dier, zonder), 'Geen', !acc[groep.plek], () => {
+        const nieuw = Object.assign({}, huidigeProfielAccessoires());
+        delete nieuw[groep.plek];
+        slaProfielAccessoiresOp(nieuw);
+        peNaLetter();
+      }));
       items.forEach(emoji => {
-        const voorbeeld = {};
-        voorbeeld[groep.plek] = emoji;
-
-        const knop = document.createElement('button');
-        knop.type = 'button';
-        knop.className = 'dier-knop';
-        knop.innerHTML = poppetjeSvg(huidigDier, voorbeeld);
-        knop.dataset.plek = groep.plek;
-        knop.dataset.acc = emoji;
-        knop.classList.toggle('gekozen', huidigeAccessoires[groep.plek] === emoji);
-        knop.setAttribute('aria-label', 'Kies ' + ((ACCESSOIRES[emoji] && ACCESSOIRES[emoji].naam) || 'accessoire'));
-
-        knop.addEventListener('click', () => {
-          const acc = Object.assign({}, huidigeProfielAccessoires());
-          if (acc[groep.plek] === emoji) {
-            delete acc[groep.plek];
-          } else {
-            acc[groep.plek] = emoji;
-          }
-          slaProfielAccessoiresOp(acc);
-          werkProfielBadgeBij();
-          werkProfielPoppetjeWeergaveBij();
-          bouwProfielKiezer();
-        });
-
-        profielOverlayKiezerEl.appendChild(knop);
+        const proef = Object.assign({}, acc);
+        proef[groep.plek] = emoji;
+        raster.appendChild(peKaart(poppetjeSvg(dier, proef), (ACCESSOIRES[emoji] && ACCESSOIRES[emoji].naam) || '', acc[groep.plek] === emoji, () => {
+          const nieuw = Object.assign({}, huidigeProfielAccessoires());
+          if (nieuw[groep.plek] === emoji) delete nieuw[groep.plek]; else nieuw[groep.plek] = emoji;
+          slaProfielAccessoiresOp(nieuw);
+          peNaLetter();
+        }));
       });
-    });
-
-    const wegKnop = document.createElement('button');
-    wegKnop.type = 'button';
-    wegKnop.className = 'kiezer-weg-knop';
-    wegKnop.textContent = 'Alle accessoires weghalen';
-    wegKnop.addEventListener('click', () => {
-      slaProfielAccessoiresOp({});
-      werkProfielBadgeBij();
-      werkProfielPoppetjeWeergaveBij();
-      bouwProfielKiezer();
-    });
-    profielOverlayKiezerEl.appendChild(wegKnop);
+      hint.textContent = 'Je hebt ' + items.length + ' van de ' + groep.items.length + ' items in "' + groep.titel + '". Meer krijg je in de Winkel en bij het Geluksrad.';
+    }
   }
-
-  if (!bezitDieren.length) {
-    const hint = document.createElement('p');
-    hint.className = 'kiezer-hint';
-    hint.textContent = 'Je hebt nog geen poppetje om te kiezen.';
-    profielOverlayKiezerEl.appendChild(hint);
-  }
+  inhoud.appendChild(raster);
+  inhoud.appendChild(hint);
 }
 
-btnProfielPoppetjeWijzigenEl.addEventListener('click', () => {
-  const isOpen = profielOverlayKiezerEl.style.display !== 'none';
-
-  if (isOpen) {
-    sluitProfielPoppetjeKiezer();
-    return;
-  }
-
-  profielKiezerTab = 'dieren';
-  bouwProfielKiezer();
-  profielOverlayKiezerEl.style.display = '';
-  btnProfielPoppetjeWijzigenEl.textContent = 'Kiezer sluiten';
-});
+document.getElementById('btn-profiel-poppetje-wijzigen').addEventListener('click', openPoppetjeEditor);
+document.getElementById('btn-pe-terug').addEventListener('click', sluitPoppetjeEditor);
+document.getElementById('btn-pe-klaar').addEventListener('click', sluitPoppetjeEditor);
 
 document.getElementById('btn-profiel-badge').addEventListener('click', () => {
   if (heeftProfiel()) {
@@ -4242,7 +4237,8 @@ const CHAT_ACHTERGRONDEN = [
   { id: 'vlinders', naam: 'Vlinders',    css: chatEmojiPatroon('🦋', 'linear-gradient(160deg, #56ccf2, #2f80ed)') }
 ];
 
-const CHAT_TEKSTKLEUREN = ['#ffffff', '#ffe066', '#7cfc9a', '#7fdbff', '#ff9ecb', '#ff8a65', '#1a1a2e', '#000000'];
+const CHAT_VAK_KLEUREN = ['#6d4fc2', '#8e44ad', '#1f6feb', '#0aa5c0', '#0f9d58', '#f6c945', '#ff9800', '#e91e63', '#e53935', '#ffffff', '#2b2b45', '#111111'];
+const CHAT_VAK_STANDAARD = { eigenVak: '#6d4fc2', vriendVak: '#2b2b45' };
 
 let chatStijlPaneelOpen = false;
 let chatPoppetjeTab = 'dieren';
@@ -4252,11 +4248,19 @@ function laadChatStijlen() {
   try { return JSON.parse(localStorage.getItem(CHAT_STIJL_SLEUTEL) || '{}') || {}; } catch (e) { return {}; }
 }
 
+function geldigeHex(hex) {
+  return /^#[0-9a-f]{6}$/i.test(String(hex || '')) ? String(hex) : '';
+}
+
 function huidigeChatStijl() {
   const gebruiker = profielFirebaseGebruiker();
   const alle = laadChatStijlen();
   const stijl = (gebruiker && huidigChatUid && alle[chatIdVoor(gebruiker.uid, huidigChatUid)]) || {};
-  return { achtergrond: stijl.achtergrond || 'nacht', kleur: stijl.kleur || '#ffffff' };
+  return {
+    achtergrond: stijl.achtergrond || 'nacht',
+    eigenVak: geldigeHex(stijl.eigenVak) || CHAT_VAK_STANDAARD.eigenVak,
+    vriendVak: geldigeHex(stijl.vriendVak) || CHAT_VAK_STANDAARD.vriendVak
+  };
 }
 
 function slaChatStijlOp(deel) {
@@ -4277,21 +4281,49 @@ function hexIsDonker(hex) {
   return (0.299 * r + 0.587 * g + 0.114 * b) < 140;
 }
 
+function hexNaarRgba(hex, alpha) {
+  const n = parseInt(String(hex).slice(1), 16);
+  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + alpha + ')';
+}
+
 function pasChatStijlToe() {
   const scherm = document.getElementById('chat-overlay');
   const stijl = huidigeChatStijl();
   const achtergrond = CHAT_ACHTERGRONDEN.find(x => x.id === stijl.achtergrond) || CHAT_ACHTERGRONDEN[0];
   scherm.style.setProperty('--chat-achtergrond', achtergrond.css);
-  scherm.style.setProperty('--chat-tekst', stijl.kleur);
-  scherm.dataset.tekst = hexIsDonker(stijl.kleur) ? 'donker' : 'licht';
+  // De tekst in een vakje wordt vanzelf licht of donker, zodat je hem altijd kunt lezen.
+  scherm.style.setProperty('--chat-eigen-vak', hexNaarRgba(stijl.eigenVak, 0.94));
+  scherm.style.setProperty('--chat-eigen-tekst', hexIsDonker(stijl.eigenVak) ? '#ffffff' : '#1a1a2e');
+  scherm.style.setProperty('--chat-ander-vak', hexNaarRgba(stijl.vriendVak, 0.94));
+  scherm.style.setProperty('--chat-ander-tekst', hexIsDonker(stijl.vriendVak) ? '#ffffff' : '#1a1a2e');
   bouwChatStijlKiezers();
+}
+
+function bouwChatVakRij(container, sleutel, huidig) {
+  if (!container) return;
+  container.innerHTML = '';
+  CHAT_VAK_KLEUREN.forEach(kleur => {
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'chat-kleur-keuze' + (kleur.toLowerCase() === String(huidig).toLowerCase() ? ' actief' : '');
+    knop.style.background = kleur;
+    knop.title = kleur;
+    knop.addEventListener('click', () => slaChatStijlOp({ [sleutel]: kleur }));
+    container.appendChild(knop);
+  });
+  const eigen = document.createElement('input');
+  eigen.type = 'color';
+  eigen.className = 'chat-kleur-eigen';
+  eigen.title = 'Eigen kleur';
+  eigen.value = geldigeHex(huidig) || '#6d4fc2';
+  eigen.addEventListener('change', () => slaChatStijlOp({ [sleutel]: eigen.value }));
+  container.appendChild(eigen);
 }
 
 function bouwChatStijlKiezers() {
   const stijl = huidigeChatStijl();
   const bg = document.getElementById('chat-achtergronden');
-  const kl = document.getElementById('chat-tekstkleuren');
-  if (!bg || !kl) return;
+  if (!bg) return;
   bg.innerHTML = '';
   CHAT_ACHTERGRONDEN.forEach(x => {
     const knop = document.createElement('button');
@@ -4302,23 +4334,8 @@ function bouwChatStijlKiezers() {
     knop.addEventListener('click', () => slaChatStijlOp({ achtergrond: x.id }));
     bg.appendChild(knop);
   });
-  kl.innerHTML = '';
-  CHAT_TEKSTKLEUREN.forEach(kleur => {
-    const knop = document.createElement('button');
-    knop.type = 'button';
-    knop.className = 'chat-kleur-keuze' + (kleur.toLowerCase() === String(stijl.kleur).toLowerCase() ? ' actief' : '');
-    knop.style.background = kleur;
-    knop.title = kleur;
-    knop.addEventListener('click', () => slaChatStijlOp({ kleur }));
-    kl.appendChild(knop);
-  });
-  const eigen = document.createElement('input');
-  eigen.type = 'color';
-  eigen.className = 'chat-kleur-eigen';
-  eigen.title = 'Eigen kleur';
-  eigen.value = /^#[0-9a-f]{6}$/i.test(stijl.kleur) ? stijl.kleur : '#ffffff';
-  eigen.addEventListener('input', () => slaChatStijlOp({ kleur: eigen.value }));
-  kl.appendChild(eigen);
+  bouwChatVakRij(document.getElementById('chat-vak-eigen'), 'eigenVak', stijl.eigenVak);
+  bouwChatVakRij(document.getElementById('chat-vak-vriend'), 'vriendVak', stijl.vriendVak);
 }
 
 function chatDierVoorAccessoire() {
@@ -4396,10 +4413,41 @@ function laadChatBerichten() {
       const tekst = document.createElement('span');
       tekst.className = 'chat-bericht-tekst';
       tekst.textContent = b.tekst || '';
-      p.append(wie, tekst);
+      p.append(maakChatBerichtKop(wie, child.key, b, eigen), tekst);
       lijst.appendChild(p);
     });
     if (onderaan) lijst.scrollTop = lijst.scrollHeight;
+  });
+}
+
+// Kopregel van een bericht: naam, en bij je eigen berichten een 🗑-knop om het te verwijderen.
+function maakChatBerichtKop(wie, key, b, eigen) {
+  const kop = document.createElement('div');
+  kop.className = 'chat-bericht-kop';
+  kop.appendChild(wie);
+  if (eigen && b.status !== 'bezig') {
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'chat-bericht-verwijder';
+    knop.title = 'Bericht verwijderen';
+    knop.setAttribute('aria-label', 'Bericht verwijderen');
+    knop.textContent = '🗑';
+    knop.addEventListener('click', () => verwijderChatBericht(key, b));
+    kop.appendChild(knop);
+  }
+  return kop;
+}
+
+function verwijderChatBericht(key, b) {
+  const ref = chatBerichtenRef();
+  if (!ref) return;
+  const vraag = (b.type === 'poppetje' && b.status === 'open')
+    ? 'Dit cadeau intrekken en het bericht verwijderen?'
+    : 'Dit bericht verwijderen?';
+  if (!confirm(vraag)) return;
+  ref.child(key).remove().catch(err => {
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    alert('Verwijderen is mislukt' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.');
   });
 }
 
@@ -4417,7 +4465,7 @@ function maakChatPoppetjeBericht(key, b, eigen, gebruiker) {
   label.className = 'chat-poppetje-label';
   const naam = geldig ? chatPoppetjeNaam(b.soort, b.item) : 'onbekend poppetje';
   label.textContent = '🎁 ' + (eigen ? 'Je stuurt ' : 'Cadeau: ') + naam;
-  kaart.append(wie, plaatje, label);
+  kaart.append(maakChatBerichtKop(wie, key, b, eigen), plaatje, label);
 
   const status = document.createElement('div');
   status.className = 'chat-poppetje-status';
