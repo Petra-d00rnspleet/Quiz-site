@@ -4158,29 +4158,279 @@ function renderVrienden() {
   updateVriendenBadge();
 }
 
+// ---------------- Chat (beeldvullend, met stijl en poppetjes) ----------------
+
+const CHAT_STIJL_SLEUTEL = 'quizAppChatStijl';
+
+function chatEmojiPatroon(emoji, basis) {
+  const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'>" +
+    "<text x='8' y='40' font-size='30' opacity='.28'>" + emoji + "</text>" +
+    "<text x='54' y='84' font-size='24' opacity='.22'>" + emoji + "</text></svg>";
+  return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '"), ' + basis;
+}
+
+const CHAT_ACHTERGRONDEN = [
+  { id: 'nacht',    naam: 'Nacht',       css: '#090d20' },
+  { id: 'sterren',  naam: 'Sterren',     css: 'radial-gradient(#fff 1px, transparent 1.6px) 0 0 / 64px 64px, radial-gradient(#ffe9a8 1px, transparent 1.6px) 32px 32px / 64px 64px, linear-gradient(180deg, #0b1030, #2a1a5e)' },
+  { id: 'zonsondergang', naam: 'Zonsondergang', css: 'linear-gradient(160deg, #ff9a76, #ff5f8f 50%, #6d4fc2)' },
+  { id: 'oceaan',   naam: 'Oceaan',      css: 'linear-gradient(160deg, #00c6ff, #0072ff)' },
+  { id: 'bos',      naam: 'Bos',         css: 'linear-gradient(160deg, #134e5e, #71b280)' },
+  { id: 'snoep',    naam: 'Snoep',       css: 'linear-gradient(160deg, #ff9ccf, #c471f5)' },
+  { id: 'zon',      naam: 'Zonnig',      css: 'linear-gradient(160deg, #f6d365, #fda085)' },
+  { id: 'regenboog', naam: 'Regenboog',  css: 'linear-gradient(160deg, #ff6b6b, #feca57, #48dbfb, #a06bff)' },
+  { id: 'stippen',  naam: 'Stippen',     css: 'radial-gradient(rgba(255,255,255,.28) 3px, transparent 3.5px) 0 0 / 28px 28px, linear-gradient(160deg, #ff6b6b, #feca57)' },
+  { id: 'ruit',     naam: 'Ruiten',      css: 'repeating-linear-gradient(45deg, rgba(255,255,255,.09) 0 14px, transparent 14px 28px), linear-gradient(160deg, #1e3c72, #2a5298)' },
+  { id: 'pootjes',  naam: 'Pootjes',     css: chatEmojiPatroon('🐾', 'linear-gradient(160deg, #3a2a6a, #6d4fc2)') },
+  { id: 'hartjes',  naam: 'Hartjes',     css: chatEmojiPatroon('💖', 'linear-gradient(160deg, #ff7eb3, #ff758c)') },
+  { id: 'vlinders', naam: 'Vlinders',    css: chatEmojiPatroon('🦋', 'linear-gradient(160deg, #56ccf2, #2f80ed)') }
+];
+
+const CHAT_TEKSTKLEUREN = ['#ffffff', '#ffe066', '#7cfc9a', '#7fdbff', '#ff9ecb', '#ff8a65', '#1a1a2e', '#000000'];
+
+let chatStijlPaneelOpen = false;
+let chatPoppetjeTab = 'dieren';
+let chatGekozenPoppetje = null; // { soort, item }
+
+function laadChatStijlen() {
+  try { return JSON.parse(localStorage.getItem(CHAT_STIJL_SLEUTEL) || '{}') || {}; } catch (e) { return {}; }
+}
+
+function huidigeChatStijl() {
+  const gebruiker = profielFirebaseGebruiker();
+  const alle = laadChatStijlen();
+  const stijl = (gebruiker && huidigChatUid && alle[chatIdVoor(gebruiker.uid, huidigChatUid)]) || {};
+  return { achtergrond: stijl.achtergrond || 'nacht', kleur: stijl.kleur || '#ffffff' };
+}
+
+function slaChatStijlOp(deel) {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker || !huidigChatUid) return;
+  const alle = laadChatStijlen();
+  const id = chatIdVoor(gebruiker.uid, huidigChatUid);
+  alle[id] = Object.assign({}, huidigeChatStijl(), deel);
+  try { localStorage.setItem(CHAT_STIJL_SLEUTEL, JSON.stringify(alle)); } catch (e) {}
+  pasChatStijlToe();
+}
+
+function hexIsDonker(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+  if (!m) return false;
+  const n = parseInt(m[1], 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) < 140;
+}
+
+function pasChatStijlToe() {
+  const scherm = document.getElementById('chat-overlay');
+  const stijl = huidigeChatStijl();
+  const achtergrond = CHAT_ACHTERGRONDEN.find(x => x.id === stijl.achtergrond) || CHAT_ACHTERGRONDEN[0];
+  scherm.style.setProperty('--chat-achtergrond', achtergrond.css);
+  scherm.style.setProperty('--chat-tekst', stijl.kleur);
+  scherm.dataset.tekst = hexIsDonker(stijl.kleur) ? 'donker' : 'licht';
+  bouwChatStijlKiezers();
+}
+
+function bouwChatStijlKiezers() {
+  const stijl = huidigeChatStijl();
+  const bg = document.getElementById('chat-achtergronden');
+  const kl = document.getElementById('chat-tekstkleuren');
+  if (!bg || !kl) return;
+  bg.innerHTML = '';
+  CHAT_ACHTERGRONDEN.forEach(x => {
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'chat-achtergrond-keuze' + (x.id === stijl.achtergrond ? ' actief' : '');
+    knop.style.background = x.css;
+    knop.title = x.naam;
+    knop.addEventListener('click', () => slaChatStijlOp({ achtergrond: x.id }));
+    bg.appendChild(knop);
+  });
+  kl.innerHTML = '';
+  CHAT_TEKSTKLEUREN.forEach(kleur => {
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'chat-kleur-keuze' + (kleur.toLowerCase() === String(stijl.kleur).toLowerCase() ? ' actief' : '');
+    knop.style.background = kleur;
+    knop.title = kleur;
+    knop.addEventListener('click', () => slaChatStijlOp({ kleur }));
+    kl.appendChild(knop);
+  });
+  const eigen = document.createElement('input');
+  eigen.type = 'color';
+  eigen.className = 'chat-kleur-eigen';
+  eigen.title = 'Eigen kleur';
+  eigen.value = /^#[0-9a-f]{6}$/i.test(stijl.kleur) ? stijl.kleur : '#ffffff';
+  eigen.addEventListener('input', () => slaChatStijlOp({ kleur: eigen.value }));
+  kl.appendChild(eigen);
+}
+
+function chatDierVoorAccessoire() {
+  return geldigDier(huidigProfielDier()) ? huidigProfielDier() : (haalBezitDieren()[0] || DIEREN[0]);
+}
+
+function chatPoppetjeSvgVoor(soort, item) {
+  if (soort === 'dier') return poppetjeSvg(item, {});
+  const acc = {};
+  const groep = ACCESSOIRE_GROEPEN.find(g => g.items.indexOf(item) !== -1);
+  if (groep) acc[groep.plek] = item;
+  else if (ACCESSOIRES[item] && ACCESSOIRES[item].plek) acc[ACCESSOIRES[item].plek] = item;
+  return poppetjeSvg(chatDierVoorAccessoire(), acc);
+}
+
+function chatPoppetjeNaam(soort, item) {
+  if (soort === 'dier') return item;
+  return (ACCESSOIRES[item] && ACCESSOIRES[item].naam) || item;
+}
+
+function chatPoppetjeGeldig(soort, item) {
+  return soort === 'dier' ? !!geldigDier(item) : (soort === 'accessoire' && !!ACCESSOIRES[item]);
+}
+
 function openChat(uid, naam) {
   huidigChatUid = uid; huidigChatNaam = naam;
   const overlay = document.getElementById('chat-overlay');
-  document.getElementById('chat-titel').textContent = 'Chat met ' + naam;
+  document.getElementById('chat-titel').textContent = naam;
+  chatStijlPaneelOpen = false;
+  document.getElementById('chat-stijl-paneel').hidden = true;
+  document.getElementById('chat-poppetjes-paneel').hidden = true;
+  chatGekozenPoppetje = null;
+  document.getElementById('chat-poppetje-knop-plaatje').innerHTML =
+    geldigDier(huidigProfielDier()) ? poppetjeSvg(huidigProfielDier(), {}) : '🐾';
   overlay.classList.add('actief');
+  document.body.classList.add('chat-open');
+  pasChatStijlToe();
   laadChatBerichten();
+}
+
+function sluitChat() {
+  const gebruiker = profielFirebaseGebruiker();
+  if (gebruiker && huidigChatUid) {
+    db.ref('chats/' + chatIdVoor(gebruiker.uid, huidigChatUid) + '/berichten').off();
+  }
+  document.getElementById('chat-overlay').classList.remove('actief');
+  document.body.classList.remove('chat-open');
+  huidigChatUid = '';
+}
+
+function chatBerichtenRef() {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker || !huidigChatUid) return null;
+  return db.ref('chats/' + chatIdVoor(gebruiker.uid, huidigChatUid) + '/berichten');
 }
 
 function laadChatBerichten() {
   const gebruiker = profielFirebaseGebruiker();
-  if (!gebruiker || !huidigChatUid) return;
+  const ref = chatBerichtenRef();
+  if (!gebruiker || !ref) return;
   const lijst = document.getElementById('chat-berichten');
-  db.ref('chats/' + chatIdVoor(gebruiker.uid, huidigChatUid) + '/berichten').off();
-  db.ref('chats/' + chatIdVoor(gebruiker.uid, huidigChatUid) + '/berichten').limitToLast(100).on('value', snap => {
+  ref.off();
+  ref.limitToLast(100).on('value', snap => {
+    const onderaan = lijst.scrollHeight - lijst.scrollTop - lijst.clientHeight < 80 || !lijst.childElementCount;
     lijst.innerHTML = '';
     snap.forEach(child => {
       const b = child.val() || {};
-      const p = document.createElement('p');
-      p.className = b.uid === gebruiker.uid ? 'chat-bericht eigen' : 'chat-bericht';
-      p.textContent = (b.gebruikersnaam || 'Gebruiker') + ': ' + (b.tekst || '');
+      const eigen = b.uid === gebruiker.uid;
+      if (b.type === 'poppetje') { lijst.appendChild(maakChatPoppetjeBericht(child.key, b, eigen, gebruiker)); return; }
+      const p = document.createElement('div');
+      p.className = 'chat-bericht' + (eigen ? ' eigen' : '');
+      const wie = document.createElement('span');
+      wie.className = 'chat-bericht-naam';
+      wie.textContent = eigen ? 'Jij' : (b.gebruikersnaam || 'Gebruiker');
+      const tekst = document.createElement('span');
+      tekst.className = 'chat-bericht-tekst';
+      tekst.textContent = b.tekst || '';
+      p.append(wie, tekst);
       lijst.appendChild(p);
     });
-    lijst.scrollTop = lijst.scrollHeight;
+    if (onderaan) lijst.scrollTop = lijst.scrollHeight;
+  });
+}
+
+function maakChatPoppetjeBericht(key, b, eigen, gebruiker) {
+  const kaart = document.createElement('div');
+  kaart.className = 'chat-bericht chat-poppetje-bericht' + (eigen ? ' eigen' : '');
+  const geldig = chatPoppetjeGeldig(b.soort, b.item);
+  const wie = document.createElement('span');
+  wie.className = 'chat-bericht-naam';
+  wie.textContent = eigen ? 'Jij' : (b.gebruikersnaam || 'Gebruiker');
+  const plaatje = document.createElement('div');
+  plaatje.className = 'chat-poppetje-plaatje';
+  if (geldig) plaatje.innerHTML = chatPoppetjeSvgVoor(b.soort, b.item);
+  const label = document.createElement('div');
+  label.className = 'chat-poppetje-label';
+  const naam = geldig ? chatPoppetjeNaam(b.soort, b.item) : 'onbekend poppetje';
+  label.textContent = '🎁 ' + (eigen ? 'Je stuurt ' : 'Cadeau: ') + naam;
+  kaart.append(wie, plaatje, label);
+
+  const status = document.createElement('div');
+  status.className = 'chat-poppetje-status';
+  if (b.status === 'geaccepteerd') {
+    status.textContent = '✓ Geaccepteerd';
+  } else if (b.status === 'geweigerd') {
+    status.textContent = '✕ Geweigerd';
+  } else if (b.status === 'mislukt') {
+    status.textContent = 'Niet gelukt: dit poppetje is er niet meer';
+  } else if (b.status === 'bezig') {
+    status.textContent = 'Bezig...';
+  } else if (!eigen && b.aan === gebruiker.uid && geldig) {
+    const ja = document.createElement('button');
+    ja.type = 'button'; ja.className = 'btn btn-primary'; ja.textContent = '✓ Accepteren';
+    ja.addEventListener('click', () => { ja.disabled = true; accepteerChatPoppetje(key, b); });
+    const nee = document.createElement('button');
+    nee.type = 'button'; nee.className = 'btn btn-secondary'; nee.textContent = '✕ Weigeren';
+    nee.addEventListener('click', () => { nee.disabled = true; wijzigChatPoppetjeStatus(key, 'geweigerd'); });
+    status.append(ja, nee);
+  } else if (eigen) {
+    const wacht = document.createElement('span');
+    wacht.textContent = '⏳ Wacht op acceptatie';
+    const annuleer = document.createElement('button');
+    annuleer.type = 'button'; annuleer.className = 'btn btn-secondary'; annuleer.textContent = 'Terugtrekken';
+    annuleer.addEventListener('click', () => { annuleer.disabled = true; wijzigChatPoppetjeStatus(key, 'geweigerd'); });
+    status.append(wacht, annuleer);
+  }
+  kaart.appendChild(status);
+  return kaart;
+}
+
+function wijzigChatPoppetjeStatus(key, status) {
+  const ref = chatBerichtenRef();
+  if (!ref) return Promise.resolve();
+  return ref.child(key).child('status').transaction(v => (v === 'open' ? status : v)).catch(() => {});
+}
+
+// Ontvanger accepteert: de verzender heeft er dan één minder, de ontvanger één erbij.
+function accepteerChatPoppetje(key, b) {
+  const gebruiker = profielFirebaseGebruiker();
+  const ref = chatBerichtenRef();
+  if (!gebruiker || !ref) return;
+  if (b.aan !== gebruiker.uid || b.uid !== huidigChatUid || !chatPoppetjeGeldig(b.soort, b.item)) return;
+  const pad = b.soort === 'dier' ? 'dieren/' : 'accessoires/';
+  const vanRef = db.ref(SOCIAAL_PROFIEL_PAD + '/' + b.uid + '/bezit/' + pad + b.item);
+  const naarRef = db.ref(SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid + '/bezit/' + pad + b.item);
+  const statusRef = ref.child(key).child('status');
+  let geclaimd = false;
+  statusRef.transaction(v => {
+    if (v === 'open') { geclaimd = true; return 'bezig'; }
+    geclaimd = false;
+    return v;
+  }).then(res => {
+    if (!res.committed || !geclaimd) throw new Error('al-afgehandeld');
+    let genoeg = false;
+    return vanRef.transaction(v => {
+      const n = Number(v) || 0;
+      if (n > 0) { genoeg = true; return n - 1; }
+      genoeg = false;
+      return v;
+    }).then(r => {
+      if (!r.committed || !genoeg) return statusRef.set('mislukt');
+      return naarRef.transaction(v => (Number(v) || 0) + 1).then(() => statusRef.set('geaccepteerd'));
+    });
+  }).catch(err => {
+    if (err && err.message === 'al-afgehandeld') return;
+    console.error('Poppetje accepteren mislukt:', err);
+    statusRef.transaction(v => (v === 'bezig' ? 'open' : v)).catch(() => {});
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    alert('Accepteren is mislukt' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.');
   });
 }
 
@@ -4188,10 +4438,127 @@ function verstuurChatBericht() {
   const gebruiker = profielFirebaseGebruiker();
   const input = document.getElementById('chat-input');
   const tekst = veiligeChatTekst(input.value);
-  if (!gebruiker || !huidigChatUid || !tekst) return;
-  const ref = db.ref('chats/' + chatIdVoor(gebruiker.uid, huidigChatUid) + '/berichten').push();
-  ref.set({ uid: gebruiker.uid, gebruikersnaam: huidigeMakerNaam(), tekst: tekst, tijd: firebase.database.ServerValue.TIMESTAMP });
+  const ref = chatBerichtenRef();
+  if (!gebruiker || !ref || !tekst) return;
+  ref.push().set({ uid: gebruiker.uid, gebruikersnaam: huidigeMakerNaam(), tekst: tekst, tijd: firebase.database.ServerValue.TIMESTAMP });
   input.value = '';
+}
+
+// Aantal exemplaren dat je nog echt kunt sturen (niet al onderweg in open verzoeken).
+function chatBeschikbaarAantal(soort, item) {
+  return aantalVan(soort, item) - (chatOpenAangeboden[soort + ':' + item] || 0);
+}
+let chatOpenAangeboden = {};
+
+function bouwChatPoppetjesLijst() {
+  const lijst = document.getElementById('chat-poppetjes-lijst');
+  if (!lijst) return;
+  lijst.innerHTML = '';
+  const opDieren = chatPoppetjeTab === 'dieren';
+  const soort = opDieren ? 'dier' : 'accessoire';
+  const bezit = opDieren ? haalBezitDieren() : haalBezitAccessoires();
+  if (!bezit.length) { lijst.innerHTML = '<p class="subtitel">Je hebt hier nog niets van.</p>'; return; }
+  bezit.forEach(item => {
+    const beschikbaar = chatBeschikbaarAantal(soort, item);
+    const laatste = aantalVan(soort, item) <= 1 && bezit.length <= 1;
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    const gekozen = chatGekozenPoppetje && chatGekozenPoppetje.soort === soort && chatGekozenPoppetje.item === item;
+    knop.className = 'dier-knop verzameling-item in-bezit' + (gekozen ? ' gekozen' : '');
+    knop.innerHTML = chatPoppetjeSvgVoor(soort, item);
+    const badge = document.createElement('span');
+    badge.className = 'dier-knop-badge';
+    badge.textContent = String(Math.max(0, beschikbaar));
+    knop.appendChild(badge);
+    if (beschikbaar < 1 || laatste) {
+      knop.disabled = true;
+      knop.classList.add('niet-in-bezit');
+      knop.title = laatste ? 'Je laatste kun je niet versturen' : 'Al onderweg';
+    } else {
+      knop.title = chatPoppetjeNaam(soort, item);
+      knop.addEventListener('click', () => {
+        chatGekozenPoppetje = { soort, item };
+        bouwChatPoppetjesLijst();
+        werkChatKeuzeBij();
+      });
+    }
+    lijst.appendChild(knop);
+  });
+}
+
+function werkChatKeuzeBij() {
+  const tekst = document.getElementById('chat-poppetjes-keuze');
+  const knop = document.getElementById('btn-chat-poppetje-verzenden');
+  if (chatGekozenPoppetje) {
+    tekst.textContent = chatPoppetjeNaam(chatGekozenPoppetje.soort, chatGekozenPoppetje.item) + ' → ' + huidigChatNaam;
+    knop.disabled = false;
+  } else {
+    tekst.textContent = 'Kies een poppetje om te versturen';
+    knop.disabled = true;
+  }
+}
+
+function zetChatTab(tab) {
+  chatPoppetjeTab = tab;
+  document.getElementById('chat-tab-dieren').classList.toggle('actief', tab === 'dieren');
+  document.getElementById('chat-tab-accessoires').classList.toggle('actief', tab === 'accessoires');
+  bouwChatPoppetjesLijst();
+}
+
+function togglePoppetjesPaneel() {
+  const paneel = document.getElementById('chat-poppetjes-paneel');
+  const open = paneel.hidden;
+  paneel.hidden = !open;
+  if (open) {
+    document.getElementById('chat-stijl-paneel').hidden = true;
+    chatGekozenPoppetje = null;
+    // Tel open verzoeken van mij, zodat je niet meer aanbiedt dan je hebt.
+    const gebruiker = profielFirebaseGebruiker();
+    const ref = chatBerichtenRef();
+    chatOpenAangeboden = {};
+    if (gebruiker && ref) {
+      ref.limitToLast(100).once('value').then(snap => {
+        snap.forEach(c => {
+          const m = c.val() || {};
+          if (m.type === 'poppetje' && m.uid === gebruiker.uid && m.status === 'open') {
+            const s = m.soort + ':' + m.item;
+            chatOpenAangeboden[s] = (chatOpenAangeboden[s] || 0) + 1;
+          }
+        });
+        bouwChatPoppetjesLijst(); werkChatKeuzeBij();
+      }).catch(() => { bouwChatPoppetjesLijst(); werkChatKeuzeBij(); });
+    }
+    bouwChatPoppetjesLijst(); werkChatKeuzeBij();
+  }
+}
+
+function verstuurChatPoppetje() {
+  const gebruiker = profielFirebaseGebruiker();
+  const ref = chatBerichtenRef();
+  const keuze = chatGekozenPoppetje;
+  if (!gebruiker || !ref || !keuze) return;
+  if (!socialeVrienden[huidigChatUid]) { alert('Je kunt alleen poppetjes naar vrienden sturen.'); return; }
+  if (!chatPoppetjeGeldig(keuze.soort, keuze.item) || chatBeschikbaarAantal(keuze.soort, keuze.item) < 1) {
+    alert('Je hebt dit poppetje niet (meer).'); return;
+  }
+  const tekst = '🎁 ' + chatPoppetjeNaam(keuze.soort, keuze.item);
+  ref.push().set({
+    uid: gebruiker.uid,
+    gebruikersnaam: huidigeMakerNaam(),
+    type: 'poppetje',
+    soort: keuze.soort,
+    item: keuze.item,
+    aan: huidigChatUid,
+    status: 'open',
+    tekst: tekst,
+    tijd: firebase.database.ServerValue.TIMESTAMP
+  }).then(() => {
+    chatGekozenPoppetje = null;
+    document.getElementById('chat-poppetjes-paneel').hidden = true;
+  }).catch(err => {
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    alert('Versturen is mislukt' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.');
+  });
 }
 
 function openVriendStuurOverlay(type, item) {
@@ -4259,11 +4626,17 @@ document.getElementById('btn-vrienden-zoeken').addEventListener('click', () => {
 document.getElementById('input-zoek-vrienden').addEventListener('keydown', e => {
   if (e.key === 'Enter') zoekGebruikersOpNaam(e.target.value);
 });
-document.getElementById('btn-chat-sluiten').addEventListener('click', () => {
-  document.getElementById('chat-overlay').classList.remove('actief');
-  huidigChatUid = '';
-});
+document.getElementById('btn-chat-sluiten').addEventListener('click', sluitChat);
 document.getElementById('btn-chat-sturen').addEventListener('click', verstuurChatBericht);
+document.getElementById('btn-chat-stijl').addEventListener('click', () => {
+  const paneel = document.getElementById('chat-stijl-paneel');
+  paneel.hidden = !paneel.hidden;
+  if (!paneel.hidden) document.getElementById('chat-poppetjes-paneel').hidden = true;
+});
+document.getElementById('btn-chat-poppetje').addEventListener('click', togglePoppetjesPaneel);
+document.getElementById('chat-tab-dieren').addEventListener('click', () => zetChatTab('dieren'));
+document.getElementById('chat-tab-accessoires').addEventListener('click', () => zetChatTab('accessoires'));
+document.getElementById('btn-chat-poppetje-verzenden').addEventListener('click', verstuurChatPoppetje);
 document.getElementById('chat-input').addEventListener('keydown', e => { if (e.key === 'Enter') verstuurChatBericht(); });
 document.getElementById('btn-stuur-vriend-sluiten').addEventListener('click', sluitStuurVriendOverlay);
 
