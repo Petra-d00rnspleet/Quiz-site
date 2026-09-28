@@ -11,11 +11,32 @@ let sitebeheerActief = false;
 // Voor gewone spelers gebruiken we anonieme Firebase-authenticatie. Daardoor
 // krijgt iedere browser een eigen veilige Firebase-ID zonder dat er een wachtwoord
 // nodig is. Die ID koppelen we aan de gekozen gebruikersnaam voor vrienden/chat.
+let socialeAuthFout = '';
+let socialeAuthPogingen = 0;
 function zorgVoorSocialeGebruiker() {
-  if (typeof auth === 'undefined') return;
-  if (!auth.currentUser) {
-    auth.signInAnonymously().catch(() => {});
+  if (typeof auth === 'undefined') return Promise.resolve(null);
+  if (auth.currentUser) return Promise.resolve(auth.currentUser);
+  return auth.signInAnonymously().then(res => {
+    socialeAuthFout = '';
+    return res && res.user ? res.user : auth.currentUser;
+  }).catch(err => {
+    // Niet meer stil negeren: zonder deze aanmelding werken vrienden en chat niet.
+    socialeAuthFout = (err && err.code) || 'onbekend';
+    console.error('Anoniem aanmelden bij Firebase mislukt:', err);
+    if (socialeAuthPogingen++ < 3) setTimeout(zorgVoorSocialeGebruiker, 3000);
+    return null;
+  });
+}
+
+// Uitleg voor als vrienden/chat niet kunnen werken omdat er geen (anoniem) account is.
+function socialeVerbindingsMelding() {
+  if (socialeAuthFout === 'auth/operation-not-allowed' || socialeAuthFout === 'auth/admin-restricted-operation') {
+    return 'Vrienden en chat werken nog niet: zet in Firebase bij Authentication > Sign-in method de provider "Anoniem" aan.';
   }
+  if (socialeAuthFout === 'auth/unauthorized-domain') {
+    return 'Vrienden en chat werken niet: zet het domein van deze website in Firebase bij Authentication > Instellingen > Geautoriseerde domeinen.';
+  }
+  return 'Je bent nog niet verbonden met vrienden en chat' + (socialeAuthFout ? ' (' + socialeAuthFout + ')' : '') + '. Controleer je internet en probeer het zo nog eens.';
 }
 
 const sitebeheerOverlayEl = document.getElementById('sitebeheer-overlay');
@@ -4304,7 +4325,7 @@ function renderVrienden() {
         chat.appendChild(badge);
       }
       chat.addEventListener('click', () => openChat(uid, info.gebruikersnaam || 'Vriend'));
-      rij.append(naam, chat); lijst.appendChild(rij);
+      rij.append(maakMiniPoppetje(uid, 'vriend-mini-poppetje'), naam, chat); lijst.appendChild(rij);
     });
   if (!Object.keys(socialeVrienden).length) lijst.innerHTML = '<p class="subtitel">Je hebt nog geen vrienden.</p>';
 
@@ -4317,7 +4338,7 @@ function renderVrienden() {
     const knop = document.createElement('button');
     knop.type = 'button'; knop.className = 'btn btn-primary'; knop.textContent = '✓ Accepteren';
     knop.addEventListener('click', () => accepteerVriendschapsverzoek(uid, verzoek));
-    rij.append(naam, knop); verzoeken.appendChild(rij);
+    rij.append(maakMiniPoppetje(uid, 'vriend-mini-poppetje'), naam, knop); verzoeken.appendChild(rij);
   });
   if (!Object.keys(socialeVerzoeken).length) verzoeken.innerHTML = '<p class="subtitel">Geen nieuwe verzoeken.</p>';
   updateVriendenBadge();
@@ -4473,10 +4494,64 @@ function chatPoppetjeGeldig(soort, item) {
   return soort === 'dier' ? !!geldigDier(item) : (soort === 'accessoire' && !!ACCESSOIRES[item]);
 }
 
+// ---------------- Profielpoppetjes (bij de naam in chat en vriendenlijst) ----------------
+
+let chatProfielCache = {};      // uid -> { dier, accessoires } (van een ander)
+let chatProfielLaden = {};
+
+function poppetjeHtmlVoorUid(uid) {
+  const gebruiker = profielFirebaseGebruiker();
+  if (gebruiker && uid === gebruiker.uid) return profielPoppetjeHtml();
+  const p = chatProfielCache[uid];
+  if (p && geldigDier(p.dier)) return poppetjeSvg(p.dier, geldigeAccessoires(p.accessoires));
+  return '';
+}
+
+function maakMiniPoppetje(uid, klasse) {
+  const el = document.createElement('div');
+  el.className = klasse;
+  el.dataset.uid = uid;
+  el.innerHTML = poppetjeHtmlVoorUid(uid) || '<span class="mini-poppetje-leeg">🐾</span>';
+  laadChatProfiel(uid).then(() => {
+    const html = poppetjeHtmlVoorUid(uid);
+    if (html && el.isConnected !== false) el.innerHTML = html;
+  });
+  return el;
+}
+
+function laadChatProfiel(uid) {
+  if (!uid) return Promise.resolve(null);
+  if (chatProfielCache[uid]) return Promise.resolve(chatProfielCache[uid]);
+  if (chatProfielLaden[uid]) return chatProfielLaden[uid];
+  chatProfielLaden[uid] = db.ref(SOCIAAL_PROFIEL_PAD + '/' + uid).once('value').then(snap => {
+    const p = snap.val() || {};
+    chatProfielCache[uid] = { dier: p.dier || '', accessoires: p.accessoires || {} };
+    delete chatProfielLaden[uid];
+    return chatProfielCache[uid];
+  }).catch(() => { delete chatProfielLaden[uid]; return null; });
+  return chatProfielLaden[uid];
+}
+
+// De naam boven een bericht, met het profielpoppetje ervoor.
+function maakChatWie(eigen, b) {
+  const gebruiker = profielFirebaseGebruiker();
+  const uid = eigen ? (gebruiker && gebruiker.uid) : (b.uid || huidigChatUid);
+  const wie = document.createElement('span');
+  wie.className = 'chat-bericht-naam';
+  wie.appendChild(maakMiniPoppetje(uid, 'chat-bericht-poppetje'));
+  const t = document.createElement('span');
+  t.textContent = eigen ? 'Jij' : (b.gebruikersnaam || huidigChatNaam || 'Gebruiker');
+  wie.appendChild(t);
+  return wie;
+}
+
 function openChat(uid, naam) {
   huidigChatUid = uid; huidigChatNaam = naam;
   const overlay = document.getElementById('chat-overlay');
   document.getElementById('chat-titel').textContent = naam;
+  const kopPop = document.getElementById('chat-kop-poppetje');
+  kopPop.innerHTML = poppetjeHtmlVoorUid(uid) || '<span class="mini-poppetje-leeg">🐾</span>';
+  laadChatProfiel(uid).then(() => { if (huidigChatUid === uid) kopPop.innerHTML = poppetjeHtmlVoorUid(uid) || kopPop.innerHTML; });
   chatStijlPaneelOpen = false;
   document.getElementById('chat-stijl-paneel').hidden = true;
   document.getElementById('chat-poppetjes-paneel').hidden = true;
@@ -4521,9 +4596,7 @@ function laadChatBerichten() {
       if (b.type === 'quiz') { lijst.appendChild(maakChatQuizBericht(child.key, b, eigen, gebruiker)); return; }
       const p = document.createElement('div');
       p.className = 'chat-bericht' + (eigen ? ' eigen' : '');
-      const wie = document.createElement('span');
-      wie.className = 'chat-bericht-naam';
-      wie.textContent = eigen ? 'Jij' : (b.gebruikersnaam || 'Gebruiker');
+      const wie = maakChatWie(eigen, b);
       const tekst = document.createElement('span');
       tekst.className = 'chat-bericht-tekst';
       tekst.textContent = b.tekst || '';
@@ -4569,9 +4642,7 @@ function maakChatPoppetjeBericht(key, b, eigen, gebruiker) {
   const kaart = document.createElement('div');
   kaart.className = 'chat-bericht chat-poppetje-bericht' + (eigen ? ' eigen' : '');
   const geldig = chatPoppetjeGeldig(b.soort, b.item);
-  const wie = document.createElement('span');
-  wie.className = 'chat-bericht-naam';
-  wie.textContent = eigen ? 'Jij' : (b.gebruikersnaam || 'Gebruiker');
+  const wie = maakChatWie(eigen, b);
   const plaatje = document.createElement('div');
   plaatje.className = 'chat-poppetje-plaatje';
   if (geldig) plaatje.innerHTML = chatPoppetjeSvgVoor(b.soort, b.item);
@@ -4657,10 +4728,15 @@ function verstuurChatBericht() {
   const gebruiker = profielFirebaseGebruiker();
   const input = document.getElementById('chat-input');
   const tekst = veiligeChatTekst(input.value);
+  if (!tekst) return;
   const ref = chatBerichtenRef();
-  if (!gebruiker || !ref || !tekst) return;
-  ref.push().set({ uid: gebruiker.uid, gebruikersnaam: huidigeMakerNaam(), tekst: tekst, tijd: firebase.database.ServerValue.TIMESTAMP });
+  if (!gebruiker || !ref) { alert(socialeVerbindingsMelding()); zorgVoorSocialeGebruiker(); return; }
   input.value = '';
+  ref.push().set({ uid: gebruiker.uid, gebruikersnaam: huidigeMakerNaam(), tekst: tekst, tijd: firebase.database.ServerValue.TIMESTAMP }).catch(err => {
+    input.value = tekst;
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    alert('Het bericht kon niet worden verstuurd' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd en of Anoniem aanmelden aan staat.');
+  });
 }
 
 // Aantal exemplaren dat je nog echt kunt sturen (niet al onderweg in open verzoeken).
@@ -4886,9 +4962,7 @@ function verstuurChatQuiz(q) {
 function maakChatQuizBericht(key, b, eigen, gebruiker) {
   const kaart = document.createElement('div');
   kaart.className = 'chat-bericht chat-poppetje-bericht chat-quiz-bericht' + (eigen ? ' eigen' : '');
-  const wie = document.createElement('span');
-  wie.className = 'chat-bericht-naam';
-  wie.textContent = eigen ? 'Jij' : (b.gebruikersnaam || 'Gebruiker');
+  const wie = maakChatWie(eigen, b);
   const icoon = document.createElement('div');
   icoon.className = 'chat-quiz-icoon';
   icoon.textContent = '📝';
@@ -5116,8 +5190,12 @@ document.getElementById('btn-profiel-overlay-sluiten').addEventListener('click',
 document.getElementById('btn-vrienden-badge').addEventListener('click', () => {
   metProfielVereist(() => {
     document.getElementById('vrienden-overlay').classList.add('actief');
-    laadVriendenEnVerzoeken();
-    updateVriendenBadge();
+    zorgVoorSocialeGebruiker().then(gebruiker => {
+      const meldingEl = document.getElementById('vrienden-verbindingsmelding');
+      if (meldingEl) { meldingEl.hidden = !!gebruiker; meldingEl.textContent = gebruiker ? '' : socialeVerbindingsMelding(); }
+      if (gebruiker) { registreerSociaalProfiel(); laadVriendenEnVerzoeken(); }
+      updateVriendenBadge();
+    });
   });
 });
 
