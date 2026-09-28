@@ -25,6 +25,14 @@ WAT IS ER NIEUW IN DE CHAT
   (1 bij een bericht, 2 bij twee, enzovoort). Vrienden met nieuwe berichten staan bovenaan de lijst. Het cijfertje bij de knop
   "Vrienden" rechtsboven telt de nieuwe berichten en de vriendschapsverzoeken samen. Zodra je de chat opent, verdwijnt het cijfertje.
   Wat je gelezen hebt wordt onthouden in je eigen browser, dus op een ander apparaat telt het opnieuw.
+- Quiz sturen: naast het schrijfvak staat een knopje 📝 met een plusje. Kies een van je quizzen en klik op "Sturen".
+  In de chat verschijnt een kaartje. De ander kan Accepteren of Weigeren. Bij accepteren staat de quiz ook bij zijn "Mijn quizzen"
+  (met "Gedeeld door <naam>") en kan hij hem aanpassen, spelen en hosten.
+  Het is dezelfde quiz (dezelfde code): aanpassingen zie je allebei, en jij houdt hem ook zelf.
+  Haalt de ander hem uit zijn lijst ("Uit mijn lijst"), dan verdwijnt hij alleen bij hem. Verwijdert de maker de quiz,
+  dan verdwijnt hij bij beiden. Wie de quiz heeft geaccepteerd op een ander apparaat, kan hem via het kaartje in de chat
+  opnieuw toevoegen. Een quiz die je stuurt kun je terugtrekken zolang hij niet is geaccepteerd.
+  Chatberichten met een quiz hebben in Firebase: type "quiz", code, titel, aantalVragen, aan en status (net als bij poppetjes).
 
 POPPETJE WIJZIGEN
 - Klik rechtsboven op je poppetje > "Poppetje wijzigen". Er opent een beeldvullend scherm met bovenin een groot voorbeeld
