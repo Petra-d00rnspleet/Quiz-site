@@ -36,6 +36,14 @@
         <p id="profiel-naam-foutmelding" class="foutmelding"></p>
       </div>
       <button class="btn btn-secondary" id="btn-profiel-poppetje-wijzigen" type="button">🔁 Poppetje wijzigen</button>
+      <div id="profiel-wachtwoord-blok" class="profiel-naam-paneel profiel-wachtwoord-blok">
+        <p id="profiel-wachtwoord-uitleg" class="subtitel"></p>
+        <div id="profiel-wachtwoord-formulier" class="profiel-naam-paneel" hidden>
+          <input type="password" id="input-profiel-wachtwoord" maxlength="60" placeholder="Kies een wachtwoord (minstens 6 tekens)" autocomplete="new-password">
+          <button class="btn btn-primary" id="btn-profiel-wachtwoord-opslaan" type="button">🔒 Wachtwoord instellen</button>
+        </div>
+        <p id="profiel-wachtwoord-foutmelding" class="foutmelding"></p>
+      </div>
       <button class="btn btn-secondary" id="btn-profiel-overlay-sluiten" type="button">Sluiten</button>
     </div>
   </div>
@@ -156,13 +164,19 @@
     <section id="scherm-naam-invullen" class="scherm">
       <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
       <h2 class="titel-regenboog">Maak je profiel</h2>
-      <p class="subtitel">Bedenk een gebruikersnaam en kies een poppetje als profielfoto. Dit wordt lokaal in je browser onthouden (geen wachtwoord nodig). Gewone bezoekers zien je naam niet; alleen sitebeheer kan zien wie een quiz heeft gemaakt. Je gebruikersnaam en je poppetje kun je later nog wijzigen via de knop rechtsboven.</p>
+      <p class="subtitel">Bedenk een gebruikersnaam en kies een poppetje als profielfoto. Met je wachtwoord kun je op elk apparaat weer inloggen en raak je je profiel, vrienden en poppetjes nooit kwijt. Gewone bezoekers zien je naam niet; alleen sitebeheer kan zien wie een quiz heeft gemaakt. Je gebruikersnaam en je poppetje kun je later nog wijzigen via de knop rechtsboven.</p>
       <label for="input-maker-naam">Gebruikersnaam</label>
       <input type="text" id="input-maker-naam" placeholder="Bijv. Sam" maxlength="30">
       <label>Kies je poppetje (profielfoto)</label>
       <div id="profiel-dieren-kiezer" class="dieren-kiezer"></div>
+      <div id="maak-wachtwoord-blok">
+        <label for="input-maker-wachtwoord">Wachtwoord</label>
+        <input type="password" id="input-maker-wachtwoord" maxlength="60" placeholder="Minstens 6 tekens" autocomplete="new-password">
+        <p class="subtitel wachtwoord-hint">Onthoud je wachtwoord goed: we kunnen het niet opvragen.</p>
+      </div>
       <button class="btn btn-primary" id="btn-naam-bevestigen">Profiel aanmaken</button>
       <p id="naam-invullen-foutmelding" class="foutmelding"></p>
+      <button class="btn btn-secondary" id="btn-naar-inloggen" type="button">🔑 Heb je al een profiel? Inloggen</button>
     </section>
 
     <!-- SCHERM: QUIZ MAKEN (overzicht) -->
@@ -563,6 +577,7 @@
     <div class="sitebeheer-venster sociaal-venster vrienden-venster">
       <div class="sitebeheer-icoon">👥</div>
       <h3>Vrienden</h3>
+      <div id="vrienden-status" class="vrienden-status"></div>
       <div class="vrienden-hoofdknoppen">
         <button id="btn-vrienden-toevoegen" class="btn btn-primary" type="button">➕ Toevoegen</button>
       </div>
@@ -579,6 +594,28 @@
       <h3 class="vrienden-sectie-titel">👥 Mijn vrienden</h3>
       <div id="vrienden-lijst" class="vrienden-lijst"></div>
       <button id="btn-vrienden-sluiten" class="btn btn-secondary" type="button">Sluiten</button>
+    </div>
+  </div>
+
+  <!-- INLOGGEN (gebruikersnaam + wachtwoord) -->
+  <div id="inlog-overlay" class="sitebeheer-overlay">
+    <div class="sitebeheer-venster">
+      <div class="sitebeheer-icoon">🔑</div>
+      <h3>Inloggen</h3>
+      <p id="inlog-uitleg" class="subtitel"></p>
+
+      <label for="input-inlog-naam">Gebruikersnaam</label>
+      <input type="text" id="input-inlog-naam" maxlength="30" placeholder="Jouw gebruikersnaam" autocomplete="username">
+
+      <label for="input-inlog-wachtwoord">Wachtwoord</label>
+      <input type="password" id="input-inlog-wachtwoord" maxlength="60" placeholder="Wachtwoord" autocomplete="current-password">
+
+      <p id="inlog-foutmelding" class="foutmelding"></p>
+      <div class="sitebeheer-knoppen">
+        <button class="btn btn-secondary" id="btn-inlog-annuleren" type="button">Annuleren</button>
+        <button class="btn btn-primary" id="btn-inlog-bevestigen" type="button">Inloggen</button>
+      </div>
+      <button class="btn btn-secondary" id="btn-inlog-nieuwe-naam" type="button" hidden>✏️ Liever een nieuwe naam kiezen</button>
     </div>
   </div>
 
