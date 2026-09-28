@@ -2403,3 +2403,161 @@ h2.titel-regenboog.host-resultaat-vraag {
     padding: 4px;
   }
 }
+
+
+/* ---------- Beeldvullende chat ---------- */
+body.chat-open { overflow: hidden; }
+.chat-scherm {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  background: var(--chat-achtergrond, #090d20);
+  color: var(--chat-tekst, #fff);
+}
+.chat-scherm.actief { display: flex; }
+.chat-kop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  padding-top: max(10px, env(safe-area-inset-top));
+  background: rgba(10, 12, 30, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  flex: 0 0 auto;
+}
+.chat-kop h3 { flex: 1; margin: 0; font-size: 1.15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-kop-knop {
+  width: 44px; height: 44px;
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 12px;
+  background: rgba(255,255,255,.1);
+  color: #fff;
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+.chat-kop-knop:hover { background: rgba(255,255,255,.2); }
+.chat-scherm .chat-berichten {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 14px 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.chat-scherm .chat-bericht {
+  max-width: min(78%, 560px);
+  align-self: flex-start;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 16px 16px 16px 4px;
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--chat-tekst, #fff);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.chat-scherm .chat-bericht.eigen {
+  align-self: flex-end;
+  border-radius: 16px 16px 4px 16px;
+  background: rgba(109, 79, 194, 0.6);
+}
+.chat-scherm[data-tekst="donker"] .chat-bericht { background: rgba(255, 255, 255, 0.65); }
+.chat-scherm[data-tekst="donker"] .chat-bericht.eigen { background: rgba(255, 236, 160, 0.8); }
+.chat-bericht-naam { font-size: .75rem; font-weight: 700; opacity: .8; }
+.chat-bericht-tekst { overflow-wrap: anywhere; line-height: 1.35; }
+.chat-poppetje-bericht { align-items: center; text-align: center; gap: 6px !important; padding: 10px 14px !important; }
+.chat-poppetje-bericht .chat-bericht-naam { align-self: flex-start; }
+.chat-poppetje-plaatje svg { width: 110px; height: 110px; }
+.chat-poppetje-label { font-weight: 700; }
+.chat-poppetje-status { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; font-size: .9rem; }
+.chat-poppetje-status .btn { padding: 8px 12px; }
+
+.chat-scherm .chat-invoer {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+  background: rgba(10, 12, 30, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.chat-scherm .chat-invoer input { flex: 1; min-width: 0; height: 46px; }
+.chat-scherm .chat-invoer .btn { width: auto; height: 46px; }
+.chat-poppetje-knop {
+  position: relative;
+  flex: 0 0 auto;
+  width: 52px; height: 46px;
+  border: 1px solid rgba(255,255,255,.3);
+  border-radius: 12px;
+  background: rgba(255,255,255,.12);
+  cursor: pointer;
+  padding: 0;
+}
+.chat-poppetje-knop:hover { background: rgba(255,255,255,.22); }
+.chat-poppetje-knop-plaatje { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 24px; }
+.chat-poppetje-knop-plaatje svg { width: 34px; height: 34px; }
+.chat-poppetje-knop-plus {
+  position: absolute; right: -4px; bottom: -4px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #f0c04d; color: #10152e;
+  font: 800 16px/20px 'Segoe UI', Arial, sans-serif;
+  text-align: center;
+}
+
+.chat-paneel {
+  flex: 0 0 auto;
+  padding: 12px;
+  background: rgba(10, 12, 30, 0.9);
+  color: #fff;
+  border-top: 1px solid rgba(255,255,255,.15);
+  max-height: 45vh;
+  overflow-y: auto;
+}
+.chat-paneel[hidden] { display: none; }
+.chat-stijl-paneel { border-top: 0; border-bottom: 1px solid rgba(255,255,255,.15); }
+.chat-paneel-titel { margin: 4px 0 8px; font-weight: 700; }
+.chat-keuzes { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: center; }
+.chat-achtergrond-keuze, .chat-kleur-keuze {
+  width: 46px; height: 46px;
+  border: 3px solid rgba(255,255,255,.35);
+  border-radius: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+.chat-kleur-keuze { border-radius: 50%; width: 38px; height: 38px; }
+.chat-achtergrond-keuze.actief, .chat-kleur-keuze.actief { border-color: #f0c04d; box-shadow: 0 0 0 2px rgba(240,192,77,.5); }
+.chat-kleur-eigen { width: 42px; height: 38px; border: 0; padding: 0; background: none; cursor: pointer; }
+
+.chat-poppetjes-tabs { display: flex; gap: 8px; margin-bottom: 10px; }
+.chat-tab {
+  flex: 1; padding: 8px; border-radius: 10px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); color: #fff; font-weight: 700;
+}
+.chat-tab.actief { background: #f0c04d; color: #10152e; border-color: #f0c04d; }
+.chat-poppetjes-lijst { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.chat-poppetjes-lijst .dier-knop { width: 72px; height: 72px; }
+.chat-poppetjes-lijst .dier-knop svg { width: 100%; height: 100%; }
+.chat-poppetjes-lijst .dier-knop.gekozen { border-color: #f0c04d; box-shadow: 0 0 0 2px rgba(240,192,77,.5); }
+.chat-poppetjes-lijst .dier-knop:disabled { opacity: .4; cursor: not-allowed; }
+.chat-poppetjes-actie { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+.chat-poppetjes-keuze { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 520px) {
+  .chat-scherm .chat-bericht { max-width: 88%; }
+  .chat-scherm .chat-invoer .btn { padding: 0 14px; }
+}
