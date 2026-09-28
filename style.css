@@ -2561,3 +2561,8 @@ body.chat-open { overflow: hidden; }
   .chat-scherm .chat-bericht { max-width: 88%; }
   .chat-scherm .chat-invoer .btn { padding: 0 14px; }
 }
+
+
+/* ---------- Gebruikersnaam wijzigen ---------- */
+.profiel-naam-paneel { display: flex; flex-direction: column; gap: 8px; width: 100%; margin: 8px 0; }
+.profiel-naam-paneel[hidden] { display: none; }
