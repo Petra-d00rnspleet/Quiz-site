@@ -313,6 +313,32 @@ function bevestigMakerNaam() {
     naamInvullenFoutmeldingEl.textContent = 'Kies ook een poppetje als profielfoto.';
     return;
   }
+  // Is deze naam al van iemand anders (bijvoorbeeld van je laptop terwijl je nu op je telefoon
+  // bent)? Dan maak je hier geen profiel met dezelfde naam: elk apparaat heeft zijn eigen profiel.
+  naamInvullenFoutmeldingEl.textContent = '';
+  controleerGebruikersnaamVrij(naam).then(vrij => {
+    if (!vrij) {
+      naamInvullenFoutmeldingEl.textContent = 'Deze naam is al in gebruik (misschien door jezelf op een ander apparaat). Kies een andere naam.';
+      return;
+    }
+    rondProfielAanmakenAf(naam);
+  });
+}
+
+// Geeft true als de naam nog vrij is of van dit account is. Lukt de controle niet
+// (geen internet of nog niet verbonden), dan blokkeren we niet en gaat het zoals eerder.
+function controleerGebruikersnaamVrij(naam) {
+  const zoeknaam = normaliseerGebruikersnaam(naam);
+  return zorgVoorSocialeGebruiker().then(gebruiker => {
+    if (!gebruiker) return true;
+    return db.ref('gebruikersnamen/' + naamSleutel(zoeknaam)).once('value').then(snap => {
+      const eigenaar = snap.val();
+      return !eigenaar || eigenaar === gebruiker.uid;
+    });
+  }).catch(() => true);
+}
+
+function rondProfielAanmakenAf(naam) {
   localStorage.setItem(MAKER_NAAM_SLEUTEL, naam);
   if (profielGekozenDier) {
     localStorage.setItem(PROFIEL_DIER_SLEUTEL, profielGekozenDier);
@@ -1626,17 +1652,11 @@ document.getElementById('tab-accessoires').addEventListener('click', () => {
 // (na een bevestigingsvraag) voor VERKOOP_PRIJS munten; grijze (nog niet in bezit) knoppen
 // doen niks.
 
-let kiezerTabVerzameling = 'dieren'; // 'dieren' of 'accessoires'
+let kiezerTabVerzameling = 'dieren'; // 'dieren', 'boven' (hoeden), 'gezicht' (brillen) of 'hoek' (extra)
 const VERKOOP_PRIJS = 5;
 
-document.getElementById('tab-verzameling-dieren').addEventListener('click', () => {
-  kiezerTabVerzameling = 'dieren';
-  bouwVerzamelingKiezer();
-});
-document.getElementById('tab-verzameling-accessoires').addEventListener('click', () => {
-  kiezerTabVerzameling = 'accessoires';
-  bouwVerzamelingKiezer();
-});
+// De tabbladen (Dieren, Hoeden, Brillen, Extra) worden in bouwVerzamelingKiezer() zelf gemaakt,
+// op dezelfde manier als in "Poppetje wijzigen".
 
 // Verkoopt een dier uit je bezit. Je laatste dier mag je niet verkopen: haalBezitDieren()
 // valt anders terug op de gratis standaarddieren zodra je bezit leeg is, en dan zou je
@@ -1675,81 +1695,7 @@ function verkoopAccessoire(emoji) {
   bouwVerzamelingKiezer();
 }
 
-function bouwVerzamelingKiezer() {
-  const kiezerEl = document.getElementById('verzameling-kiezer');
-  kiezerEl.innerHTML = '';
-
-  const opDieren = kiezerTabVerzameling === 'dieren';
-  kiezerEl.classList.toggle('accessoires', !opDieren);
-  document.getElementById('tab-verzameling-dieren').classList.toggle('actief', opDieren);
-  document.getElementById('tab-verzameling-dieren').setAttribute('aria-selected', String(opDieren));
-  document.getElementById('tab-verzameling-accessoires').classList.toggle('actief', !opDieren);
-  document.getElementById('tab-verzameling-accessoires').setAttribute('aria-selected', String(!opDieren));
-
-  const bezitDieren = haalBezitDieren();
-  const bezitAccessoires = haalBezitAccessoires();
-  const voorbeeldDier = bezitDieren[0] || DIEREN[0];
-
-  const telling = document.createElement('p');
-  telling.className = 'verzameling-telling';
-  kiezerEl.appendChild(telling);
-
-  if (opDieren) {
-    telling.textContent = bezitDieren.length + ' van de ' + DIEREN.length + ' dieren in bezit';
-
-    DIEREN.forEach(dier => {
-      const inBezit = bezitDieren.indexOf(dier) !== -1;
-      const knop = document.createElement('button');
-      knop.type = 'button';
-      knop.className = 'dier-knop' + (inBezit ? '' : ' niet-bezit');
-      knop.innerHTML = poppetjeSvg(dier, {});
-      if (inBezit) {
-        knop.setAttribute('aria-label', 'Verkoop dit dier voor ' + VERKOOP_PRIJS + ' munten');
-        knop.title = 'Verkopen voor ' + VERKOOP_PRIJS + ' munten';
-        knop.addEventListener('click', () => verkoopDier(dier));
-      } else {
-        knop.disabled = true;
-        knop.setAttribute('aria-label', 'Nog niet in bezit');
-      }
-      kiezerEl.appendChild(knop);
-    });
-  } else {
-    const totaalAccessoires = ACCESSOIRE_GROEPEN.reduce((n, g) => n + g.items.length, 0);
-    telling.textContent = bezitAccessoires.length + ' van de ' + totaalAccessoires + ' accessoires in bezit';
-
-    ACCESSOIRE_GROEPEN.forEach(groep => {
-      const kop = document.createElement('div');
-      kop.className = 'kiezer-groep-titel';
-      kop.textContent = groep.titel;
-      kiezerEl.appendChild(kop);
-
-      groep.items.forEach(emoji => {
-        const inBezit = bezitAccessoires.indexOf(emoji) !== -1;
-        const voorbeeld = {};
-        voorbeeld[groep.plek] = emoji;
-        const naam = (ACCESSOIRES[emoji] && ACCESSOIRES[emoji].naam) || 'Nog niet in bezit';
-        const knop = document.createElement('button');
-        knop.type = 'button';
-        knop.className = 'dier-knop' + (inBezit ? '' : ' niet-bezit');
-        knop.innerHTML = poppetjeSvg(voorbeeldDier, voorbeeld);
-        if (inBezit) {
-          knop.setAttribute('aria-label', 'Verkoop ' + naam + ' voor ' + VERKOOP_PRIJS + ' munten');
-          knop.title = 'Verkopen voor ' + VERKOOP_PRIJS + ' munten';
-          knop.addEventListener('click', () => verkoopAccessoire(emoji));
-        } else {
-          knop.disabled = true;
-          knop.setAttribute('aria-label', 'Nog niet in bezit');
-        }
-        kiezerEl.appendChild(knop);
-      });
-    });
-  }
-
-  const hint = document.createElement('p');
-  hint.className = 'kiezer-hint';
-  hint.textContent = '🎁 Grijze diertjes en accessoires met een slotje vind je (met een beetje geluk) in de winkel! Klik op iets dat je al hebt om het voor ' + VERKOOP_PRIJS + ' munten te verkopen.';
-  kiezerEl.appendChild(hint);
-}
+// (bouwVerzamelingKiezer() staat verderop in dit bestand.)
 
 // Toont het gekozen poppetje groot boven de tekst en markeert de gekozen knoppen.
 // `speler` is het speler-object uit de sessie (met dier en accessoires).
@@ -4018,14 +3964,47 @@ function openVerzamelItemActies(type, item) {
 }
 
 // Vervangt de verzameling-renderer zodat dubbele exemplaren zichtbaar zijn als 2, 3, ...
+// De accessoires staan verdeeld over de tabbladen Hoeden, Brillen en Extra, net als bij "Poppetje wijzigen".
+const VERZ_TAB_NAMEN = { boven: 'Hoeden', gezicht: 'Brillen', hoek: 'Extra' };
+const VERZ_TAB_ICONEN = { dieren: '🐾', boven: '🎩', gezicht: '👓', hoek: '✨' };
+
 function bouwVerzamelingKiezer() {
   const kiezerEl = document.getElementById('verzameling-kiezer');
   if (!kiezerEl) return;
   kiezerEl.innerHTML = '';
+
+  // Tabbladen
+  const tabLijst = [{ id: 'dieren', naam: 'Dieren' }].concat(
+    ACCESSOIRE_GROEPEN.map(g => ({ id: g.plek, naam: VERZ_TAB_NAMEN[g.plek] || g.titel }))
+  );
+  if (!tabLijst.some(t => t.id === kiezerTabVerzameling)) kiezerTabVerzameling = 'dieren';
+  const tabsEl = document.getElementById('verzameling-tabs');
+  if (tabsEl) {
+    tabsEl.innerHTML = '';
+    tabLijst.forEach(t => {
+      const tabKnop = document.createElement('button');
+      tabKnop.type = 'button';
+      tabKnop.className = 'pe-tab' + (t.id === kiezerTabVerzameling ? ' actief' : '');
+      tabKnop.setAttribute('role', 'tab');
+      tabKnop.setAttribute('aria-selected', String(t.id === kiezerTabVerzameling));
+      tabKnop.innerHTML = '<span class="pe-tab-icoon">' + (VERZ_TAB_ICONEN[t.id] || '✨') + '</span><span>' + t.naam + '</span>';
+      tabKnop.addEventListener('click', () => { kiezerTabVerzameling = t.id; bouwVerzamelingKiezer(); });
+      tabsEl.appendChild(tabKnop);
+    });
+  }
+
   const opDieren = kiezerTabVerzameling === 'dieren';
+  const groep = opDieren ? null : ACCESSOIRE_GROEPEN.find(g => g.plek === kiezerTabVerzameling);
+  kiezerEl.classList.toggle('accessoires', !opDieren);
+
   const bezit = opDieren ? haalBezitDieren() : haalBezitAccessoires();
-  const catalogus = opDieren ? DIEREN : Object.keys(ACCESSOIRES);
-  const aantallen = huidigeBezitAantallen();
+  const catalogus = opDieren ? DIEREN.slice() : (groep ? groep.items.slice() : []);
+
+  const telling = document.createElement('p');
+  telling.className = 'verzameling-telling';
+  const aantalInBezit = catalogus.filter(item => bezit.indexOf(item) !== -1).length;
+  telling.textContent = aantalInBezit + ' van de ' + catalogus.length + (opDieren ? ' dieren' : ' items in "' + ((groep && (VERZ_TAB_NAMEN[groep.plek] || groep.titel)) || '') + '"') + ' in bezit';
+  kiezerEl.appendChild(telling);
 
   catalogus.forEach(item => {
     const heeft = bezit.indexOf(item) !== -1;
@@ -4036,9 +4015,8 @@ function bouwVerzamelingKiezer() {
     if (opDieren) {
       knop.innerHTML = heeft ? poppetjeSvg(item, {}) : '<span class="verzameling-slot">🔒</span>';
     } else {
-      const voorbeeldDier = huidigProfielDier() || bezit[0] || DIEREN[0];
+      const voorbeeldDier = geldigDier(huidigProfielDier()) || bezit[0] || DIEREN[0];
       const acc = {};
-      const groep = ACCESSOIRE_GROEPEN.find(g => g.items.indexOf(item) !== -1);
       if (groep) acc[groep.plek] = item;
       knop.innerHTML = heeft ? poppetjeSvg(voorbeeldDier, acc) : '<span class="verzameling-slot">🔒</span>';
     }
