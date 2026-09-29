@@ -1,670 +1,5245 @@
-<!DOCTYPE html>
-<html lang="nl">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Quiz Maker</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-  <div id="firebase-fout-balk"></div>
-
-  <!-- RECHTSBOVEN: vrienden + profiel -->
-  <div class="bovenbalk-knoppen">
-    <button id="btn-vrienden-badge" class="vrienden-badge" type="button">
-      <span class="vrienden-badge-icoon" aria-hidden="true">👥</span>
-      <span>Vrienden</span>
-      <span id="vrienden-badge-aantal" class="vrienden-badge-aantal" hidden>0</span>
-    </button>
-    <button id="btn-profiel-badge" class="profiel-badge" type="button">
-      <span id="profiel-badge-poppetje" class="profiel-badge-poppetje" aria-hidden="true"></span>
-      <span id="profiel-badge-tekst">👤 Profiel maken</span>
-    </button>
-  </div>
-
-  <div id="profiel-overlay" class="sitebeheer-overlay profiel-overlay">
-    <div class="sitebeheer-venster profiel-venster">
-      <div class="sitebeheer-icoon">👤</div>
-      <h3>Jouw profiel</h3>
-      <div id="profiel-overlay-poppetje" class="profiel-overlay-poppetje" aria-hidden="true"></div>
-      <p id="profiel-overlay-naam" class="subtitel"></p>
-      <button class="btn btn-secondary" id="btn-profiel-naam-wijzigen" type="button">✏️ Gebruikersnaam wijzigen</button>
-      <div id="profiel-naam-wijzigen-paneel" class="profiel-naam-paneel" hidden>
-        <input type="text" id="input-profiel-nieuwe-naam" maxlength="30" placeholder="Nieuwe gebruikersnaam" autocomplete="off">
-        <button class="btn btn-primary" id="btn-profiel-naam-opslaan" type="button">Opslaan</button>
-        <p id="profiel-naam-foutmelding" class="foutmelding"></p>
-      </div>
-      <button class="btn btn-secondary" id="btn-profiel-poppetje-wijzigen" type="button">🔁 Poppetje wijzigen</button>
-      <button class="btn btn-secondary" id="btn-profiel-overlay-sluiten" type="button">Sluiten</button>
-    </div>
-  </div>
-
-  <div class="container">
-
-    <!-- SCHERM: ALGEMEEN (startscherm) -->
-    <section id="scherm-algemeen" class="scherm actief">
-      <h1 class="titel-regenboog">Quizzzzz</h1>
-      <p class="subtitel">Maak een quiz of doe mee met een quiz</p>
-      <div class="munten-weergave">💰 <span class="munten-aantal">0</span> munten</div>
-      <div class="vakken-rij">
-        <button class="vak vak-maken" id="btn-naar-quizmaken">📝 Quiz maken<span class="vak-slotje" aria-hidden="true">🔒</span></button>
-        <button class="vak vak-speelbaar" id="btn-naar-speelbaar">🌍 Speelbare quizzen</button>
-        <button class="vak vak-meedoen" id="btn-naar-meedoen">🙋 Meedoen aan quiz</button>
-        <button class="vak vak-winkel" id="btn-naar-winkel">🎁 Winkel<span class="vak-slotje" aria-hidden="true">🔒</span></button>
-        <button class="vak vak-dierentuin" id="btn-naar-dierentuin">🐾 Dierenverzameling<span class="vak-slotje" aria-hidden="true">🔒</span></button>
-        <button class="vak vak-wiel" id="btn-naar-wiel">🎡 Geluksrad<span class="vak-slotje" aria-hidden="true">🔒</span></button>
-      </div>
-      <p id="profiel-vereist-hint" class="subtitel" style="margin-top:14px;">🔒 Maak eerst een profiel aan (gebruikersnaam + poppetje) om quizzen te maken, de winkel, de dierenverzameling en het geluksrad te gebruiken. Meedoen aan een quiz en speelbare quizzen spelen kan altijd, ook zonder profiel.</p>
-    </section>
-
-    <!-- SCHERM: DIERENVERZAMELING (alle dieren en accessoires bekijken, ook buiten een quiz om) -->
-    <section id="scherm-dierenverzameling" class="scherm">
-      <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
-      <h2 class="titel-regenboog">Dierenverzameling</h2>
-      <p id="verzameling-uitleg" class="subtitel">Dit heb je al, en dit kun je nog winnen. Klik op een dier of accessoire dat je al hebt om het te verkopen voor 5 munten. Grijs met een slotje = nog niet in bezit.</p>
-      <div class="munten-weergave">💰 <span class="munten-aantal">0</span> munten</div>
-      <div class="verzameling-tabs" id="verzameling-tabs" role="tablist"></div>
-      <div id="verzameling-kiezer" class="dieren-kiezer verzameling-kiezer"></div>
-    </section>
-
-    <!-- SCHERM: SPEELBARE QUIZZEN (openbaar gemaakt door anderen) -->
-    <section id="scherm-speelbare-quizzen" class="scherm">
-      <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
-      <h2 class="titel-regenboog">Speelbare quizzen</h2>
-      <p class="subtitel">Quizzen die door anderen openbaar zijn gezet. Klik op "Spelen" om er zelf een wachtkamer voor te openen.</p>
-      <input type="text" id="input-zoek-speelbare-quizzen" class="zoekbalk" placeholder="🔍 Zoek op titel...">
-      <div id="lijst-openbare-quizzen" class="quizzen-grid"></div>
-    </section>
-
-    <!-- SCHERM: MEEDOEN AAN QUIZ -->
-    <section id="scherm-meedoen" class="scherm">
-      <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
-      <h2 class="titel-regenboog">Meedoen aan quiz</h2>
-      <p>Voer de code in die je hebt gekregen en je naam. De quizmaster moet de quiz wel al gestart hebben op zijn/haar laptop.</p>
-      <label for="input-code">Code</label>
-      <input type="text" id="input-code" placeholder="Bijv. AB12CD" maxlength="6">
-      <label for="input-speler-naam">Jouw naam</label>
-      <input type="text" id="input-speler-naam" placeholder="Bijv. Sam" maxlength="20">
-      <button class="btn btn-primary" id="btn-ga-naar-quiz">Ga naar quiz</button>
-      <p id="meedoen-foutmelding" class="foutmelding"></p>
-    </section>
-
-    <!-- SCHERM: SPELER WACHTKAMER -->
-    <section id="scherm-speler-wachtkamer" class="scherm">
-      <button class="btn-terug" id="btn-speler-verlaat-wachtkamer">&larr; Terug</button>
-      <h2 class="titel-regenboog">Even geduld...</h2>
-      <div id="speler-wachtkamer-dier" class="speler-wachtkamer-dier" aria-hidden="true"></div>
-      <p>Je doet mee als <strong id="speler-wachtkamer-naam"></strong>. Wacht tot de quizmaster de quiz start.</p>
-      <p class="subtitel">Kies je poppetje. Het staat straks voor je naam bij het scorebord.</p>
-      <div class="kiezer-tabs" role="tablist">
-        <button type="button" class="kiezer-tab actief" id="tab-dieren" role="tab" aria-selected="true">🐶 Dieren</button>
-        <button type="button" class="kiezer-tab" id="tab-accessoires" role="tab" aria-selected="false">🎩 Accessoires</button>
-      </div>
-      <div id="dieren-kiezer" class="dieren-kiezer"></div>
-    </section>
-
-    <!-- SCHERM: SPELER VRAAG -->
-    <section id="scherm-speler-vraag" class="scherm">
-      <p id="speler-voortgang-weergave" class="voortgang"></p>
-      <h2 id="speler-vraag-weergave" class="titel-regenboog"></h2>
-      <img id="speler-vraag-foto" class="vraag-foto" alt="Foto bij de vraag" hidden>
-      <p id="speler-vraag-instructie" class="subtitel"></p>
-      <div id="speler-antwoorden-weergave" class="antwoorden-lijst"></div>
-      <button class="btn btn-primary" id="btn-speler-antwoord-versturen" disabled>Antwoord versturen</button>
-    </section>
-
-    <!-- SCHERM: SPELER ANTWOORD VERZONDEN (alleen een groot laadteken; je ziet nog niet of het goed was) -->
-    <section id="scherm-speler-antwoord-verzonden" class="scherm scherm-gecentreerd">
-      <div class="laad-spinner-groot" role="status" aria-label="Wachten op de quizmaster"></div>
-    </section>
-
-    <!-- SCHERM: SPELER RESULTAAT (goed of fout, met daaronder het goede antwoord) -->
-    <section id="scherm-speler-resultaat" class="scherm scherm-gecentreerd">
-      <div id="speler-resultaat-tekst" class="groot-resultaat"></div>
-      <p id="speler-antwoord-label" class="antwoord-kop"></p>
-      <div id="speler-antwoord-groot" class="antwoorden-lijst"></div>
-    </section>
-
-    <!-- SCHERM: SPELER VERWIJDERD -->
-    <section id="scherm-speler-verwijderd" class="scherm">
-      <h2 class="titel-regenboog">Je bent verwijderd</h2>
-      <p class="subtitel">De quizmaster heeft je uit deze quiz gezet.</p>
-      <button class="btn btn-primary" id="btn-speler-verwijderd-terug">Terug naar start</button>
-    </section>
-
-    <!-- SCHERM: HOST IS WEG -->
-    <section id="scherm-speler-host-weg" class="scherm">
-      <h2 class="titel-regenboog">De quiz is gestopt</h2>
-      <p class="subtitel">De quizmaster is gestopt of weggegaan, dus de quiz is beëindigd.</p>
-      <button class="btn btn-primary" id="btn-speler-host-weg-terug">Terug naar start</button>
-    </section>
-
-    <!-- SCHERM: SPELER SCOREBORD -->
-    <section id="scherm-speler-scorebord" class="scherm">
-      <h2 id="speler-scorebord-titel" class="titel-regenboog">Scorebord</h2>
-      <p id="speler-scorebord-bericht" class="voortgang"></p>
-      <div id="speler-scorebord-lijst" class="scorebord-lijst"></div>
-      <p id="speler-scorebord-status" class="voortgang">Wacht tot de quizmaster verdergaat...</p>
-      <button class="btn btn-secondary" id="btn-speler-terug-naar-start" style="display:none;">Terug naar start</button>
-    </section>
-
-    <!-- SCHERM: PROFIEL MAKEN (verplicht vóór quiz maken, winkel, dierenverzameling, geluksrad) -->
-    <section id="scherm-naam-invullen" class="scherm">
-      <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
-      <h2 class="titel-regenboog">Maak je profiel</h2>
-      <p class="subtitel">Bedenk een gebruikersnaam en kies een poppetje als profielfoto. Dit wordt lokaal in je browser onthouden (geen wachtwoord nodig). Gewone bezoekers zien je naam niet; alleen sitebeheer kan zien wie een quiz heeft gemaakt. Je gebruikersnaam en je poppetje kun je later nog wijzigen via de knop rechtsboven.</p>
-      <label for="input-maker-naam">Gebruikersnaam</label>
-      <input type="text" id="input-maker-naam" placeholder="Bijv. Sam" maxlength="30">
-      <label>Kies je poppetje (profielfoto)</label>
-      <div id="profiel-dieren-kiezer" class="dieren-kiezer"></div>
-      <button class="btn btn-primary" id="btn-naam-bevestigen">Profiel aanmaken</button>
-      <p id="naam-invullen-foutmelding" class="foutmelding"></p>
-    </section>
-
-    <!-- SCHERM: QUIZ MAKEN (overzicht) -->
-    <section id="scherm-quizmaken" class="scherm">
-      <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
-      <h2 class="titel-regenboog">Mijn quizzen</h2>
-      <button class="btn btn-primary" id="btn-toevoegen-quiz">+ Quiz</button>
-      <div id="lijst-eigen-quizzen" class="quizzen-grid"></div>
-    </section>
-
-    <!-- SCHERM: NIEUWE QUIZ INVULLEN -->
-    <section id="scherm-nieuwe-quiz" class="scherm">
-      <button class="btn-terug" id="btn-nieuwe-quiz-terug">&larr; Terug</button>
-      <h2 class="titel-regenboog" id="nieuwe-quiz-titel-kop">Nieuwe quiz</h2>
-
-      <label for="input-titel">Titel van de quiz</label>
-      <input type="text" id="input-titel" placeholder="Bijv. Algemene kennis">
-
-      <label for="input-tijdslimiet">Tijd per vraag (bij live hosten)</label>
-      <select id="input-tijdslimiet">
-        <option value="10">10 seconden</option>
-        <option value="15">15 seconden</option>
-        <option value="20" selected>20 seconden</option>
-        <option value="25">25 seconden</option>
-        <option value="30">30 seconden</option>
-      </select>
-
-      <p id="geblokkeerd-melding" class="quiz-geblokkeerd-melding" hidden>
-        🔒 Deze quiz is geblokkeerd door sitebeheer en kan niet openbaar gezet worden totdat hij weer gedeblokkeerd wordt.
-      </p>
-
-      <label class="openbaar-optie">
-        <input type="checkbox" id="input-openbaar">
-        Deze quiz openbaar maken (zichtbaar voor iedereen bij "Speelbare quizzen")
-      </label>
-
-      <label class="openbaar-optie" id="solo-optie-rij" hidden>
-        <input type="checkbox" id="input-solo-toegestaan" checked>
-        Spelers mogen deze quiz ook alleen spelen (zonder quizmaster)
-      </label>
-
-      <label>Omslagfoto</label>
-      <div class="omslag-kiezer">
-        <div class="omslag-preview" id="omslag-preview">
-          <img id="omslag-preview-img" alt="Gekozen omslagfoto">
-        </div>
-        <div class="omslag-upload-rij">
-          <button class="btn btn-secondary" id="btn-omslag-uploaden" type="button">Eigen foto uploaden</button>
-          <input type="file" id="input-omslag-bestand" accept="image/*" style="display:none;">
-        </div>
-        <p class="omslag-subtitel">Of kies een standaardfoto:</p>
-        <div class="omslag-galerij" id="omslag-galerij"></div>
-      </div>
-
-      <div id="vragen-container"></div>
-
-      <button class="btn btn-secondary" id="btn-vraag-toevoegen" type="button">+ Vraag toevoegen</button>
-      <button class="btn btn-primary" id="btn-quiz-opslaan">Quiz opslaan</button>
-      <p id="quizmaken-foutmelding" class="foutmelding"></p>
-    </section>
-
-    <!-- SCHERM: QUIZ OPGESLAGEN (code weergeven) -->
-    <section id="scherm-quiz-klaar" class="scherm">
-      <button class="btn-terug" data-terug-naar="scherm-quizmaken">&larr; Terug</button>
-      <h2 class="titel-regenboog">Quiz klaar om te spelen! 🎉</h2>
-      <p>Deel deze code met anderen zodat zij kunnen meedoen:</p>
-      <div class="code-weergave" id="code-weergave"></div>
-      <button class="btn btn-primary" id="btn-nu-hosten">Nu hosten</button>
-      <button class="btn btn-secondary" data-terug-naar="scherm-algemeen">Naar startscherm</button>
-    </section>
-
-    <!-- SCHERM: HOST WACHTKAMER -->
-    <section id="scherm-host-wachtkamer" class="scherm">
-      <button class="btn-terug" id="btn-host-verlaat-wachtkamer">&larr; Terug</button>
-      <h2 id="host-wachtkamer-titel" class="titel-regenboog"></h2>
-      <p>Spelers doen mee via deze code:</p>
-      <div class="code-weergave" id="host-wachtkamer-code"></div>
-      <p id="host-wachtkamer-aantal" class="voortgang"></p>
-      <div id="host-wachtkamer-spelerslijst" class="wachtkamer-spelerslijst"></div>
-      <button class="btn btn-primary" id="btn-host-start-quiz">Start quiz</button>
-    </section>
-
-    <!-- SCHERM: HOST VRAAG (live tijdens quiz) -->
-    <section id="scherm-host-vraag" class="scherm">
-      <p id="host-voortgang-weergave" class="voortgang"></p>
-      <h2 id="host-vraag-weergave" class="titel-regenboog"></h2>
-      <div id="host-vraag-timer" class="vraag-timer" hidden>
-        <svg class="vraag-timer-ring" viewBox="0 0 100 100" aria-hidden="true">
-          <circle class="vraag-timer-ring-baan" cx="50" cy="50" r="45"></circle>
-          <circle class="vraag-timer-ring-vulling" id="host-vraag-timer-vulling" cx="50" cy="50" r="45" transform="rotate(-90 50 50)"></circle>
-        </svg>
-        <span id="host-vraag-timer-getal" class="vraag-timer-getal"></span>
-      </div>
-      <img id="host-vraag-foto" class="vraag-foto" alt="Foto bij de vraag" hidden>
-      <div id="host-antwoorden-weergave" class="antwoorden-lijst"></div>
-      <p id="host-antwoord-teller" class="voortgang"></p>
-    </section>
-
-    <!-- SCHERM: HOST RESULTAAT (het goede antwoord + hoeveel spelers het goed hadden) -->
-    <section id="scherm-host-resultaat" class="scherm scherm-gecentreerd">
-      <p id="host-resultaat-voortgang" class="voortgang"></p>
-      <h2 id="host-resultaat-vraag" class="titel-regenboog host-resultaat-vraag"></h2>
-
-      <p id="host-antwoord-label" class="antwoord-kop"></p>
-      <div id="host-antwoord-groot" class="antwoorden-lijst"></div>
-
-      <div class="resultaat-onder">
-        <div class="resultaat-ring-wrap">
-          <svg class="resultaat-ring" viewBox="0 0 140 140" aria-hidden="true">
-            <circle class="resultaat-ring-baan" cx="70" cy="70" r="60"></circle>
-            <circle class="resultaat-ring-vulling" id="host-resultaat-ring" cx="70" cy="70" r="60" transform="rotate(-90 70 70)"></circle>
-          </svg>
-          <div class="resultaat-ring-midden">
-            <span id="host-resultaat-aantal" class="resultaat-aantal"></span>
-            <span class="resultaat-aantal-label">had het goed</span>
-          </div>
-        </div>
-
-        <div class="resultaat-tekstkolom">
-          <p id="host-resultaat-kop" class="resultaat-kop"></p>
-          <p id="host-resultaat-telling" class="groot-label"></p>
-          <div class="resultaat-chips">
-            <span class="resultaat-chip goed" id="host-resultaat-chip-goed"></span>
-            <span class="resultaat-chip fout" id="host-resultaat-chip-fout"></span>
-            <span class="resultaat-chip geen" id="host-resultaat-chip-geen"></span>
-          </div>
-        </div>
-      </div>
-
-      <p class="voortgang">De spelers zien nu of ze het goed of fout hadden, met het goede antwoord.</p>
-      <button class="btn btn-primary" id="btn-host-naar-scorebord">Doorgaan</button>
-    </section>
-
-    <!-- SCHERM: HOST SCOREBORD -->
-    <section id="scherm-host-scorebord" class="scherm">
-      <h2 id="host-scorebord-titel" class="titel-regenboog">Scorebord</h2>
-      <div id="host-scorebord-lijst" class="scorebord-lijst"></div>
-      <button class="btn btn-primary" id="btn-host-volgende-vraag">Volgende vraag</button>
-      <button class="btn btn-secondary" id="btn-host-afronden">Terug naar start</button>
-    </section>
-
-    <!-- SCHERM: SOLO VRAAG (alleen spelen, zonder quizmaster) -->
-    <section id="scherm-solo-vraag" class="scherm">
-      <button class="btn-terug" id="btn-solo-stoppen" type="button">&larr; Stoppen</button>
-      <p id="solo-voortgang" class="voortgang"></p>
-      <h2 id="solo-vraag-weergave" class="titel-regenboog"></h2>
-      <img id="solo-vraag-foto" class="vraag-foto" alt="Foto bij de vraag" hidden>
-      <p id="solo-vraag-instructie" class="subtitel"></p>
-      <div id="solo-antwoorden-weergave" class="antwoorden-lijst"></div>
-      <button class="btn btn-primary" id="btn-solo-antwoord-versturen" disabled>Antwoord versturen</button>
-    </section>
-
-    <!-- SCHERM: SOLO RESULTAAT (goed of fout, met het goede antwoord eronder) -->
-    <section id="scherm-solo-resultaat" class="scherm scherm-gecentreerd">
-      <div id="solo-resultaat-tekst" class="groot-resultaat"></div>
-      <p id="solo-antwoord-label" class="antwoord-kop"></p>
-      <div id="solo-antwoord-groot" class="antwoorden-lijst"></div>
-      <button class="btn btn-primary" id="btn-solo-volgende">Volgende vraag</button>
-    </section>
-
-    <!-- SCHERM: SOLO EINDE -->
-    <section id="scherm-solo-einde" class="scherm scherm-gecentreerd">
-      <h2 id="solo-einde-titel" class="titel-regenboog host-resultaat-vraag"></h2>
-      <p id="solo-einde-kop" class="resultaat-kop"></p>
-      <div class="resultaat-ring-wrap">
-        <svg class="resultaat-ring" viewBox="0 0 140 140" aria-hidden="true">
-          <circle class="resultaat-ring-baan" cx="70" cy="70" r="60"></circle>
-          <circle class="resultaat-ring-vulling" id="solo-einde-ring" cx="70" cy="70" r="60" transform="rotate(-90 70 70)"></circle>
-        </svg>
-        <div class="resultaat-ring-midden">
-          <span id="solo-einde-aantal" class="resultaat-aantal"></span>
-          <span class="resultaat-aantal-label">goed</span>
-        </div>
-      </div>
-      <p id="solo-einde-tekst" class="groot-label"></p>
-      <button class="btn btn-primary" id="btn-solo-opnieuw">Opnieuw spelen</button>
-      <button class="btn btn-secondary" id="btn-solo-terug">Terug</button>
-    </section>
-
-    <!-- SCHERM: WINKEL (mysterieboxen kopen) -->
-    <section id="scherm-winkel" class="scherm">
-      <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
-      <h2 class="titel-regenboog">Winkel</h2>
-      <p class="subtitel">Koop mysterieboxen met munten. Alles wat erin zit, krijg en houd je voorgoed. Munten verdien je door een quiz "Met mensen" te winnen.</p>
-      <div class="munten-weergave">💰 <span class="munten-aantal">0</span> munten</div>
-      <button class="btn btn-primary" id="btn-winkel-nieuwe-box" type="button" style="display:none">+ Nieuwe mysteriebox maken</button>
-      <div id="winkel-boxen-lijst" class="quizzen-grid"></div>
-      <p id="winkel-geen-boxen" class="subtitel" style="display:none">Er zijn nog geen mysterieboxen. Kom later nog eens terug!</p>
-    </section>
-
-    <!-- SCHERM: GELUKSRAD (1x per dag gratis draaien voor munten) -->
-    <section id="scherm-wiel" class="scherm scherm-gecentreerd">
-      <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
-      <h2 class="titel-regenboog">Geluksrad</h2>
-      <p class="subtitel">Draai 1 keer per dag gratis aan het rad en win munten. Klik op de knop in het midden!</p>
-      <div class="munten-weergave">💰 <span class="munten-aantal">0</span> munten</div>
-
-      <div class="wiel-omgeving">
-        <div class="wiel-wijzer">▼</div>
-        <div class="wiel-schijf" id="wiel-schijf"></div>
-        <button type="button" class="wiel-knop-midden" id="btn-wiel-draaien">DRAAI</button>
-      </div>
-
-      <p id="wiel-status" class="subtitel"></p>
-      <p id="wiel-resultaat" class="wiel-resultaat-tekst"></p>
-
-      <button class="btn btn-secondary" id="btn-wiel-aanpassen" type="button" style="display:none">⚙ Rad aanpassen</button>
-    </section>
-
-    <button class="btn-sitebeheer" id="btn-sitebeheer" type="button">⚙ Sitebeheer</button>
-
-  </div>
-
-  <!-- SPEELKEUZE: met mensen of alleen spelen -->
-  <div id="speelkeuze-overlay" class="sitebeheer-overlay">
-    <div class="sitebeheer-venster speelkeuze-venster">
-      <h3>Hoe wil je spelen?</h3>
-      <p id="speelkeuze-quiztitel"></p>
-
-      <button class="speelkeuze-optie" id="btn-speelkeuze-mensen" type="button">
-        <span class="speelkeuze-icoon">👥</span>
-        <span class="speelkeuze-tekst">
-          <strong>Met mensen</strong>
-          <small>Jij bent de quizmaster. Anderen doen mee met een code.</small>
-        </span>
-      </button>
-
-      <button class="speelkeuze-optie" id="btn-speelkeuze-alleen" type="button">
-        <span class="speelkeuze-icoon">🧍</span>
-        <span class="speelkeuze-tekst">
-          <strong>Zonder mensen</strong>
-          <small id="speelkeuze-alleen-uitleg">Speel de quiz zelf, zonder quizmaster.</small>
-        </span>
-      </button>
-
-      <div class="sitebeheer-knoppen">
-        <button class="btn btn-secondary" id="btn-speelkeuze-annuleren" type="button">Annuleren</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- SITEBEHEER: wachtwoord-overlay -->
-  <div id="sitebeheer-overlay" class="sitebeheer-overlay">
-    <div class="sitebeheer-venster">
-      <div class="sitebeheer-icoon">🔐</div>
-      <h3>Sitebeheer</h3>
-      <p class="subtitel">Log in met het beheerdersaccount. Daarna kun je bij "Speelbare quizzen" quizzen uit die lijst verwijderen.</p>
-
-      <label for="input-sitebeheer-email">E-mailadres</label>
-      <input type="email" id="input-sitebeheer-email" placeholder="naam@voorbeeld.nl" autocomplete="username">
-
-      <label for="input-sitebeheer-wachtwoord">Wachtwoord</label>
-      <input type="password" id="input-sitebeheer-wachtwoord" placeholder="Wachtwoord" autocomplete="current-password">
-
-      <p id="sitebeheer-foutmelding" class="foutmelding"></p>
-      <div class="sitebeheer-knoppen">
-        <button class="btn btn-secondary" id="btn-sitebeheer-annuleren" type="button">Annuleren</button>
-        <button class="btn btn-primary" id="btn-sitebeheer-bevestigen" type="button">Inloggen</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MYSTERIEBOX: aanmaken/aanpassen (alleen zichtbaar voor sitebeheer) -->
-  <div id="box-bewerken-overlay" class="sitebeheer-overlay">
-    <div class="sitebeheer-venster box-venster">
-      <h3 id="box-bewerken-titel">Nieuwe mysteriebox</h3>
-
-      <label for="input-box-naam">Naam van de box</label>
-      <input type="text" id="input-box-naam" placeholder="Bijv. Jungle box" maxlength="40">
-
-      <label for="input-box-prijs">Prijs (munten)</label>
-      <input type="number" id="input-box-prijs" min="0" step="10" value="100">
-
-      <label for="input-box-vanaf">Te koop vanaf (optioneel)</label>
-      <input type="date" id="input-box-vanaf">
-      <p class="subtitel">Leeg laten = meteen te koop. Vul je een datum in de toekomst in, dan zie jij de kist als sitebeheer alvast in de winkel, maar spelers pas zodra die datum is aangebroken.</p>
-
-      <label class="openbaar-optie">
-        <input type="checkbox" id="input-box-teaser">
-        Spelers mogen al zien dat deze kist eraan komt (naam, prijs en datum), maar kunnen hem nog niet kopen
-      </label>
-
-      <label for="input-box-tot">Automatisch offline vanaf (optioneel)</label>
-      <input type="date" id="input-box-tot">
-      <p class="subtitel">Leeg laten = blijft gewoon online. Vul je een datum in, dan gaat de kist die dag vanzelf offline (net als bij "Offline halen") — jij blijft hem als sitebeheer wel zien.</p>
-
-      <p>Kies wat erin zit. De koper krijgt en houdt alles wat je hier aanvinkt. Staat er een getalletje op een dier of accessoire, dan zit het al in zoveel andere kist(en).</p>
-
-      <div class="kiezer-groep-titel">Dieren</div>
-      <div id="box-items-dieren" class="dieren-kiezer accessoires"></div>
-
-      <div class="kiezer-groep-titel">Accessoires</div>
-      <div id="box-items-accessoires" class="dieren-kiezer accessoires"></div>
-
-      <p id="box-bewerken-foutmelding" class="foutmelding"></p>
-      <div class="sitebeheer-knoppen">
-        <button class="btn btn-secondary" id="btn-box-annuleren" type="button">Annuleren</button>
-        <button class="btn-verwijderen-quiz" id="btn-box-verwijderen" type="button" style="display:none">Verwijderen</button>
-        <button class="btn btn-primary" id="btn-box-opslaan" type="button">Opslaan</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- GELUKSRAD: vakken/beloningen aanpassen (alleen zichtbaar voor sitebeheer) -->
-  <div id="wiel-bewerken-overlay" class="sitebeheer-overlay">
-    <div class="sitebeheer-venster wiel-venster">
-      <h3>Geluksrad aanpassen</h3>
-      <p class="subtitel">Elke rij is één vak op het rad: kies eerst wat je erop wilt zetten (munten, een dier of een accessoire). Bij "kans" geef je aan hoe groot dat vak wordt: een hoger getal = een groter vak = vaker gewonnen. Zet overal hetzelfde getal voor evenveel kans op elk vak.</p>
-
-      <div id="wiel-segmenten-lijst" class="wiel-segmenten-lijst"></div>
-      <button type="button" class="btn btn-secondary" id="btn-wiel-segment-toevoegen">+ Vak toevoegen</button>
-
-      <p id="wiel-bewerken-foutmelding" class="foutmelding"></p>
-      <div class="sitebeheer-knoppen">
-        <button class="btn btn-secondary" id="btn-wiel-annuleren" type="button">Annuleren</button>
-        <button class="btn btn-primary" id="btn-wiel-opslaan" type="button">Opslaan</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Sjabloon voor één vak-rij in het geluksrad-bewerkvenster (wordt door JS gekloond) -->
-  <template id="sjabloon-wiel-segment-rij">
-    <div class="wiel-segment-rij">
-      <div class="wiel-segment-rij-boven">
-        <select class="wiel-segment-type">
-          <option value="munten">💰 Munten</option>
-          <option value="dier">🐾 Dier</option>
-          <option value="accessoire">🎩 Accessoire</option>
-        </select>
-        <input type="text" class="wiel-segment-naam" placeholder="Naam (leeg = automatisch)" maxlength="24">
-        <button type="button" class="wiel-segment-verwijderen" title="Vak verwijderen">✕</button>
-      </div>
-      <div class="wiel-segment-rij-onder">
-        <input type="number" class="wiel-segment-munten" min="0" step="5" placeholder="Aantal munten" value="10">
-        <select class="wiel-segment-dier" style="display:none"></select>
-        <select class="wiel-segment-accessoire" style="display:none"></select>
-        <input type="number" class="wiel-segment-kans" min="1" step="1" placeholder="Kans" value="1">
-      </div>
-    </div>
-  </template>
-
-  <!-- Sjabloon voor één vraagblok (wordt door JS gekloond) -->
-  <template id="sjabloon-vraag-blok">
-    <div class="vraag-blok">
-      <div class="vraag-blok-header">
-        <strong class="vraag-blok-titel">Vraag</strong>
-        <button class="btn-verwijder-vraag" type="button">Verwijderen</button>
-      </div>
-
-      <label>Vraag</label>
-      <input type="text" class="veld-vraag" placeholder="Typ hier de vraag">
-
-      <label>Foto bij deze vraag (niet verplicht)</label>
-      <div class="vraag-foto-kiezer">
-        <img class="vraag-foto-preview" alt="Gekozen foto bij de vraag" hidden>
-        <div class="vraag-foto-knoppen">
-          <button class="btn btn-secondary btn-vraag-foto-kiezen" type="button">Foto uploaden</button>
-          <button class="btn btn-secondary btn-vraag-foto-verwijderen" type="button" hidden>Foto verwijderen</button>
-        </div>
-        <input type="file" class="veld-vraag-foto-bestand" accept="image/*" style="display:none;">
-      </div>
-
-      <label>Aantal antwoorden</label>
-      <select class="veld-aantal-antwoorden">
-        <option value="4">4 antwoorden</option>
-        <option value="2">2 antwoorden (bijv. waar/niet waar)</option>
-      </select>
-
-      <label>Punten voor een goed antwoord</label>
-      <div class="punten-stepper">
-        <button type="button" class="btn-punten-stap btn-punten-min" aria-label="50 punten minder">−</button>
-        <input type="text" inputmode="numeric" pattern="[0-9.]*" class="veld-punten" value="1.000">
-        <button type="button" class="btn-punten-stap btn-punten-plus" aria-label="50 punten meer">+</button>
-      </div>
-
-      <label>Antwoorden — vink aan welk antwoord (of welke antwoorden) goed is/zijn</label>
-      <div class="antwoord-invoer-rij">
-        <input type="checkbox" class="veld-goed-vinkje" title="Dit antwoord is goed">
-        <input type="text" class="veld-antwoord" data-antwoord-index="1" placeholder="Antwoord 1">
-      </div>
-      <div class="antwoord-invoer-rij">
-        <input type="checkbox" class="veld-goed-vinkje" title="Dit antwoord is goed">
-        <input type="text" class="veld-antwoord" data-antwoord-index="2" placeholder="Antwoord 2">
-      </div>
-      <div class="antwoord-invoer-rij">
-        <input type="checkbox" class="veld-goed-vinkje" title="Dit antwoord is goed">
-        <input type="text" class="veld-antwoord" data-antwoord-index="3" placeholder="Antwoord 3">
-      </div>
-      <div class="antwoord-invoer-rij">
-        <input type="checkbox" class="veld-goed-vinkje" title="Dit antwoord is goed">
-        <input type="text" class="veld-antwoord" data-antwoord-index="4" placeholder="Antwoord 4">
-      </div>
-    </div>
-  </template>
-
-  <!-- VRIENDEN -->
-  <div id="vrienden-overlay" class="sitebeheer-overlay sociaal-overlay vrienden-overlay">
-    <div class="sitebeheer-venster sociaal-venster vrienden-venster">
-      <div class="sitebeheer-icoon">👥</div>
-      <h3>Vrienden</h3>
-      <div class="vrienden-hoofdknoppen">
-        <button id="btn-vrienden-toevoegen" class="btn btn-primary" type="button">➕ Toevoegen</button>
-      </div>
-      <div id="vrienden-toevoegen-paneel" class="vrienden-toevoegen-paneel" hidden>
-        <label for="input-zoek-vrienden">Gebruikersnaam zoeken</label>
-        <div class="vrienden-zoekrij">
-          <input type="text" id="input-zoek-vrienden" class="zoekbalk" placeholder="🔍 Zoek op naam..." maxlength="30" autocomplete="off">
-          <button id="btn-vrienden-zoeken" class="btn btn-secondary" type="button">Zoeken</button>
-        </div>
-        <div id="vrienden-zoekresultaten" class="vrienden-lijst"></div>
-      </div>
-      <p id="vrienden-verbindingsmelding" class="foutmelding" hidden></p>
-      <h3 class="vrienden-sectie-titel">📨 Verzoeken</h3>
-      <div id="vrienden-verzoeken" class="vrienden-lijst"></div>
-      <h3 class="vrienden-sectie-titel">👥 Mijn vrienden</h3>
-      <div id="vrienden-lijst" class="vrienden-lijst"></div>
-      <button id="btn-vrienden-sluiten" class="btn btn-secondary" type="button">Sluiten</button>
-    </div>
-  </div>
-
-  <!-- POPPETJE WIJZIGEN (beeldvullend) -->
-  <div id="poppetje-editor" class="poppetje-editor">
-    <div class="chat-kop">
-      <button id="btn-pe-terug" class="chat-kop-knop" type="button" title="Terug">←</button>
-      <h3>Mijn poppetje</h3>
-      <button id="btn-pe-klaar" class="chat-kop-knop" type="button" title="Klaar">✓</button>
-    </div>
-    <div class="pe-voorbeeld">
-      <div id="pe-voorbeeld-poppetje" class="pe-voorbeeld-poppetje"></div>
-      <div id="pe-chips" class="pe-chips"></div>
-    </div>
-    <div id="pe-tabs" class="pe-tabs"></div>
-    <div id="pe-inhoud" class="pe-inhoud"></div>
-  </div>
-
-  <!-- CHAT (beeldvullend) -->
-  <div id="chat-overlay" class="chat-scherm">
-    <div class="chat-kop">
-      <button id="btn-chat-sluiten" class="chat-kop-knop" type="button" title="Terug">←</button>
-      <div id="chat-kop-poppetje" class="chat-kop-poppetje"></div>
-      <h3 id="chat-titel">Chat</h3>
-      <button id="btn-chat-stijl" class="chat-kop-knop" type="button" title="Achtergrond en tekstvakjes">🎨</button>
-    </div>
-
-    <div id="chat-stijl-paneel" class="chat-paneel chat-stijl-paneel" hidden>
-      <p class="chat-paneel-titel">Achtergrond</p>
-      <div id="chat-achtergronden" class="chat-keuzes"></div>
-      <p class="chat-paneel-titel">Mijn tekstvakjes</p>
-      <div id="chat-vak-eigen" class="chat-keuzes"></div>
-      <p class="chat-paneel-titel">Tekstvakjes van je vriend</p>
-      <div id="chat-vak-vriend" class="chat-keuzes"></div>
-    </div>
-
-    <div id="chat-berichten" class="chat-berichten"></div>
-
-    <div id="chat-poppetjes-paneel" class="chat-paneel chat-poppetjes-paneel" hidden>
-      <div class="chat-poppetjes-tabs">
-        <button id="chat-tab-dieren" class="chat-tab actief" type="button">Dieren</button>
-        <button id="chat-tab-accessoires" class="chat-tab" type="button">Accessoires</button>
-      </div>
-      <div id="chat-poppetjes-lijst" class="chat-poppetjes-lijst"></div>
-      <div class="chat-poppetjes-actie">
-        <span id="chat-poppetjes-keuze" class="chat-poppetjes-keuze">Kies een poppetje om te versturen</span>
-        <button id="btn-chat-poppetje-verzenden" class="btn btn-primary" type="button" disabled>🎁 Verzenden</button>
-      </div>
-    </div>
-
-    <div id="chat-quiz-paneel" class="chat-paneel chat-quiz-paneel" hidden>
-      <p class="chat-paneel-titel">Stuur een quiz naar <span id="chat-quiz-naam"></span></p>
-      <p class="chat-paneel-uitleg">Als je vriend accepteert, staat de quiz ook bij zijn Mijn quizzen en kan hij hem aanpassen. Jullie zien allebei de wijzigingen.</p>
-      <div id="chat-quiz-lijst" class="chat-quiz-lijst"></div>
-    </div>
-
-    <div class="chat-invoer">
-      <button id="btn-chat-poppetje" class="chat-poppetje-knop" type="button" title="Poppetje versturen">
-        <span class="chat-poppetje-knop-plaatje" id="chat-poppetje-knop-plaatje"></span>
-        <span class="chat-poppetje-knop-plus">+</span>
-      </button>
-      <button id="btn-chat-quiz" class="chat-poppetje-knop" type="button" title="Quiz versturen">
-        <span class="chat-poppetje-knop-plaatje">📝</span>
-        <span class="chat-poppetje-knop-plus">+</span>
-      </button>
-      <input id="chat-input" type="text" maxlength="500" placeholder="Typ een bericht..." autocomplete="off">
-      <button id="btn-chat-sturen" class="btn btn-primary" type="button">Sturen</button>
-    </div>
-  </div>
-
-  <!-- ITEM NAAR VRIEND STUREN -->
-  <div id="stuur-vriend-overlay" class="sitebeheer-overlay sociaal-overlay">
-    <div class="sitebeheer-venster sociaal-venster">
-      <div class="sitebeheer-icoon">🎁</div>
-      <h3>Stuur naar vriend</h3>
-      <p class="subtitel">Je stuurt precies 1 exemplaar.</p>
-      <div id="stuur-vriend-lijst" class="vrienden-lijst"></div>
-      <button id="btn-stuur-vriend-sluiten" class="btn btn-secondary" type="button">Annuleren</button>
-    </div>
-  </div>
-
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-
-  <script src="firebase-config.js"></script>
-  <script src="poppetjes.js"></script>
-  <script src="app.js"></script>
-</body>
-</html>
+// ---------- Sitebeheer (echt inloggen via Firebase Authentication) ----------
+//
+// De beheerder logt in met een e-mailadres + wachtwoord dat in de Firebase
+// Console staat (Authentication -> Users), niet in deze broncode. Zie de
+// readme voor hoe je dat account daar aanmaakt. Firebase onthoudt het
+// ingelogd zijn automatisch, dus na een herlaadbeurt blijft de beheerder
+// ingelogd tot er bewust wordt uitgelogd.
+
+let sitebeheerActief = false;
+
+// Voor gewone spelers gebruiken we anonieme Firebase-authenticatie. Daardoor
+// krijgt iedere browser een eigen veilige Firebase-ID zonder dat er een wachtwoord
+// nodig is. Die ID koppelen we aan de gekozen gebruikersnaam voor vrienden/chat.
+let socialeAuthFout = '';
+let socialeAuthPogingen = 0;
+function zorgVoorSocialeGebruiker() {
+  if (typeof auth === 'undefined') return Promise.resolve(null);
+  if (auth.currentUser) return Promise.resolve(auth.currentUser);
+  return auth.signInAnonymously().then(res => {
+    socialeAuthFout = '';
+    return res && res.user ? res.user : auth.currentUser;
+  }).catch(err => {
+    // Niet meer stil negeren: zonder deze aanmelding werken vrienden en chat niet.
+    socialeAuthFout = (err && err.code) || 'onbekend';
+    console.error('Anoniem aanmelden bij Firebase mislukt:', err);
+    if (socialeAuthPogingen++ < 3) setTimeout(zorgVoorSocialeGebruiker, 3000);
+    return null;
+  });
+}
+
+// Uitleg voor als vrienden/chat niet kunnen werken omdat er geen (anoniem) account is.
+function socialeVerbindingsMelding() {
+  if (socialeAuthFout === 'auth/operation-not-allowed' || socialeAuthFout === 'auth/admin-restricted-operation') {
+    return 'Vrienden en chat werken nog niet: zet in Firebase bij Authentication > Sign-in method de provider "Anoniem" aan.';
+  }
+  if (socialeAuthFout === 'auth/unauthorized-domain') {
+    return 'Vrienden en chat werken niet: zet het domein van deze website in Firebase bij Authentication > Instellingen > Geautoriseerde domeinen.';
+  }
+  return 'Je bent nog niet verbonden met vrienden en chat' + (socialeAuthFout ? ' (' + socialeAuthFout + ')' : '') + '. Controleer je internet en probeer het zo nog eens.';
+}
+
+const sitebeheerOverlayEl = document.getElementById('sitebeheer-overlay');
+const inputSitebeheerEmailEl = document.getElementById('input-sitebeheer-email');
+const inputSitebeheerWachtwoordEl = document.getElementById('input-sitebeheer-wachtwoord');
+const sitebeheerFoutmeldingEl = document.getElementById('sitebeheer-foutmelding');
+const btnSitebeheerEl = document.getElementById('btn-sitebeheer');
+const btnSitebeheerBevestigenEl = document.getElementById('btn-sitebeheer-bevestigen');
+
+function openSitebeheerOverlay() {
+  sitebeheerFoutmeldingEl.textContent = '';
+  inputSitebeheerEmailEl.value = '';
+  inputSitebeheerWachtwoordEl.value = '';
+  sitebeheerOverlayEl.classList.add('actief');
+  inputSitebeheerEmailEl.focus();
+}
+
+function sluitSitebeheerOverlay() {
+  sitebeheerOverlayEl.classList.remove('actief');
+}
+
+function werkSitebeheerKnopBij() {
+  if (sitebeheerActief) {
+    btnSitebeheerEl.classList.add('actief');
+    btnSitebeheerEl.textContent = '🔓 Sitebeheer actief';
+  } else {
+    btnSitebeheerEl.classList.remove('actief');
+    btnSitebeheerEl.textContent = '⚙ Sitebeheer';
+  }
+}
+
+btnSitebeheerEl.addEventListener('click', () => {
+  if (sitebeheerActief) {
+    // Al ingelogd: nogmaals klikken logt meteen uit.
+    auth.signOut();
+    return;
+  }
+  openSitebeheerOverlay();
+});
+
+document.getElementById('btn-sitebeheer-annuleren').addEventListener('click', () => {
+  sluitSitebeheerOverlay();
+});
+
+function probeerSitebeheerInloggen() {
+  const email = inputSitebeheerEmailEl.value.trim();
+  const wachtwoord = inputSitebeheerWachtwoordEl.value;
+
+  if (!email || !wachtwoord) {
+    sitebeheerFoutmeldingEl.textContent = 'Vul e-mailadres en wachtwoord in.';
+    return;
+  }
+
+  sitebeheerFoutmeldingEl.textContent = '';
+  btnSitebeheerBevestigenEl.disabled = true;
+  btnSitebeheerBevestigenEl.textContent = 'Bezig...';
+
+  auth.signInWithEmailAndPassword(email, wachtwoord)
+    .then(() => {
+      // sitebeheerActief wordt automatisch gezet via onAuthStateChanged hieronder.
+      sluitSitebeheerOverlay();
+    })
+    .catch(() => {
+      sitebeheerFoutmeldingEl.textContent = 'Inloggen mislukt: onjuist e-mailadres of wachtwoord.';
+    })
+    .finally(() => {
+      btnSitebeheerBevestigenEl.disabled = false;
+      btnSitebeheerBevestigenEl.textContent = 'Inloggen';
+    });
+}
+
+btnSitebeheerBevestigenEl.addEventListener('click', probeerSitebeheerInloggen);
+
+[inputSitebeheerEmailEl, inputSitebeheerWachtwoordEl].forEach(veld => {
+  veld.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      probeerSitebeheerInloggen();
+    }
+  });
+});
+
+auth.onAuthStateChanged(gebruiker => {
+  sitebeheerActief = !!gebruiker && !gebruiker.isAnonymous;
+  werkSitebeheerKnopBij();
+  if (gebruiker && !gebruiker.isAnonymous) {
+    // Beheerder-account: niets extra's nodig.
+  } else if (!gebruiker) {
+    zorgVoorSocialeGebruiker();
+  }
+  if (typeof laadSocialeGegevens === 'function') laadSocialeGegevens();
+  if (document.getElementById('scherm-speelbare-quizzen').classList.contains('actief')) {
+    laadOpenbareQuizzen();
+  }
+  if (document.getElementById('scherm-quizmaken').classList.contains('actief')) {
+    laadEigenQuizzen();
+  }
+});
+
+zorgVoorSocialeGebruiker();
+
+// ---------- Naam van de quizmaker (verplicht, eenmalig, niet meer te wijzigen) ----------
+//
+// Voordat iemand een quiz kan maken, moet die zijn/haar naam invullen. Deze
+// naam wordt lokaal onthouden (localStorage) en bij elke quiz die diegene
+// maakt als "makerNaam" opgeslagen in Firebase. Uit privacy wordt de naam
+// op de site NIET getoond aan gewone bezoekers; alleen sitebeheer (ingelogd)
+// ziet bij Speelbare quizzen wie een quiz heeft gemaakt.
+// De maker zelf kan zijn/haar naam achteraf niet wijzigen. Sitebeheer kan dat
+// wel, via "Naam wijzigen" bij "Alle quizmakers" (zie toonSitebeheerMakersOverzicht).
+
+const MAKER_NAAM_SLEUTEL = 'makerNaam';
+const PROFIEL_DIER_SLEUTEL = 'profielDier';
+
+function huidigeMakerNaam() {
+  return localStorage.getItem(MAKER_NAAM_SLEUTEL);
+}
+
+function huidigProfielDier() {
+  return localStorage.getItem(PROFIEL_DIER_SLEUTEL) || '';
+}
+
+// Een profiel bestaat zodra er een gebruikersnaam is. Het poppetje komt er
+// idealiiter gelijk bij, maar is geen harde eis: heb je (nog) geen enkel
+// poppetje in bezit (bijv. omdat je ze allemaal verkocht hebt), dan kun je
+// nog steeds een profiel hebben en later alsnog een poppetje kiezen zodra je
+// er weer een hebt.
+function heeftProfiel() {
+  return !!huidigeMakerNaam();
+}
+
+// Onthoudt welk poppetje net gekozen is op het profiel-maken-scherm, vóórdat
+// er op "Profiel aanmaken" geklikt is.
+let profielGekozenDier = '';
+
+// Onthoudt wat er moet gebeuren zodra het profiel is aangemaakt (welk scherm
+// tonen en welke gegevens erbij laden), zodat "Quiz maken", "Winkel",
+// "Dierenverzameling" en "Geluksrad" na het aanmaken van een profiel meteen
+// verdergaan naar waar de bezoeker eigenlijk heen wilde.
+let naProfielActie = null;
+
+// Bouwt een poppetje-kiezer (alleen dieren die je al bezit, zonder accessoires)
+// in het meegegeven element. Heb je nog geen enkel poppetje in bezit, dan komt
+// er gewoon een uitleg te staan in plaats van een lege/onbruikbare kiezer.
+// onKiezen(dier) wordt aangeroepen zodra er op een poppetje geklikt wordt.
+function bouwPoppetjeKiezer(containerEl, huidigeWaarde, onKiezen) {
+  if (!containerEl) return;
+  containerEl.innerHTML = '';
+  const bezitDieren = haalBezitDieren();
+
+  if (!bezitDieren.length) {
+    const hint = document.createElement('p');
+    hint.className = 'kiezer-hint';
+    hint.textContent = 'Je hebt nog geen enkel poppetje om te kiezen. Verdien of win er eerst één (bijv. bij de Winkel of het Geluksrad).';
+    containerEl.appendChild(hint);
+    return;
+  }
+
+  bezitDieren.forEach(dier => {
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'dier-knop';
+    knop.innerHTML = poppetjeSvg(dier, {});
+    knop.dataset.dier = dier;
+    knop.classList.toggle('gekozen', dier === huidigeWaarde);
+    knop.setAttribute('aria-label', 'Kies ' + dier + ' als profielfoto');
+    knop.addEventListener('click', () => {
+      onKiezen(dier);
+      containerEl.querySelectorAll('.dier-knop').forEach(k => k.classList.toggle('gekozen', k.dataset.dier === dier));
+    });
+    containerEl.appendChild(knop);
+  });
+}
+
+// Bouwt de poppetje-kiezer op het profiel-maken-scherm.
+function bouwProfielDierenKiezer() {
+  const kiezerEl = document.getElementById('profiel-dieren-kiezer');
+  bouwPoppetjeKiezer(kiezerEl, profielGekozenDier, (dier) => { profielGekozenDier = dier; });
+}
+
+// Werkt de badge rechtsboven bij: toont poppetje + naam als er een profiel
+// is, anders een knop om er een aan te maken.
+function werkProfielBadgeBij() {
+  const poppetjeEl = document.getElementById('profiel-badge-poppetje');
+  const tekstEl = document.getElementById('profiel-badge-tekst');
+  if (heeftProfiel()) {
+    poppetjeEl.textContent = huidigProfielDier();
+    tekstEl.textContent = huidigeMakerNaam();
+  } else {
+    poppetjeEl.textContent = '';
+    tekstEl.textContent = '👤 Profiel maken';
+  }
+}
+
+// Opent het profiel-maken-scherm. Is er al een naam maar nog geen poppetje
+// (bijv. van vóór deze functie bestond), dan staat de naam alvast klaar en
+// hoeft alleen nog een poppetje gekozen te worden.
+function openProfielMakenScherm() {
+  inputMakerNaamEl.value = huidigeMakerNaam() || '';
+  naamInvullenFoutmeldingEl.textContent = '';
+  profielGekozenDier = geldigDier(huidigProfielDier());
+  bouwProfielDierenKiezer();
+  toonScherm('scherm-naam-invullen');
+}
+
+// Zorgt dat een schermwissel alleen doorgaat als er al een profiel is; is er
+// nog geen profiel, dan wordt eerst het profiel-maken-scherm getoond en gaat
+// het na het aanmaken automatisch verder naar "actie".
+function metProfielVereist(actie) {
+  if (heeftProfiel()) {
+    actie();
+  } else {
+    naProfielActie = actie;
+    openProfielMakenScherm();
+  }
+}
+
+// Tekst veilig in innerHTML zetten (namen en titels komen van gebruikers).
+function escapeHtml(tekst) {
+  return String(tekst == null ? '' : tekst)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Tekst " · Door <naam>" achter een quiz. Uit privacy alleen voor sitebeheer;
+// voor gewone bezoekers is dit altijd leeg.
+function doorTekstVoorMaker(makerNaam) {
+  if (!sitebeheerActief) return '';
+  return makerNaam ? ' · Door ' + escapeHtml(makerNaam) : ' · Door: naam onbekend';
+}
+
+// Zet de naam van de maker automatisch bij ALLE quizzen die op dit apparaat
+// zijn gemaakt en nog geen naam hebben (bijv. quizzen van vóórdat de naam werd
+// ingevuld). Zo staat de naam ook bij oudere quizzen in "Speelbare quizzen".
+// Deze functie geeft altijd een Promise terug die nooit faalt.
+function koppelMakerNaamAanEigenQuizzen() {
+  const naam = huidigeMakerNaam();
+  if (!naam) return Promise.resolve();
+
+  let eigenQuizzen = [];
+  try {
+    eigenQuizzen = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]');
+  } catch (e) {
+    return Promise.resolve();
+  }
+
+  return Promise.all(
+    eigenQuizzen.filter(q => !q.gedeeldVan).map(q =>
+      db.ref('quizzen/' + q.code).once('value').then(snapshot => {
+        // Alleen bijwerken als de quiz nog bestaat en nog geen naam heeft
+        // (anders zouden we een verwijderde quiz per ongeluk opnieuw aanmaken).
+        if (snapshot.child('titel').exists() && !snapshot.child('makerNaam').val()) {
+          return db.ref('quizzen/' + q.code + '/makerNaam').set(naam);
+        }
+      }).catch(() => {})
+    )
+  ).catch(() => {});
+}
+
+const inputMakerNaamEl = document.getElementById('input-maker-naam');
+const naamInvullenFoutmeldingEl = document.getElementById('naam-invullen-foutmelding');
+
+function bevestigMakerNaam() {
+  const naam = inputMakerNaamEl.value.trim();
+  if (!naam) {
+    naamInvullenFoutmeldingEl.textContent = 'Vul je naam in.';
+    return;
+  }
+  // Een poppetje kiezen is alleen verplicht als er ook echt iets te kiezen
+  // valt; heb je (nog) geen enkel poppetje, dan kun je zonder verder.
+  if (haalBezitDieren().length && !profielGekozenDier) {
+    naamInvullenFoutmeldingEl.textContent = 'Kies ook een poppetje als profielfoto.';
+    return;
+  }
+  // Is deze naam al van iemand anders (bijvoorbeeld van je laptop terwijl je nu op je telefoon
+  // bent)? Dan maak je hier geen profiel met dezelfde naam: elk apparaat heeft zijn eigen profiel.
+  naamInvullenFoutmeldingEl.textContent = '';
+  controleerGebruikersnaamVrij(naam).then(vrij => {
+    if (!vrij) {
+      naamInvullenFoutmeldingEl.textContent = 'Deze naam is al in gebruik (misschien door jezelf op een ander apparaat). Kies een andere naam.';
+      return;
+    }
+    rondProfielAanmakenAf(naam);
+  });
+}
+
+// Geeft true als de naam nog vrij is of van dit account is. Lukt de controle niet
+// (geen internet of nog niet verbonden), dan blokkeren we niet en gaat het zoals eerder.
+function controleerGebruikersnaamVrij(naam) {
+  const zoeknaam = normaliseerGebruikersnaam(naam);
+  return zorgVoorSocialeGebruiker().then(gebruiker => {
+    if (!gebruiker) return true;
+    return db.ref('gebruikersnamen/' + naamSleutel(zoeknaam)).once('value').then(snap => {
+      const eigenaar = snap.val();
+      return !eigenaar || eigenaar === gebruiker.uid;
+    });
+  }).catch(() => true);
+}
+
+function rondProfielAanmakenAf(naam) {
+  localStorage.setItem(MAKER_NAAM_SLEUTEL, naam);
+  if (profielGekozenDier) {
+    localStorage.setItem(PROFIEL_DIER_SLEUTEL, profielGekozenDier);
+  }
+  registreerSociaalProfiel();
+  werkProfielBadgeBij();
+  werkVakSlotjesBij();
+
+  const actie = naProfielActie;
+  naProfielActie = null;
+
+  if (actie) {
+    actie();
+  } else {
+    toonScherm('scherm-quizmaken');
+    laadEigenQuizzen();
+  }
+  // Eerst de naam bij bestaande quizzen zetten (voor het geval er al oudere
+  // quizzen van dit apparaat bestaan zonder naam).
+  koppelMakerNaamAanEigenQuizzen();
+}
+
+document.getElementById('btn-naam-bevestigen').addEventListener('click', bevestigMakerNaam);
+
+inputMakerNaamEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    bevestigMakerNaam();
+  }
+});
+
+// ---------- Navigatie tussen schermen ----------
+
+function toonScherm(id) {
+  document.querySelectorAll('.scherm').forEach(el => el.classList.remove('actief'));
+  document.getElementById(id).classList.add('actief');
+}
+
+document.getElementById('btn-naar-quizmaken').addEventListener('click', () => {
+  metProfielVereist(() => {
+    toonScherm('scherm-quizmaken');
+    laadEigenQuizzen();
+  });
+});
+
+document.getElementById('btn-naar-speelbaar').addEventListener('click', () => {
+  toonScherm('scherm-speelbare-quizzen');
+  laadOpenbareQuizzen();
+});
+
+document.getElementById('btn-naar-meedoen').addEventListener('click', () => {
+  toonScherm('scherm-meedoen');
+});
+
+document.getElementById('btn-naar-dierentuin').addEventListener('click', () => {
+  metProfielVereist(() => {
+    toonScherm('scherm-dierenverzameling');
+    werkMuntenWeergaveBij();
+    bouwVerzamelingKiezer();
+  });
+});
+
+document.querySelectorAll('[data-terug-naar]').forEach(knop => {
+  knop.addEventListener('click', () => {
+    const doel = knop.getAttribute('data-terug-naar');
+    toonScherm(doel);
+    if (doel === 'scherm-quizmaken') {
+      laadEigenQuizzen();
+    }
+  });
+});
+
+// Terug-knop op het bewerkformulier gaat terug naar waar we vandaan kwamen:
+// "Mijn quizzen" normaal, of "Speelbare quizzen" als sitebeheer een openbare
+// quiz van iemand anders aan het aanpassen was.
+document.getElementById('btn-nieuwe-quiz-terug').addEventListener('click', () => {
+  const bestemming = huidigeBewerkTerugScherm || 'scherm-quizmaken';
+  huidigeBewerkCode = null;
+  huidigeBewerkTerugScherm = 'scherm-quizmaken';
+  toonScherm(bestemming);
+  if (bestemming === 'scherm-speelbare-quizzen') {
+    laadOpenbareQuizzen();
+  } else {
+    laadEigenQuizzen();
+  }
+});
+
+// ---------- Omslagfoto's (standaard-galerij + eigen upload) ----------
+
+function maakStandaardOmslag(embleem, label, kleurVan, kleurNaar) {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="480" height="270" viewBox="0 0 480 270">
+      <defs>
+        <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="${kleurVan}"/>
+          <stop offset="100%" stop-color="${kleurNaar}"/>
+        </linearGradient>
+      </defs>
+      <rect width="480" height="270" fill="url(#g)"/>
+      <circle cx="70" cy="45" r="2" fill="#ffe9a8" opacity="0.85"/>
+      <circle cx="135" cy="215" r="1.6" fill="#ffe9a8" opacity="0.7"/>
+      <circle cx="405" cy="38" r="1.8" fill="#ffe9a8" opacity="0.8"/>
+      <circle cx="425" cy="205" r="2.2" fill="#ffe9a8" opacity="0.6"/>
+      <circle cx="55" cy="185" r="1.4" fill="#ffe9a8" opacity="0.6"/>
+      <circle cx="350" cy="230" r="1.5" fill="#ffe9a8" opacity="0.6"/>
+      <text x="240" y="145" font-size="92" text-anchor="middle" dominant-baseline="middle">${embleem}</text>
+      <text x="240" y="222" font-size="22" font-family="system-ui, sans-serif" font-weight="700" fill="#fff8e1" text-anchor="middle" opacity="0.9">${label}</text>
+    </svg>`;
+  return 'data:image/svg+xml,' + encodeURIComponent(svg);
+}
+
+const STANDAARD_OMSLAGEN = [
+  { id: 'trofee', url: maakStandaardOmslag('🏆', 'Algemene kennis', '#1c2456', '#05081c') },
+  { id: 'gloeilamp', url: maakStandaardOmslag('💡', 'Weetjes', '#2a1c40', '#0a0620') },
+  { id: 'wereldbol', url: maakStandaardOmslag('🌍', 'Aardrijkskunde', '#0d2a3a', '#04101c') },
+  { id: 'boek', url: maakStandaardOmslag('📚', 'Schoolquiz', '#1a1230', '#050816') },
+  { id: 'sterren', url: maakStandaardOmslag('✨', 'Sterrenquiz', '#141a3c', '#03050f') },
+  { id: 'vraagteken', url: maakStandaardOmslag('❓', 'Mysterie', '#241638', '#060310') }
+];
+
+let geselecteerdeOmslagUrl = STANDAARD_OMSLAGEN[0].url;
+
+const omslagPreviewImg = document.getElementById('omslag-preview-img');
+const omslagGalerijEl = document.getElementById('omslag-galerij');
+
+function toonOmslagPreview(url) {
+  geselecteerdeOmslagUrl = url;
+  omslagPreviewImg.src = url;
+}
+
+function bouwOmslagGalerij(actieveUrl) {
+  omslagGalerijEl.innerHTML = '';
+  STANDAARD_OMSLAGEN.forEach(optie => {
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'omslag-optie' + (optie.url === actieveUrl ? ' geselecteerd' : '');
+    knop.innerHTML = `<img src="${optie.url}" alt="${optie.id}">`;
+    knop.addEventListener('click', () => {
+      toonOmslagPreview(optie.url);
+      omslagGalerijEl.querySelectorAll('.omslag-optie').forEach(el => el.classList.remove('geselecteerd'));
+      knop.classList.add('geselecteerd');
+    });
+    omslagGalerijEl.appendChild(knop);
+  });
+}
+
+function leesEnVerkleinAfbeelding(bestand) {
+  return new Promise((resolve, reject) => {
+    const lezer = new FileReader();
+    lezer.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const doelBreedte = 480;
+        const doelHoogte = 270;
+        const canvas = document.createElement('canvas');
+        canvas.width = doelBreedte;
+        canvas.height = doelHoogte;
+        const ctx = canvas.getContext('2d');
+
+        const schaal = Math.max(doelBreedte / img.width, doelHoogte / img.height);
+        const geschaaldeBreedte = img.width * schaal;
+        const geschaaldeHoogte = img.height * schaal;
+        const x = (doelBreedte - geschaaldeBreedte) / 2;
+        const y = (doelHoogte - geschaaldeHoogte) / 2;
+        ctx.drawImage(img, x, y, geschaaldeBreedte, geschaaldeHoogte);
+
+        resolve(canvas.toDataURL('image/jpeg', 0.75));
+      };
+      img.onerror = () => reject(new Error('Kon de afbeelding niet lezen.'));
+      img.src = lezer.result;
+    };
+    lezer.onerror = () => reject(new Error('Kon het bestand niet lezen.'));
+    lezer.readAsDataURL(bestand);
+  });
+}
+
+document.getElementById('btn-omslag-uploaden').addEventListener('click', () => {
+  document.getElementById('input-omslag-bestand').click();
+});
+
+document.getElementById('input-omslag-bestand').addEventListener('change', (e) => {
+  const bestand = e.target.files[0];
+  if (!bestand) return;
+
+  leesEnVerkleinAfbeelding(bestand)
+    .then(dataUrl => {
+      toonOmslagPreview(dataUrl);
+      omslagGalerijEl.querySelectorAll('.omslag-optie').forEach(el => el.classList.remove('geselecteerd'));
+    })
+    .catch(err => {
+      document.getElementById('quizmaken-foutmelding').textContent = 'Foto uploaden mislukt: ' + err.message;
+    })
+    .finally(() => {
+      e.target.value = '';
+    });
+});
+
+
+
+const vragenContainer = document.getElementById('vragen-container');
+const sjabloonVraagBlok = document.getElementById('sjabloon-vraag-blok');
+
+// Als dit null is, wordt er een nieuwe quiz gemaakt. Anders wordt de quiz
+// met deze code bewerkt en overschreven in plaats van dat er een nieuwe
+// code wordt aangemaakt.
+let huidigeBewerkCode = null;
+
+// Naar welk scherm we teruggaan na het opslaan/annuleren van het bewerkformulier.
+// Normaal 'scherm-quizmaken' (Mijn quizzen), maar als sitebeheer een quiz
+// aanpast vanuit "Speelbare quizzen", dan 'scherm-speelbare-quizzen'.
+let huidigeBewerkTerugScherm = 'scherm-quizmaken';
+
+// Is de quiz die nu bewerkt wordt geblokkeerd door sitebeheer? Zo ja, dan kan
+// "openbaar" niet aangevinkt worden totdat sitebeheer de quiz deblokkeert.
+let huidigeBewerkGeblokkeerd = false;
+
+// Tijd per vraag bij live hosten (wekker), in seconden. De keuzeopties (10/15/
+// 20/25/30) staan in de <select id="input-tijdslimiet"> in index.html. Oudere
+// quizzen zonder dit veld gebruiken de standaardwaarde hieronder.
+const TIJDSLIMIET_STANDAARD = 20;
+
+// ---------- Hulpfuncties voor vragen (meerdere goede antwoorden, 2 of 4 opties) ----------
+//
+// Een vraag wordt overal in de app in dit formaat gebruikt:
+//   { vraag: "...", antwoorden: [...2 of 4 stuks...], goedAntwoorden: [1, 3, ...] }
+// Oudere quizzen (gemaakt vóór deze functie) hebben nog een los veld
+// `goedAntwoord` (één getal) in plaats van `goedAntwoorden` (een lijst).
+// normaliseerVraag() zorgt dat de rest van de app altijd met `goedAntwoorden` werkt.
+
+function normaliseerVraag(vraag) {
+  let goedAntwoorden = vraag.goedAntwoorden;
+  if (!goedAntwoorden) {
+    goedAntwoorden = vraag.goedAntwoord ? [vraag.goedAntwoord] : [];
+  }
+  // Oudere vragen (gemaakt vóór punten instelbaar waren) hebben geen `punten`
+  // veld; die tellen gewoon als 1000, zoals voorheen altijd het geval was.
+  const punten = (typeof vraag.punten === 'number' && vraag.punten >= 0) ? vraag.punten : 1000;
+  return {
+    vraag: vraag.vraag,
+    antwoorden: vraag.antwoorden || [],
+    goedAntwoorden: goedAntwoorden,
+    afbeelding: vraag.afbeelding || '',
+    punten: punten
+  };
+}
+
+// Zet een getal om naar een leesbare tekst met duizendtal-punten (Nederlandse notatie),
+// bijv. 1000000 -> "1.000.000". Wordt gebruikt om het puntenveld mooi te tonen.
+function formatPunten(getal) {
+  return getal.toLocaleString('nl-NL');
+}
+
+// Leest het puntenveld van een vraagblok. Haalt eerst alles weg wat geen cijfer is
+// (dus ook duizendtal-punten of -komma's die iemand zelf intypt, bijv. "1.000.000"),
+// zodat grote aantallen punten nooit per ongeluk als ongeldig worden gezien en stil
+// terugvallen op de standaardwaarde.
+function leesPuntenWaarde(blokEl) {
+  const ruweTekst = blokEl.querySelector('.veld-punten').value;
+  const cijfers = ruweTekst.replace(/[^\d]/g, '');
+  if (!cijfers) return 1000; // leeg veld: terugvallen op de standaardwaarde
+  const getal = parseInt(cijfers, 10);
+  return (Number.isFinite(getal) && getal >= 0) ? getal : 1000;
+}
+
+// Zet een getal netjes geformatteerd in het puntenveld van een vraagblok.
+function zetPuntenWaarde(blokEl, getal) {
+  const veilig = Math.max(0, getal);
+  blokEl.querySelector('.veld-punten').value = formatPunten(veilig);
+}
+
+// Vergelijkt twee lijsten met antwoordnummers zonder rekening te houden met volgorde.
+function setsGelijk(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+  const aSorted = [...a].sort();
+  const bSorted = [...b].sort();
+  return aSorted.every((waarde, i) => waarde === bSorted[i]);
+}
+
+// Toont/verbergt de antwoord-invoerrijen 3 en 4 in een vraagblok, afhankelijk
+// van of er 2 of 4 antwoorden gekozen zijn. Bij verbergen worden die velden
+// ook geleegd zodat ze niet per ongeluk meegestuurd worden.
+function werkAantalAntwoordenZichtbaarheidBij(blokEl, aantal) {
+  const rijen = blokEl.querySelectorAll('.antwoord-invoer-rij');
+  rijen.forEach((rij, i) => {
+    if (i < aantal) {
+      rij.classList.remove('verborgen');
+    } else {
+      rij.classList.add('verborgen');
+      rij.querySelector('.veld-antwoord').value = '';
+      rij.querySelector('.veld-goed-vinkje').checked = false;
+    }
+  });
+}
+
+// Foto bij een vraag: verhouding blijft behouden (niet bijsnijden), maximaal
+// 800 px breed/hoog zodat de quiz niet te zwaar wordt in Firebase.
+function leesEnVerkleinVraagFoto(bestand) {
+  return new Promise((resolve, reject) => {
+    const lezer = new FileReader();
+    lezer.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxAfmeting = 800;
+        const schaal = Math.min(1, maxAfmeting / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * schaal));
+        canvas.height = Math.max(1, Math.round(img.height * schaal));
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff'; // doorzichtige png's krijgen een witte achtergrond
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.75));
+      };
+      img.onerror = () => reject(new Error('Kon de afbeelding niet lezen.'));
+      img.src = lezer.result;
+    };
+    lezer.onerror = () => reject(new Error('Kon het bestand niet lezen.'));
+    lezer.readAsDataURL(bestand);
+  });
+}
+
+// Zet (of verwijdert, bij lege url) de foto van één vraagblok in het formulier.
+function zetVraagFoto(blokEl, url) {
+  blokEl._afbeelding = url || '';
+  const previewEl = blokEl.querySelector('.vraag-foto-preview');
+  const verwijderKnop = blokEl.querySelector('.btn-vraag-foto-verwijderen');
+  const kiesKnop = blokEl.querySelector('.btn-vraag-foto-kiezen');
+  if (url) {
+    previewEl.src = url;
+    previewEl.hidden = false;
+    verwijderKnop.hidden = false;
+    kiesKnop.textContent = 'Andere foto uploaden';
+  } else {
+    previewEl.removeAttribute('src');
+    previewEl.hidden = true;
+    verwijderKnop.hidden = true;
+    kiesKnop.textContent = 'Foto uploaden';
+  }
+}
+
+function vernummerVraagBlokken() {
+  const blokken = vragenContainer.querySelectorAll('.vraag-blok');
+  blokken.forEach((blok, index) => {
+    blok.querySelector('.vraag-blok-titel').textContent = 'Vraag ' + (index + 1);
+  });
+}
+
+function voegVraagBlokToe(vraagData) {
+  const kloon = sjabloonVraagBlok.content.cloneNode(true);
+  const blokEl = kloon.querySelector('.vraag-blok');
+
+  if (vraagData) {
+    const genormaliseerd = normaliseerVraag(vraagData);
+    const aantalAntwoorden = genormaliseerd.antwoorden.length === 2 ? 2 : 4;
+
+    blokEl.querySelector('.veld-vraag').value = genormaliseerd.vraag;
+    blokEl.querySelector('.veld-aantal-antwoorden').value = String(aantalAntwoorden);
+    zetPuntenWaarde(blokEl, genormaliseerd.punten);
+
+    const antwoordVelden = blokEl.querySelectorAll('.veld-antwoord');
+    const goedVinkjes = blokEl.querySelectorAll('.veld-goed-vinkje');
+    antwoordVelden.forEach((veld, i) => {
+      veld.value = genormaliseerd.antwoorden[i] || '';
+    });
+    goedVinkjes.forEach((vinkje, i) => {
+      vinkje.checked = genormaliseerd.goedAntwoorden.includes(i + 1);
+    });
+
+    werkAantalAntwoordenZichtbaarheidBij(blokEl, aantalAntwoorden);
+    zetVraagFoto(blokEl, genormaliseerd.afbeelding);
+  } else {
+    werkAantalAntwoordenZichtbaarheidBij(blokEl, 4);
+    zetVraagFoto(blokEl, '');
+  }
+
+  const vraagFotoBestandEl = blokEl.querySelector('.veld-vraag-foto-bestand');
+  blokEl.querySelector('.btn-vraag-foto-kiezen').addEventListener('click', () => {
+    vraagFotoBestandEl.click();
+  });
+  blokEl.querySelector('.btn-vraag-foto-verwijderen').addEventListener('click', () => {
+    zetVraagFoto(blokEl, '');
+  });
+  vraagFotoBestandEl.addEventListener('change', (e) => {
+    const bestand = e.target.files[0];
+    if (!bestand) return;
+    leesEnVerkleinVraagFoto(bestand)
+      .then(dataUrl => {
+        zetVraagFoto(blokEl, dataUrl);
+      })
+      .catch(err => {
+        document.getElementById('quizmaken-foutmelding').textContent = 'Foto uploaden mislukt: ' + err.message;
+      })
+      .finally(() => {
+        e.target.value = '';
+      });
+  });
+
+  // Punten-stappenteller: +/- knoppen tellen in stappen van 50 op/af, en het veld
+  // wordt na het typen automatisch netjes geformatteerd (bijv. "1.000.000").
+  const stapGrootte = 50;
+  blokEl.querySelector('.btn-punten-min').addEventListener('click', () => {
+    zetPuntenWaarde(blokEl, leesPuntenWaarde(blokEl) - stapGrootte);
+  });
+  blokEl.querySelector('.btn-punten-plus').addEventListener('click', () => {
+    zetPuntenWaarde(blokEl, leesPuntenWaarde(blokEl) + stapGrootte);
+  });
+  const puntenVeld = blokEl.querySelector('.veld-punten');
+  puntenVeld.addEventListener('input', () => {
+    // Laat tijdens het typen alleen cijfers en punten toe.
+    const schoon = puntenVeld.value.replace(/[^\d.]/g, '');
+    if (schoon !== puntenVeld.value) puntenVeld.value = schoon;
+  });
+  puntenVeld.addEventListener('blur', () => {
+    zetPuntenWaarde(blokEl, leesPuntenWaarde(blokEl));
+  });
+
+  blokEl.querySelector('.veld-aantal-antwoorden').addEventListener('change', (e) => {
+    werkAantalAntwoordenZichtbaarheidBij(blokEl, parseInt(e.target.value, 10));
+  });
+
+  blokEl.querySelector('.btn-verwijder-vraag').addEventListener('click', () => {
+    const aantalBlokken = vragenContainer.querySelectorAll('.vraag-blok').length;
+    if (aantalBlokken <= 1) {
+      document.getElementById('quizmaken-foutmelding').textContent = 'Een quiz heeft minstens 1 vraag nodig.';
+      return;
+    }
+    blokEl.remove();
+    vernummerVraagBlokken();
+  });
+
+  vragenContainer.appendChild(blokEl);
+  vernummerVraagBlokken();
+}
+
+document.getElementById('btn-vraag-toevoegen').addEventListener('click', () => {
+  voegVraagBlokToe();
+});
+
+// De keuze "mag alleen gespeeld worden" hoort bij het openbaar maken: pas zichtbaar
+// als "Deze quiz openbaar maken" aan staat.
+function werkSoloOptieZichtbaarheidBij() {
+  document.getElementById('solo-optie-rij').hidden = !document.getElementById('input-openbaar').checked;
+}
+
+document.getElementById('input-openbaar').addEventListener('change', werkSoloOptieZichtbaarheidBij);
+
+// Is deze quiz geblokkeerd door sitebeheer? Dan mag "openbaar" niet aangevinkt
+// worden: het vinkje wordt uitgezet en op slot gezet, en er komt een melding.
+function werkGeblokkeerdZichtbaarheidBij() {
+  const openbaarCheckbox = document.getElementById('input-openbaar');
+  const melding = document.getElementById('geblokkeerd-melding');
+  openbaarCheckbox.disabled = huidigeBewerkGeblokkeerd;
+  melding.hidden = !huidigeBewerkGeblokkeerd;
+  if (huidigeBewerkGeblokkeerd) {
+    openbaarCheckbox.checked = false;
+  }
+  werkSoloOptieZichtbaarheidBij();
+}
+
+document.getElementById('btn-toevoegen-quiz').addEventListener('click', () => {
+  huidigeBewerkCode = null;
+  huidigeBewerkTerugScherm = 'scherm-quizmaken';
+  huidigeBewerkGeblokkeerd = false;
+  document.getElementById('input-titel').value = '';
+  vragenContainer.innerHTML = '';
+  document.getElementById('quizmaken-foutmelding').textContent = '';
+  document.getElementById('nieuwe-quiz-titel-kop').textContent = 'Nieuwe quiz';
+  document.getElementById('btn-quiz-opslaan').textContent = 'Quiz opslaan';
+  document.getElementById('input-openbaar').checked = false;
+  document.getElementById('input-solo-toegestaan').checked = true;
+  document.getElementById('input-tijdslimiet').value = String(TIJDSLIMIET_STANDAARD);
+  werkGeblokkeerdZichtbaarheidBij();
+  bouwOmslagGalerij(STANDAARD_OMSLAGEN[0].url);
+  toonOmslagPreview(STANDAARD_OMSLAGEN[0].url);
+  voegVraagBlokToe();
+  toonScherm('scherm-nieuwe-quiz');
+});
+
+function startBewerkenVanQuiz(code, terugScherm) {
+  db.ref('quizzen/' + code).once('value').then(snapshot => {
+    const quizData = snapshot.val();
+    if (!quizData) {
+      alert('Deze quiz kon niet gevonden worden (misschien is hij verwijderd).');
+      return;
+    }
+
+    huidigeBewerkCode = code;
+    huidigeBewerkTerugScherm = terugScherm || 'scherm-quizmaken';
+    huidigeBewerkGeblokkeerd = !!quizData.geblokkeerd;
+    document.getElementById('input-titel').value = quizData.titel;
+    vragenContainer.innerHTML = '';
+    document.getElementById('quizmaken-foutmelding').textContent = '';
+    document.getElementById('input-openbaar').checked = !!quizData.openbaar;
+    // Oudere quizzen hebben deze keuze nog niet: die tellen als "alleen spelen mag".
+    document.getElementById('input-solo-toegestaan').checked = quizData.soloToegestaan !== false;
+    // Oudere quizzen hebben nog geen tijdslimiet: die vallen terug op de standaardwaarde.
+    document.getElementById('input-tijdslimiet').value = String(quizData.tijdslimiet || TIJDSLIMIET_STANDAARD);
+    werkGeblokkeerdZichtbaarheidBij();
+    const huidigeOmslag = quizData.afbeelding || STANDAARD_OMSLAGEN[0].url;
+    bouwOmslagGalerij(huidigeOmslag);
+    toonOmslagPreview(huidigeOmslag);
+    quizData.vragen.forEach(vraag => voegVraagBlokToe(vraag));
+    document.getElementById('nieuwe-quiz-titel-kop').textContent = 'Quiz bewerken';
+    document.getElementById('btn-quiz-opslaan').textContent = 'Wijzigingen opslaan';
+    toonScherm('scherm-nieuwe-quiz');
+  });
+}
+
+// ---------- Quiz opslaan ----------
+
+function genereerCode() {
+  const tekens = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // zonder verwarrende tekens zoals O/0, I/1
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += tekens.charAt(Math.floor(Math.random() * tekens.length));
+  }
+  return code;
+}
+
+document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
+  const titel = document.getElementById('input-titel').value.trim();
+  const foutmelding = document.getElementById('quizmaken-foutmelding');
+  foutmelding.textContent = '';
+
+  if (!titel) {
+    foutmelding.textContent = 'Vul een titel in.';
+    return;
+  }
+
+  const blokken = vragenContainer.querySelectorAll('.vraag-blok');
+  if (blokken.length === 0) {
+    foutmelding.textContent = 'Voeg minstens 1 vraag toe.';
+    return;
+  }
+
+  const vragen = [];
+
+  for (const blok of blokken) {
+    const vraagTekst = blok.querySelector('.veld-vraag').value.trim();
+    const aantalAntwoorden = parseInt(blok.querySelector('.veld-aantal-antwoorden').value, 10);
+    const antwoordVelden = Array.from(blok.querySelectorAll('.veld-antwoord')).slice(0, aantalAntwoorden);
+    const antwoorden = antwoordVelden.map(veld => veld.value.trim());
+    const goedVinkjes = Array.from(blok.querySelectorAll('.veld-goed-vinkje')).slice(0, aantalAntwoorden);
+    const goedAntwoorden = goedVinkjes
+      .map((vinkje, i) => vinkje.checked ? i + 1 : null)
+      .filter(i => i !== null);
+    const punten = leesPuntenWaarde(blok);
+
+    if (!vraagTekst || antwoorden.some(a => !a)) {
+      foutmelding.textContent = 'Vul bij elke vraag de vraagtekst en alle antwoorden in.';
+      return;
+    }
+    if (goedAntwoorden.length === 0) {
+      foutmelding.textContent = 'Vink bij elke vraag minstens 1 goed antwoord aan.';
+      return;
+    }
+
+    const vraagData = {
+      vraag: vraagTekst,
+      antwoorden: antwoorden,
+      goedAntwoorden: goedAntwoorden,
+      punten: punten
+    };
+    if (blok._afbeelding) {
+      vraagData.afbeelding = blok._afbeelding;
+    }
+    vragen.push(vraagData);
+  }
+
+  // Een geblokkeerde quiz kan nooit openbaar opgeslagen worden, ook niet als het
+  // vinkje via de browser (buiten het formulier om) toch aan zou staan.
+  const isOpenbaar = huidigeBewerkGeblokkeerd ? false : document.getElementById('input-openbaar').checked;
+  const soloToegestaan = document.getElementById('input-solo-toegestaan').checked;
+  const tijdslimiet = parseInt(document.getElementById('input-tijdslimiet').value, 10) || TIJDSLIMIET_STANDAARD;
+
+  if (huidigeBewerkCode) {
+    // Bestaande quiz bijwerken: zelfde code, alleen titel + vragen + omslag + openbaar overschrijven.
+    const code = huidigeBewerkCode;
+    const terugScherm = huidigeBewerkTerugScherm;
+
+    const updateData = { titel: titel, vragen: vragen, afbeelding: geselecteerdeOmslagUrl, openbaar: isOpenbaar, soloToegestaan: soloToegestaan, tijdslimiet: tijdslimiet, doorBeheerVerwijderd: false, geblokkeerd: huidigeBewerkGeblokkeerd };
+
+    // Is dit jouw eigen quiz? Dan zorgen we dat jouw naam erbij staat.
+    // (Bij sitebeheer die andermans quiz aanpast blijft de naam van de maker staan.)
+    const isEigenQuiz = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]').some(q => q.code === code && !q.gedeeldVan);
+    if (isEigenQuiz && huidigeMakerNaam()) {
+      updateData.makerNaam = huidigeMakerNaam();
+    }
+
+    db.ref('quizzen/' + code).update(updateData)
+      .then(() => {
+        const eigenQuizzen = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]');
+        const bijgewerkteLijst = eigenQuizzen.map(q =>
+          q.code === code ? Object.assign({}, q, { code: code, titel: titel, aantalVragen: vragen.length, afbeelding: geselecteerdeOmslagUrl, openbaar: isOpenbaar }) : q
+        );
+        localStorage.setItem('eigenQuizzen', JSON.stringify(bijgewerkteLijst));
+
+        huidigeBewerkCode = null;
+        huidigeBewerkTerugScherm = 'scherm-quizmaken';
+        toonScherm(terugScherm);
+        if (terugScherm === 'scherm-speelbare-quizzen') {
+          laadOpenbareQuizzen();
+        } else {
+          laadEigenQuizzen();
+        }
+      })
+      .catch(err => {
+        foutmelding.textContent = 'Opslaan mislukt: ' + err.message;
+      });
+    return;
+  }
+
+  const code = genereerCode();
+
+  const quizData = {
+    titel: titel,
+    vragen: vragen,
+    afbeelding: geselecteerdeOmslagUrl,
+    openbaar: isOpenbaar,
+    soloToegestaan: soloToegestaan,
+    tijdslimiet: tijdslimiet,
+    geblokkeerd: false,
+    makerNaam: huidigeMakerNaam() || '',
+    aangemaaktOp: Date.now()
+  };
+
+  db.ref('quizzen/' + code).set(quizData)
+    .then(() => {
+      // Titel + code lokaal onthouden zodat "Mijn quizzen" ze kan tonen
+      const eigenQuizzen = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]');
+      eigenQuizzen.push({ code: code, titel: titel, aantalVragen: vragen.length, afbeelding: geselecteerdeOmslagUrl, openbaar: isOpenbaar });
+      localStorage.setItem('eigenQuizzen', JSON.stringify(eigenQuizzen));
+
+      document.getElementById('code-weergave').textContent = code;
+      toonScherm('scherm-quiz-klaar');
+    })
+    .catch(err => {
+      foutmelding.textContent = 'Opslaan mislukt: ' + err.message;
+    });
+});
+
+document.getElementById('btn-nu-hosten').addEventListener('click', () => {
+  const code = document.getElementById('code-weergave').textContent;
+  startHostenVanQuiz(code);
+});
+
+// ---------- Eigen quizzen tonen (overzicht) ----------
+
+function laadEigenQuizzen() {
+  const lijstEl = document.getElementById('lijst-eigen-quizzen');
+
+  const eigenQuizzen = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]');
+
+  if (eigenQuizzen.length === 0) {
+    lijstEl.innerHTML = '<p>Je hebt nog geen quiz gemaakt.</p>';
+    return;
+  }
+
+  lijstEl.innerHTML = '<p>Bezig met laden...</p>';
+
+  // Voor elke eigen quiz de actuele gegevens uit Firebase ophalen, zodat we
+  // weten of de quiz nog "openbaar" is en of sitebeheer hem heeft weggehaald.
+  koppelMakerNaamAanEigenQuizzen().then(() => Promise.all(
+    eigenQuizzen.map(quiz =>
+      db.ref('quizzen/' + quiz.code).once('value').then(snapshot => ({
+        quiz: quiz,
+        liveData: snapshot.val()
+      }))
+    )
+  )).then(resultaten => {
+    lijstEl.innerHTML = '';
+
+    // Gedeelde quizzen die de ander inmiddels heeft verwijderd, halen we ook uit jouw lijst.
+    const verdwenen = resultaten.filter(r => !r.liveData && r.quiz.gedeeldVan).map(r => r.quiz.code);
+    resultaten = resultaten.filter(r => verdwenen.indexOf(r.quiz.code) === -1);
+    const behouden = eigenQuizzen.filter(q => verdwenen.indexOf(q.code) === -1);
+
+    // Lokale lijst bijwerken als de "openbaar"-status inmiddels afwijkt
+    // (bijv. omdat sitebeheer de quiz heeft weggehaald bij openbaar).
+    let lijstIsGewijzigd = false;
+    const bijgewerkteEigenQuizzen = behouden.map(q => {
+      const resultaat = resultaten.find(r => r.quiz.code === q.code);
+      if (resultaat && resultaat.liveData && resultaat.liveData.openbaar !== q.openbaar) {
+        lijstIsGewijzigd = true;
+        return Object.assign({}, q, { openbaar: resultaat.liveData.openbaar });
+      }
+      return q;
+    });
+    if (lijstIsGewijzigd || verdwenen.length) {
+      localStorage.setItem('eigenQuizzen', JSON.stringify(bijgewerkteEigenQuizzen));
+    }
+
+    resultaten.forEach(({ quiz, liveData }) => {
+      const actueelOpenbaar = liveData ? !!liveData.openbaar : quiz.openbaar;
+      const actueelGeblokkeerd = !!(liveData && liveData.geblokkeerd);
+      const makerNaam = (liveData && liveData.makerNaam) || '';
+      // Een quiz kan ook door een vriend aangepast zijn: toon altijd de nieuwste gegevens.
+      const titelNu = (liveData && liveData.titel) || quiz.titel;
+      const aantalNu = (liveData && liveData.vragen) ? liveData.vragen.length : quiz.aantalVragen;
+      const afbeeldingNu = (liveData && liveData.afbeelding) || quiz.afbeelding;
+
+      const item = document.createElement('div');
+      item.className = 'quiz-item';
+
+      if (actueelGeblokkeerd) {
+        const melding = document.createElement('div');
+        melding.className = 'quiz-beheer-melding quiz-beheer-melding-geblokkeerd';
+        melding.textContent = '🔒 Deze quiz is geblokkeerd door sitebeheer en kan niet openbaar gezet worden.';
+        item.appendChild(melding);
+      }
+
+      if (liveData && liveData.doorBeheerVerwijderd) {
+        const melding = document.createElement('div');
+        melding.className = 'quiz-beheer-melding';
+
+        const meldingTekst = document.createElement('span');
+        meldingTekst.textContent = 'Uw quiz is weggehaald bij openbaar.';
+
+        const meldingSluiten = document.createElement('button');
+        meldingSluiten.type = 'button';
+        meldingSluiten.className = 'quiz-beheer-melding-sluiten';
+        meldingSluiten.textContent = 'OK';
+        meldingSluiten.addEventListener('click', () => {
+          db.ref('quizzen/' + quiz.code + '/doorBeheerVerwijderd').remove()
+            .then(() => melding.remove())
+            .catch(err => alert('Melding weghalen mislukt: ' + err.message));
+        });
+
+        melding.appendChild(meldingTekst);
+        melding.appendChild(meldingSluiten);
+        item.appendChild(melding);
+      }
+
+      const afbeelding = document.createElement('img');
+      afbeelding.className = 'quiz-item-afbeelding';
+      afbeelding.src = afbeeldingNu || STANDAARD_OMSLAGEN[0].url;
+      afbeelding.alt = titelNu;
+
+      const body = document.createElement('div');
+      body.className = 'quiz-item-body';
+
+      const info = document.createElement('div');
+      info.className = 'quiz-item-info';
+      info.innerHTML = `<strong>${escapeHtml(titelNu)}</strong><span>${aantalNu} vraag/vragen${quiz.gedeeldVan ? ' · Gedeeld door ' + escapeHtml(quiz.gedeeldVan) : ''}${doorTekstVoorMaker(makerNaam)}${actueelOpenbaar ? ' · Openbaar' : ''}${actueelGeblokkeerd ? ' · Geblokkeerd' : ''}</span>`;
+
+      const knoppen = document.createElement('div');
+      knoppen.className = 'quiz-item-knoppen';
+
+      const speelKnop = document.createElement('button');
+      speelKnop.className = 'btn-spelen';
+      speelKnop.textContent = 'Spelen';
+      speelKnop.addEventListener('click', () => {
+        // Je eigen quiz mag je altijd ook alleen spelen.
+        toonSpeelKeuze(quiz.code, titelNu, true, 'scherm-quizmaken');
+      });
+
+      const aanpassenKnop = document.createElement('button');
+      aanpassenKnop.className = 'btn-aanpassen-quiz';
+      aanpassenKnop.textContent = 'Aanpassen';
+      aanpassenKnop.addEventListener('click', () => {
+        startBewerkenVanQuiz(quiz.code);
+      });
+
+      const verwijderKnop = document.createElement('button');
+      verwijderKnop.className = 'btn-verwijderen-quiz';
+      verwijderKnop.textContent = quiz.gedeeldVan ? 'Uit mijn lijst' : 'Verwijderen';
+      verwijderKnop.addEventListener('click', () => {
+        // Een quiz die een vriend met je gedeeld heeft, haal je alleen uit je eigen lijst;
+        // de quiz zelf blijft bestaan voor jullie allebei.
+        if (quiz.gedeeldVan) {
+          if (!confirm('"' + titelNu + '" uit je lijst halen? De quiz blijft bestaan voor ' + quiz.gedeeldVan + '.')) return;
+          localStorage.setItem('eigenQuizzen', JSON.stringify(eigenQuizzen.filter(q => q.code !== quiz.code)));
+          laadEigenQuizzen();
+          return;
+        }
+        const zekerWeten = confirm('Weet je zeker dat je "' + quiz.titel + '" wilt verwijderen? Dit kan niet ongedaan gemaakt worden.');
+        if (!zekerWeten) return;
+
+        db.ref('quizzen/' + quiz.code).remove()
+          .then(() => db.ref('sessies/' + quiz.code).remove())
+          .then(() => {
+            const bijgewerkteLijst = eigenQuizzen.filter(q => q.code !== quiz.code);
+            localStorage.setItem('eigenQuizzen', JSON.stringify(bijgewerkteLijst));
+            laadEigenQuizzen();
+          })
+          .catch(err => {
+            alert('Verwijderen mislukt: ' + err.message);
+          });
+      });
+
+      knoppen.appendChild(speelKnop);
+      knoppen.appendChild(aanpassenKnop);
+      knoppen.appendChild(verwijderKnop);
+
+      body.appendChild(info);
+      body.appendChild(knoppen);
+      item.appendChild(afbeelding);
+      item.appendChild(body);
+      lijstEl.appendChild(item);
+    });
+  }).catch(err => {
+    lijstEl.innerHTML = '<p>Laden van je quizzen mislukt: ' + err.message + '</p>';
+  });
+}
+
+// ---------- Speelbare quizzen tonen (openbaar gemaakt door anderen) ----------
+
+// Onthoudt of het overzicht open of ingeklapt staat (ook na opnieuw laden van de lijst).
+// Staat standaard ingeklapt; wordt automatisch opengeklapt zodra je in de zoekbalk typt.
+let makersOverzichtOpen = false;
+
+// Onthoudt de laatst opgehaalde makers (zodat de zoekbalk kan filteren zonder
+// steeds opnieuw bij Firebase te hoeven ophalen) en de huidige zoekterm.
+let laatsteMakersLijst = [];
+let makersZoekterm = '';
+
+// Bouwt de HTML voor de rijen in het makersoverzicht, gefilterd op zoekterm
+// (zoekt in de naam van de quizmaker, hoofdletterongevoelig, op elk deel van de naam).
+function bouwMakersRijenHtml(makers, zoekterm) {
+  if (makers.length === 0) {
+    return '<p class="voortgang">Er zijn nog geen quizzen gemaakt.</p>';
+  }
+
+  const term = zoekterm.trim().toLowerCase();
+  const gefilterd = term
+    ? makers.filter(maker => (maker.naam || 'naam onbekend').toLowerCase().includes(term))
+    : makers;
+
+  if (gefilterd.length === 0) {
+    return '<p class="sitebeheer-makers-leeg">Geen quizmakers gevonden voor "' + escapeHtml(zoekterm.trim()) + '".</p>';
+  }
+
+  return gefilterd.map(maker => {
+    const aantalOpenbaar = maker.quizzen.filter(q => q.openbaar).length;
+    const titels = maker.quizzen.map(q => {
+      const status = q.geblokkeerd ? 'geblokkeerd' : (q.openbaar ? 'openbaar' : (q.weggehaald ? 'weggehaald' : 'niet openbaar'));
+      const knopKlasse = 'btn-overzicht-blokkeren' + (q.geblokkeerd ? ' is-geblokkeerd' : '');
+      const knopTekst = q.geblokkeerd ? 'Deblokkeren' : 'Blokkeren';
+      const knop = '<button type="button" class="' + knopKlasse + '" data-code="' + escapeHtml(q.code) + '" data-geblokkeerd="' + (q.geblokkeerd ? '1' : '0') + '">' + knopTekst + '</button>';
+      return '<li>' + escapeHtml(q.titel) + ' <span class="sitebeheer-maker-code">' + escapeHtml(q.code) + ' · ' + status + '</span>' + knop + '</li>';
+    }).join('');
+    return '<div class="sitebeheer-maker-rij">' +
+      '<div class="sitebeheer-maker-naam-rij">' +
+      '<strong>' + (maker.naam ? escapeHtml(maker.naam) : 'Naam onbekend') + '</strong>' +
+      '<button type="button" class="btn-overzicht-naam-wijzigen" data-naam="' + escapeHtml(maker.naam) +
+      '" data-codes="' + maker.quizzen.map(q => escapeHtml(q.code)).join(',') + '">Naam wijzigen</button>' +
+      '<span class="sitebeheer-maker-telling">' + maker.quizzen.length + ' quiz/quizzen · ' + aantalOpenbaar + ' openbaar</span>' +
+      '</div>' +
+      '<ul>' + titels + '</ul>' +
+      '</div>';
+  }).join('');
+}
+
+// Alleen voor sitebeheer: overzicht van ALLE quizmakers (dus ook van quizzen
+// die niet openbaar zijn of door sitebeheer bij openbaar zijn weggehaald).
+function toonSitebeheerMakersOverzicht() {
+  const lijstEl = document.getElementById('lijst-openbare-quizzen');
+  let overzichtEl = document.getElementById('sitebeheer-makers-overzicht');
+
+  if (!sitebeheerActief) {
+    if (overzichtEl) overzichtEl.remove();
+    return;
+  }
+
+  if (!overzichtEl) {
+    overzichtEl = document.createElement('div');
+    overzichtEl.id = 'sitebeheer-makers-overzicht';
+    overzichtEl.className = 'sitebeheer-makers';
+    lijstEl.parentNode.insertBefore(overzichtEl, lijstEl);
+
+    // Eén keer een klik-listener voor de blokkeer/deblokkeer-knopjes: dit overzicht
+    // toont ALLE quizzen (ook niet-openbare), dus hier kan sitebeheer élke quiz
+    // blokkeren, niet alleen quizzen die nu in "Speelbare quizzen" staan.
+    overzichtEl.addEventListener('click', (e) => {
+      const blokkeerKnop = e.target.closest('.btn-overzicht-blokkeren');
+      if (blokkeerKnop) {
+        const code = blokkeerKnop.dataset.code;
+        const isNuGeblokkeerd = blokkeerKnop.dataset.geblokkeerd === '1';
+        const bevestiging = isNuGeblokkeerd
+          ? 'Weet je zeker dat je deze quiz wilt deblokkeren? De maker kan hem daarna weer openbaar zetten.'
+          : 'Weet je zeker dat je deze quiz wilt blokkeren? Hij gaat direct offline (als hij openbaar stond) en kan niet meer openbaar gezet worden totdat je hem weer deblokkeert.';
+        if (!confirm(bevestiging)) return;
+
+        const updateData = isNuGeblokkeerd
+          ? { geblokkeerd: false }
+          : { geblokkeerd: true, openbaar: false };
+
+        db.ref('quizzen/' + code).update(updateData)
+          .then(() => {
+            laadOpenbareQuizzen();
+          })
+          .catch(err => {
+            alert('Bijwerken mislukt: ' + err.message);
+          });
+        return;
+      }
+
+      const naamKnop = e.target.closest('.btn-overzicht-naam-wijzigen');
+      if (naamKnop) {
+        const codes = (naamKnop.dataset.codes || '').split(',').filter(Boolean);
+        if (codes.length === 0) return;
+        const huidigeNaam = naamKnop.dataset.naam || '';
+
+        const nieuweNaam = prompt(
+          'Nieuwe naam voor deze quizmaker (geldt voor al ' + (codes.length === 1 ? 'zijn/haar quiz' : 'zijn/haar ' + codes.length + ' quizzen') + '):',
+          huidigeNaam
+        );
+        if (nieuweNaam === null) return; // geannuleerd
+        const schoneNaam = nieuweNaam.trim();
+        if (!schoneNaam) {
+          alert('Vul een naam in.');
+          return;
+        }
+        if (schoneNaam === huidigeNaam) return; // niets veranderd
+
+        // Eén update met alle quizzen van deze maker tegelijk (voorkomt dat de
+        // groep halverwege in twee stukken uiteenvalt als één update mislukt).
+        const updates = {};
+        codes.forEach(code => {
+          updates[code + '/makerNaam'] = schoneNaam;
+        });
+
+        naamKnop.disabled = true;
+        db.ref('quizzen').update(updates)
+          .then(() => {
+            laadOpenbareQuizzen();
+          })
+          .catch(err => {
+            alert('Naam wijzigen mislukt: ' + err.message);
+            naamKnop.disabled = false;
+          });
+        return;
+      }
+    });
+
+    // Eén keer een input-listener voor de zoekbalk: filtert alleen de rijen
+    // (niet de hele overzicht-HTML), zodat de zoekbalk niet zijn focus verliest
+    // terwijl je typt. Klapt het venster ook automatisch open zodra je typt.
+    overzichtEl.addEventListener('input', (e) => {
+      if (e.target.id !== 'input-zoek-makers') return;
+      makersZoekterm = e.target.value;
+      const rijenEl = overzichtEl.querySelector('#sitebeheer-makers-rijen');
+      if (rijenEl) rijenEl.innerHTML = bouwMakersRijenHtml(laatsteMakersLijst, makersZoekterm);
+      const detailsEl = overzichtEl.querySelector('details');
+      if (detailsEl && makersZoekterm.trim()) {
+        detailsEl.open = true;
+        makersOverzichtOpen = true;
+      }
+    });
+  }
+  overzichtEl.innerHTML = '<p class="voortgang">Quizmakers laden...</p>';
+
+  db.ref('quizzen').once('value')
+    .then(snapshot => {
+      if (!sitebeheerActief) {
+        overzichtEl.remove();
+        return;
+      }
+
+      const data = snapshot.val() || {};
+      const groepen = {};
+
+      Object.entries(data).forEach(([code, quiz]) => {
+        const naam = ((quiz && quiz.makerNaam) || '').trim();
+        const sleutel = naam.toLowerCase(); // 'Sam' en 'sam' tellen als dezelfde maker
+        if (!groepen[sleutel]) {
+          groepen[sleutel] = { naam: naam, quizzen: [] };
+        }
+        groepen[sleutel].quizzen.push({
+          code: code,
+          titel: (quiz && quiz.titel) || '(zonder titel)',
+          openbaar: !!(quiz && quiz.openbaar),
+          weggehaald: !!(quiz && quiz.doorBeheerVerwijderd),
+          geblokkeerd: !!(quiz && quiz.geblokkeerd)
+        });
+      });
+
+      const makers = Object.values(groepen).sort((a, b) => {
+        if (!a.naam) return 1;   // "naam onbekend" altijd onderaan
+        if (!b.naam) return -1;
+        return a.naam.localeCompare(b.naam, 'nl');
+      });
+
+      laatsteMakersLijst = makers;
+
+      // <details> = inklapbaar venster (staat standaard ingeklapt); klik op de
+      // titel om in of uit te klappen. De zoekbalk staat erboven, buiten het
+      // inklapbare venster, zodat je ook kunt zoeken terwijl het dicht staat
+      // (typen klapt het vanzelf open).
+      overzichtEl.innerHTML =
+        '<div class="sitebeheer-makers-zoek">' +
+        '<input type="text" id="input-zoek-makers" placeholder="🔍 Zoek op naam..." value="' + escapeHtml(makersZoekterm) + '">' +
+        '</div>' +
+        '<details class="sitebeheer-makers-details"' + (makersOverzichtOpen ? ' open' : '') + '>' +
+        '<summary>Alle quizmakers (' + makers.length + ')</summary>' +
+        '<div id="sitebeheer-makers-rijen">' + bouwMakersRijenHtml(makers, makersZoekterm) + '</div>' +
+        '</details>';
+
+      const detailsEl = overzichtEl.querySelector('details');
+      detailsEl.addEventListener('toggle', () => {
+        makersOverzichtOpen = detailsEl.open;
+      });
+    })
+    .catch(err => {
+      overzichtEl.innerHTML = '<p class="foutmelding">Laden van quizmakers mislukt: ' + escapeHtml(err.message) + '</p>';
+    });
+}
+
+// Onthoudt de laatst opgehaalde openbare quizzen (zodat de zoekbalk kan
+// filteren zonder steeds opnieuw bij Firebase te hoeven ophalen).
+let laatsteOpenbareQuizzenData = []; // [[code, quiz], ...]
+
+// Bouwt één quiz-kaartje op voor "Speelbare quizzen". Gebruikt door
+// renderOpenbareQuizzenLijst voor elke quiz die (na filteren) getoond wordt.
+function bouwOpenbareQuizItemEl(code, quiz) {
+        const item = document.createElement('div');
+        item.className = 'quiz-item';
+
+        const afbeelding = document.createElement('img');
+        afbeelding.className = 'quiz-item-afbeelding';
+        afbeelding.src = quiz.afbeelding || STANDAARD_OMSLAGEN[0].url;
+        afbeelding.alt = quiz.titel;
+
+        const body = document.createElement('div');
+        body.className = 'quiz-item-body';
+
+        const info = document.createElement('div');
+        info.className = 'quiz-item-info';
+        const aantalVragen = (quiz.vragen || []).length;
+        const makerNaam = quiz.makerNaam || '';
+        const doorTekst = doorTekstVoorMaker(makerNaam);
+        const codeTekst = sitebeheerActief ? ' · Code ' + escapeHtml(code) : '';
+        info.innerHTML = `<strong>${escapeHtml(quiz.titel)}</strong><span>${aantalVragen} vraag/vragen${doorTekst}${codeTekst}</span>`;
+
+        const knoppen = document.createElement('div');
+        knoppen.className = 'quiz-item-knoppen';
+
+        const speelKnop = document.createElement('button');
+        speelKnop.className = 'btn-spelen';
+        speelKnop.textContent = 'Spelen';
+        speelKnop.addEventListener('click', () => {
+          // Alleen spelen mag als de maker dat heeft toegestaan (of als het je eigen quiz is).
+          const soloMag = quiz.soloToegestaan !== false || isEigenQuizCode(code);
+          toonSpeelKeuze(code, quiz.titel, soloMag, 'scherm-speelbare-quizzen');
+        });
+
+        knoppen.appendChild(speelKnop);
+
+        if (sitebeheerActief) {
+          const aanpassenKnop = document.createElement('button');
+          aanpassenKnop.className = 'btn-aanpassen-quiz';
+          aanpassenKnop.textContent = 'Aanpassen';
+          aanpassenKnop.addEventListener('click', () => {
+            startBewerkenVanQuiz(code, 'scherm-speelbare-quizzen');
+          });
+          knoppen.appendChild(aanpassenKnop);
+
+          const blokkeerKnop = document.createElement('button');
+          blokkeerKnop.className = 'btn-blokkeren-quiz';
+          blokkeerKnop.textContent = 'Blokkeren';
+          blokkeerKnop.addEventListener('click', () => {
+            const zekerWeten = confirm('Weet je zeker dat je "' + quiz.titel + '" wilt blokkeren? De quiz gaat direct offline en de maker kan hem niet meer openbaar zetten totdat je hem weer deblokkeert.');
+            if (!zekerWeten) return;
+
+            db.ref('quizzen/' + code).update({ openbaar: false, geblokkeerd: true })
+              .then(() => {
+                laadOpenbareQuizzen();
+              })
+              .catch(err => {
+                alert('Blokkeren mislukt: ' + err.message);
+              });
+          });
+          knoppen.appendChild(blokkeerKnop);
+
+          const verwijderKnop = document.createElement('button');
+          verwijderKnop.className = 'btn-verwijderen-quiz';
+          verwijderKnop.textContent = 'Verwijderen';
+          verwijderKnop.addEventListener('click', () => {
+            const zekerWeten = confirm('Weet je zeker dat je "' + quiz.titel + '" wilt verwijderen uit Speelbare quizzen? De quiz zelf blijft bestaan voor de maker, hij verdwijnt alleen uit deze lijst.');
+            if (!zekerWeten) return;
+
+            db.ref('quizzen/' + code).update({ openbaar: false, doorBeheerVerwijderd: true })
+              .then(() => {
+                laadOpenbareQuizzen();
+              })
+              .catch(err => {
+                alert('Verwijderen mislukt: ' + err.message);
+              });
+          });
+          knoppen.appendChild(verwijderKnop);
+        }
+
+  body.appendChild(info);
+  body.appendChild(knoppen);
+  item.appendChild(afbeelding);
+  item.appendChild(body);
+  return item;
+}
+
+// Toont de huidige "laatsteOpenbareQuizzenData", gefilterd op de zoekbalk
+// (zoekt op titel, hoofdletterongevoelig, op elk deel van de titel).
+// Wordt aangeroepen na elke keer laden én bij elke toetsaanslag in de zoekbalk.
+function renderOpenbareQuizzenLijst() {
+  const lijstEl = document.getElementById('lijst-openbare-quizzen');
+  const zoekVeldEl = document.getElementById('input-zoek-speelbare-quizzen');
+  const zoekterm = ((zoekVeldEl && zoekVeldEl.value) || '').trim().toLowerCase();
+
+  lijstEl.innerHTML = '';
+
+  if (laatsteOpenbareQuizzenData.length === 0) {
+    lijstEl.innerHTML = '<p>Er zijn nog geen openbare quizzen. Zet je eigen quiz op openbaar om hem hier te laten verschijnen.</p>';
+    return;
+  }
+
+  const gefilterd = zoekterm
+    ? laatsteOpenbareQuizzenData.filter(([, quiz]) => (quiz.titel || '').toLowerCase().includes(zoekterm))
+    : laatsteOpenbareQuizzenData;
+
+  if (gefilterd.length === 0) {
+    lijstEl.innerHTML = '<p>Geen quizzen gevonden voor "' + escapeHtml((zoekVeldEl && zoekVeldEl.value.trim()) || '') + '".</p>';
+    return;
+  }
+
+  gefilterd.forEach(([code, quiz]) => {
+    lijstEl.appendChild(bouwOpenbareQuizItemEl(code, quiz));
+  });
+}
+
+function laadOpenbareQuizzen() {
+  const lijstEl = document.getElementById('lijst-openbare-quizzen');
+  lijstEl.innerHTML = '<p>Bezig met laden...</p>';
+  toonSitebeheerMakersOverzicht();
+
+  koppelMakerNaamAanEigenQuizzen()
+    .then(() => db.ref('quizzen').orderByChild('openbaar').equalTo(true).once('value'))
+    .then(snapshot => {
+      const data = snapshot.val();
+      laatsteOpenbareQuizzenData = data ? Object.entries(data) : [];
+      renderOpenbareQuizzenLijst();
+    })
+    .catch(err => {
+      lijstEl.innerHTML = '<p>Laden van openbare quizzen mislukt: ' + err.message + '</p>';
+    });
+}
+
+// Live filteren terwijl je typt (zoekt op titel, zowel als gewone bezoeker
+// als sitebeheer — de zoekbalk staat altijd boven "Speelbare quizzen").
+const inputZoekSpeelbareQuizzenEl = document.getElementById('input-zoek-speelbare-quizzen');
+if (inputZoekSpeelbareQuizzenEl) {
+  inputZoekSpeelbareQuizzenEl.addEventListener('input', renderOpenbareQuizzenLijst);
+}
+
+// ================================================================
+//  LIVE QUIZ: hosten, meedoen, spelen en scorebord
+// ================================================================
+//
+// Structuur in Firebase:
+//   quizzen/<code>            -> titel, vragen, aangemaaktOp  (al bestond)
+//   sessies/<code>            -> status, huidigeVraagIndex, spelers, antwoorden
+//     status: 'wachtkamer' | 'vraag' | 'resultaat' | 'scorebord' | 'afgelopen'
+//       vraag     -> spelers antwoorden (daarna zien ze alleen een groot laadteken)
+//       resultaat -> host: het goede antwoord + hoeveel spelers het goed hadden;
+//                    spelers: goed/fout met het goede antwoord eronder
+//                    (punten worden op dit moment geteld)
+//       scorebord -> alleen het scorebord, zonder vraag en antwoord
+//     spelers/<spelerId>      -> naam, dier (emoji), accessoires (boven/gezicht/hoek), score, totaleReactietijd
+//     antwoorden/<vraagIndex>/<spelerId> -> antwoordIndexen (lijst), reactietijdMs
+//
+// Een vraag kan 2 of 4 antwoorden hebben en 1 of meerdere daarvan kunnen goed
+// zijn (zie goedAntwoorden in normaliseerVraag hierboven). Een speler moet
+// precies de goede antwoorden aanvinken (niet meer, niet minder) om de vraag
+// goed te hebben.
+//
+// Puntentelling: een goed antwoord levert 1000 punten op. Bij een gelijke
+// stand wint degene die (opgeteld over de vragen) het snelst klikte.
+
+let huidigeSessieRef = null;
+let huidigeRol = null; // 'host' of 'speler'
+let huidigeSessieCode = null;
+let huidigeQuizVragen = [];
+let huidigeQuizTitel = '';
+let huidigeQuizTijdslimiet = TIJDSLIMIET_STANDAARD;
+let huidigeVraagIndexHost = -1;
+let huidigeSpelerId = null;
+
+// Wekker per vraag (alleen zichtbaar bij de quizmaster tijdens live hosten).
+// Loopt de tijd af, dan gaat de host automatisch door naar het resultaat
+// (hetzelfde als zelf op "Doorgaan" klikken).
+let hostTimerInterval = null;
+let hostTimerVoorVraagGestartOp = null;
+let resultaatWordtBerekend = false;
+
+let laatstGetoondeVraagIndexSpeler = -1;
+let vraagGetoondOpSpeler = 0;
+let spelerHeeftGeantwoord = false;
+let spelerGeselecteerdeAntwoorden = [];
+let huidigeStatusSpeler = '';
+let muntenToegekendVoorSessie = null; // sessiecode waarvoor deze speler al munten voor winnen kreeg (voorkomt dubbel toekennen)
+
+// ---------- Poppetje: een dier + accessoires (hoeden, brillen, hartjes, ...) ----------
+// De tekeningen zelf (dieren, hoeden, brillen, ...) staan in poppetjes.js. Dat bestand
+// levert DIEREN, ACCESSOIRE_GROEPEN, geldigeAccessoires() en poppetjeSvg().
+
+let kiezerTab = 'dieren'; // 'dieren' of 'accessoires' (welk tabblad open staat in de wachtkamer)
+let huidigePoppetje = { dier: '', accessoires: {} }; // wat deze speler nu heeft gekozen
+
+function willekeurigDier() {
+  const bezit = haalBezitDieren();
+  return bezit[Math.floor(Math.random() * bezit.length)];
+}
+
+// Geeft het dier terug als het een geldig dier uit de lijst is, anders ''.
+function geldigDier(dier) {
+  return DIEREN.indexOf(dier) !== -1 ? dier : '';
+}
+
+// Maakt het poppetje: het getekende dier met de accessoires er passend op.
+// De grootte volgt de lettergrootte van het element waar hij in komt te staan.
+function maakPoppetje(dier, accessoires) {
+  const poppetje = document.createElement('span');
+  poppetje.className = 'poppetje';
+  poppetje.innerHTML = poppetjeSvg(geldigDier(dier), accessoires);
+  return poppetje;
+}
+
+// Bouwt de knoppen in de wachtkamer, afhankelijk van het open tabblad.
+function bouwKiezer() {
+  const kiezerEl = document.getElementById('dieren-kiezer');
+  kiezerEl.innerHTML = '';
+
+  const opDieren = kiezerTab === 'dieren';
+  kiezerEl.classList.toggle('accessoires', !opDieren);
+  document.getElementById('tab-dieren').classList.toggle('actief', opDieren);
+  document.getElementById('tab-dieren').setAttribute('aria-selected', String(opDieren));
+  document.getElementById('tab-accessoires').classList.toggle('actief', !opDieren);
+  document.getElementById('tab-accessoires').setAttribute('aria-selected', String(!opDieren));
+
+  const bezitDieren = haalBezitDieren();
+  const bezitAccessoires = haalBezitAccessoires();
+  const totaalDierenCatalogus = DIEREN.length;
+  const totaalAccCatalogus = ACCESSOIRE_GROEPEN.reduce((n, g) => n + g.items.length, 0);
+
+  if (opDieren) {
+    bezitDieren.forEach(dier => {
+      const knop = document.createElement('button');
+      knop.type = 'button';
+      knop.className = 'dier-knop';
+      knop.innerHTML = poppetjeSvg(dier, {});
+      knop.dataset.dier = dier;
+      knop.setAttribute('aria-label', 'Kies ' + dier);
+      knop.addEventListener('click', () => kiesDier(dier));
+      kiezerEl.appendChild(knop);
+    });
+  } else {
+    // Bij elk accessoire zie je meteen hoe het op jouw dier staat.
+    const voorbeeldDier = huidigePoppetje.dier || bezitDieren[0];
+    ACCESSOIRE_GROEPEN.forEach(groep => {
+      const items = groep.items.filter(emoji => bezitAccessoires.indexOf(emoji) !== -1);
+      if (!items.length) return; // deze hele groep nog niet in bezit
+
+      const kop = document.createElement('div');
+      kop.className = 'kiezer-groep-titel';
+      kop.textContent = groep.titel;
+      kiezerEl.appendChild(kop);
+
+      items.forEach(emoji => {
+        const voorbeeld = {};
+        voorbeeld[groep.plek] = emoji;
+        const knop = document.createElement('button');
+        knop.type = 'button';
+        knop.className = 'dier-knop';
+        knop.innerHTML = poppetjeSvg(voorbeeldDier, voorbeeld);
+        knop.dataset.plek = groep.plek;
+        knop.dataset.acc = emoji;
+        knop.setAttribute('aria-label', 'Kies ' + ACCESSOIRES[emoji].naam);
+        knop.addEventListener('click', () => kiesAccessoire(groep.plek, emoji));
+        kiezerEl.appendChild(knop);
+      });
+    });
+
+    const wegKnop = document.createElement('button');
+    wegKnop.type = 'button';
+    wegKnop.className = 'kiezer-weg-knop';
+    wegKnop.textContent = 'Alle accessoires weghalen';
+    wegKnop.addEventListener('click', verwijderAlleAccessoires);
+    kiezerEl.appendChild(wegKnop);
+  }
+
+  if (bezitDieren.length < totaalDierenCatalogus || bezitAccessoires.length < totaalAccCatalogus) {
+    const hint = document.createElement('p');
+    hint.className = 'kiezer-hint';
+    hint.textContent = '🎁 Meer dieren en accessoires vind je in de winkel (mysterieboxen)!';
+    kiezerEl.appendChild(hint);
+  }
+
+  toonGekozenPoppetje(huidigePoppetje);
+}
+
+document.getElementById('tab-dieren').addEventListener('click', () => {
+  kiezerTab = 'dieren';
+  bouwKiezer();
+});
+document.getElementById('tab-accessoires').addEventListener('click', () => {
+  kiezerTab = 'accessoires';
+  bouwKiezer();
+});
+
+// ---------- Dierenverzameling: de hele catalogus bekijken, ook buiten een quiz om ----------
+// Dit scherm laat zowel de dieren/accessoires zien die je al hebt, als de rest van de
+// catalogus (grijs met een slotje), zodat je ook zonder in een quiz te zitten kunt zien
+// welke poppetjes er allemaal bestaan. Klik je op iets dat je al hebt, dan verkoop je het
+// (na een bevestigingsvraag) voor VERKOOP_PRIJS munten; grijze (nog niet in bezit) knoppen
+// doen niks.
+
+let kiezerTabVerzameling = 'dieren'; // 'dieren', 'boven' (hoeden), 'gezicht' (brillen) of 'hoek' (extra)
+const VERKOOP_PRIJS = 5;
+
+// De tabbladen (Dieren, Hoeden, Brillen, Extra) worden in bouwVerzamelingKiezer() zelf gemaakt,
+// op dezelfde manier als in "Poppetje wijzigen".
+
+// Verkoopt een dier uit je bezit. Je laatste dier mag je niet verkopen: haalBezitDieren()
+// valt anders terug op de gratis standaarddieren zodra je bezit leeg is, en dan zou je
+// oneindig munten kunnen "verdienen" door steeds hetzelfde teruggekregen dier te verkopen.
+function verkoopDier(dier) {
+  const bezit = haalBezitDieren();
+  const index = bezit.indexOf(dier);
+  if (index === -1) return;
+  if (bezit.length <= 1) {
+    alert('Je kunt je laatste dier niet verkopen.');
+    return;
+  }
+  if (!confirm('Dit dier verkopen voor ' + VERKOOP_PRIJS + ' munten? Je bent hem dan kwijt.')) return;
+
+  bezit.splice(index, 1);
+  localStorage.setItem(BEZIT_DIEREN_SLEUTEL, JSON.stringify(bezit));
+  geefMunten(VERKOOP_PRIJS);
+  bouwVerzamelingKiezer();
+}
+
+// Zelfde idee als verkoopDier(), maar dan voor een accessoire.
+function verkoopAccessoire(emoji) {
+  const bezit = haalBezitAccessoires();
+  const index = bezit.indexOf(emoji);
+  if (index === -1) return;
+  if (bezit.length <= 1) {
+    alert('Je kunt je laatste accessoire niet verkopen.');
+    return;
+  }
+  const naam = (ACCESSOIRES[emoji] && ACCESSOIRES[emoji].naam) || 'dit accessoire';
+  if (!confirm('"' + naam + '" verkopen voor ' + VERKOOP_PRIJS + ' munten? Je bent het dan kwijt.')) return;
+
+  bezit.splice(index, 1);
+  localStorage.setItem(BEZIT_ACCESSOIRES_SLEUTEL, JSON.stringify(bezit));
+  geefMunten(VERKOOP_PRIJS);
+  bouwVerzamelingKiezer();
+}
+
+// (bouwVerzamelingKiezer() staat verderop in dit bestand.)
+
+// Toont het gekozen poppetje groot boven de tekst en markeert de gekozen knoppen.
+// `speler` is het speler-object uit de sessie (met dier en accessoires).
+function toonGekozenPoppetje(speler) {
+  speler = speler || {};
+  const dier = geldigDier(speler.dier);
+  const acc = geldigeAccessoires(speler.accessoires);
+  huidigePoppetje = { dier: dier, accessoires: acc };
+
+  const grootEl = document.getElementById('speler-wachtkamer-dier');
+  grootEl.innerHTML = '';
+  if (dier) grootEl.appendChild(maakPoppetje(dier, acc));
+
+  document.querySelectorAll('#dieren-kiezer .dier-knop').forEach(knop => {
+    if (knop.dataset.dier) {
+      knop.classList.toggle('gekozen', knop.dataset.dier === dier);
+    } else if (knop.dataset.acc) {
+      knop.classList.toggle('gekozen', acc[knop.dataset.plek] === knop.dataset.acc);
+    }
+  });
+}
+
+// Mag deze speler nu nog iets aan zijn poppetje veranderen?
+// Alleen in de wachtkamer (en alleen als je nog meedoet), anders zou een
+// verwijderde speler per ongeluk weer verschijnen.
+function magPoppetjeWijzigen() {
+  return huidigeRol === 'speler' && huidigeStatusSpeler === 'wachtkamer' &&
+    !!huidigeSessieCode && !!huidigeSpelerId;
+}
+
+function spelerRef() {
+  return db.ref('sessies/' + huidigeSessieCode + '/spelers/' + huidigeSpelerId);
+}
+
+// De speler kiest een dier: opslaan bij de speler in de sessie.
+function kiesDier(dier) {
+  if (!magPoppetjeWijzigen() || !geldigDier(dier) || haalBezitDieren().indexOf(dier) === -1) return;
+
+  toonGekozenPoppetje({ dier: dier, accessoires: huidigePoppetje.accessoires });
+  spelerRef().child('dier').set(dier);
+}
+
+// De speler kiest een accessoire. Nog eens op hetzelfde tikken haalt het weer weg.
+function kiesAccessoire(plek, emoji) {
+  if (!magPoppetjeWijzigen()) return;
+  const groep = ACCESSOIRE_GROEPEN.find(g => g.plek === plek);
+  if (!groep || groep.items.indexOf(emoji) === -1 || haalBezitAccessoires().indexOf(emoji) === -1) return;
+
+  const acc = Object.assign({}, huidigePoppetje.accessoires);
+  const ref = spelerRef().child('accessoires').child(plek);
+  if (acc[plek] === emoji) {
+    delete acc[plek];
+    ref.remove();
+  } else {
+    acc[plek] = emoji;
+    ref.set(emoji);
+  }
+  toonGekozenPoppetje({ dier: huidigePoppetje.dier, accessoires: acc });
+}
+
+function verwijderAlleAccessoires() {
+  if (!magPoppetjeWijzigen()) return;
+  toonGekozenPoppetje({ dier: huidigePoppetje.dier, accessoires: {} });
+  spelerRef().child('accessoires').remove();
+}
+
+// ================================================================
+//  MUNTEN EN MYSTERIEBOXEN (winkel)
+// ================================================================
+//
+// Er zijn geen echte accounts voor gewone spelers, dus net als de naam
+// (zie hierboven) worden munten en "bezit" (welke dieren/accessoires je
+// hebt) lokaal onthouden per browser/apparaat (localStorage). Iedereen
+// begint gratis met de hond, de kat en de zonnebril (STANDAARD_DIEREN /
+// STANDAARD_ACCESSOIRES in poppetjes.js). De rest zit verstopt in
+// mysterieboxen die sitebeheer ontwerpt (naam, prijs, inhoud) en die je met
+// munten koopt in de Winkel; alles wat erin zit krijg en houd je voorgoed.
+// Munten verdien je bij een live quiz ("Met mensen") met een top 3-plek
+// (1e: 30, 2e: 20, 3e: 10) of door alleen een quiz helemaal goed te spelen (30). Boxen staan in Firebase onder "mysterieboxen" — zie readme.md
+// voor de bijbehorende regel die daar nog voor toegevoegd moet worden.
+
+const MUNTEN_SLEUTEL = 'quizAppMunten';
+const BEZIT_DIEREN_SLEUTEL = 'quizAppBezitDieren';
+const BEZIT_ACCESSOIRES_SLEUTEL = 'quizAppBezitAccessoires';
+// Welke mysterieboxen (op id) deze speler ooit heeft gekocht — lokaal onthouden, zodat
+// we in de winkel kunnen laten zien "✅ Al eerder gekocht" en iemand niet per ongeluk
+// nog een keer munten uitgeeft aan een box die hij al heeft.
+const GEKOCHTE_BOXEN_SLEUTEL = 'quizAppGekochteBoxen';
+// Munten bij een live quiz ("Met mensen"): 1e, 2e en 3e plek. De rest krijgt niets.
+const MUNTEN_LIVE_PER_PLEK = [30, 20, 10];
+// Munten als je alleen speelt ("Zonder mensen") en alles goed hebt.
+const MUNTEN_SOLO_ALLES_GOED = 5;
+
+function haalMunten() {
+  return parseInt(localStorage.getItem(MUNTEN_SLEUTEL) || '0', 10) || 0;
+}
+
+// Werkt overal op de pagina de weergegeven munten bij (klasse "munten-aantal").
+function werkMuntenWeergaveBij() {
+  const aantal = haalMunten();
+  document.querySelectorAll('.munten-aantal').forEach(el => { el.textContent = String(aantal); });
+}
+
+function zetMunten(nieuwAantal) {
+  localStorage.setItem(MUNTEN_SLEUTEL, String(Math.max(0, nieuwAantal)));
+  werkMuntenWeergaveBij();
+}
+
+function geefMunten(aantal) {
+  zetMunten(haalMunten() + aantal);
+}
+
+function haalBezitDieren() {
+  const opgeslagen = JSON.parse(localStorage.getItem(BEZIT_DIEREN_SLEUTEL) || 'null');
+  return Array.isArray(opgeslagen) && opgeslagen.length ? opgeslagen : STANDAARD_DIEREN.slice();
+}
+
+function haalBezitAccessoires() {
+  const opgeslagen = JSON.parse(localStorage.getItem(BEZIT_ACCESSOIRES_SLEUTEL) || 'null');
+  return Array.isArray(opgeslagen) && opgeslagen.length ? opgeslagen : STANDAARD_ACCESSOIRES.slice();
+}
+
+// Laatst opgehaalde volledige lijst mysterieboxen (ongefilterd), gebruikt om in het
+// bewerkformulier te kunnen tonen in hoeveel andere kisten een dier/accessoire al zit.
+let alleMysterieboxenCache = {};
+
+// Datum (YYYY-MM-DD) van vandaag, voor vergelijking met box.vanafDatum. Puur op datumtekst
+// vergelijken voorkomt gedoe met tijdzones/uren.
+function huidigeDatumTekst() {
+  const nu = new Date();
+  return nu.getFullYear() + '-' + String(nu.getMonth() + 1).padStart(2, '0') + '-' + String(nu.getDate()).padStart(2, '0');
+}
+
+// Is deze kist nog niet te koop omdat de ingestelde "vanaf"-datum in de toekomst ligt?
+function boxIsNogNietTeKoop(box) {
+  return !!(box && box.vanafDatum && box.vanafDatum > huidigeDatumTekst());
+}
+
+// Is deze kist automatisch offline gegaan omdat de ingestelde "offline vanaf"-datum
+// al bereikt of gepasseerd is?
+function boxIsAutomatischOffline(box) {
+  return !!(box && box.totDatum && box.totDatum <= huidigeDatumTekst());
+}
+
+// Nette weergave van een YYYY-MM-DD datum, bijv. "5 oktober 2026".
+function formatBoxDatum(datumTekst) {
+  if (!datumTekst) return '';
+  const datum = new Date(datumTekst + 'T00:00:00');
+  if (isNaN(datum.getTime())) return datumTekst;
+  return datum.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function haalGekochteBoxen() {
+  const opgeslagen = JSON.parse(localStorage.getItem(GEKOCHTE_BOXEN_SLEUTEL) || 'null');
+  return Array.isArray(opgeslagen) ? opgeslagen : [];
+}
+
+function voegGekochteBoxToe(boxId) {
+  const gekocht = haalGekochteBoxen();
+  if (gekocht.indexOf(boxId) === -1) {
+    gekocht.push(boxId);
+    localStorage.setItem(GEKOCHTE_BOXEN_SLEUTEL, JSON.stringify(gekocht));
+  }
+}
+
+// Voegt de inhoud van een gekochte box toe aan wat de speler al heeft (geen dubbelen).
+function voegBezitToe(dieren, accessoires) {
+  const huidigeDieren = haalBezitDieren();
+  const huidigeAccessoires = haalBezitAccessoires();
+  (dieren || []).forEach(d => { if (DIEREN.indexOf(d) !== -1 && huidigeDieren.indexOf(d) === -1) huidigeDieren.push(d); });
+  (accessoires || []).forEach(a => { if (ACCESSOIRES[a] && huidigeAccessoires.indexOf(a) === -1) huidigeAccessoires.push(a); });
+  localStorage.setItem(BEZIT_DIEREN_SLEUTEL, JSON.stringify(huidigeDieren));
+  localStorage.setItem(BEZIT_ACCESSOIRES_SLEUTEL, JSON.stringify(huidigeAccessoires));
+}
+
+document.getElementById('btn-naar-winkel').addEventListener('click', () => {
+  metProfielVereist(() => {
+    toonScherm('scherm-winkel');
+    laadWinkelBoxen();
+  });
+});
+
+document.getElementById('btn-naar-wiel').addEventListener('click', () => {
+  metProfielVereist(() => {
+    toonScherm('scherm-wiel');
+    laadGeluksrad();
+  });
+});
+
+// ---------- Mysterieboxen laden en tonen ----------
+
+function bouwBoxKaartHtml(boxId, box) {
+  const aantalItems = (box.dieren || []).length + (box.accessoires || []).length;
+  const isOffline = !!box.offline;
+  const nogNietTeKoop = boxIsNogNietTeKoop(box);
+  const automatischOffline = boxIsAutomatischOffline(box);
+  // Geldt voor iedereen die deze kaart ziet: sitebeheer ziet ook offline/nog-niet-te-koop
+  // kisten (en kan ze hier niet per ongeluk kopen); spelers zien een teaser-kist (zie
+  // laadWinkelBoxen) ook zonder dat ze hem al kunnen kopen.
+  const nietTeKoop = isOffline || nogNietTeKoop || automatischOffline;
+  const genoegMunten = !nietTeKoop && haalMunten() >= (box.prijs || 0);
+  const algemeenAlGekocht = haalGekochteBoxen().indexOf(boxId) !== -1;
+  let html = '<div class="quiz-item-body">' +
+    '<div class="quiz-item-info"><strong>🎁 ' + escapeHtml(box.naam || 'Mysteriebox') + '</strong>' +
+    '<span>' + (box.prijs || 0) + ' munten · ' + aantalItems + ' verrassing(en) erin</span>';
+  if (algemeenAlGekocht) {
+    html += '<span class="box-al-gekocht">✅ Al eerder gekocht</span>';
+  }
+  if (sitebeheerActief) {
+    html += '<span class="box-aantal-gekocht">🛒 ' + (box.aantalGekocht || 0) + 'x gekocht (door alle spelers)</span>';
+    if (isOffline) {
+      html += '<span class="box-status box-status-offline">🔒 Offline — alleen jij ziet deze kist</span>';
+    } else if (automatischOffline) {
+      html += '<span class="box-status box-status-offline">🔒 Automatisch offline sinds ' + escapeHtml(formatBoxDatum(box.totDatum)) + '</span>';
+    } else if (nogNietTeKoop) {
+      html += '<span class="box-status box-status-vanaf">⏳ Te koop vanaf ' + escapeHtml(formatBoxDatum(box.vanafDatum)) +
+        (box.teaserZichtbaar ? ' · spelers zien alvast dat hij eraan komt' : ' · nog helemaal onzichtbaar voor spelers') + '</span>';
+    } else if (box.vanafDatum || box.totDatum) {
+      // Kist is nu gewoon te koop, maar heeft een vanaf- en/of tot-datum ingesteld:
+      // laat de hele looptijd zien, niet alleen de tot-datum.
+      let looptijdTekst;
+      if (box.vanafDatum && box.totDatum) {
+        looptijdTekst = 'Te koop van ' + formatBoxDatum(box.vanafDatum) + ' tot ' + formatBoxDatum(box.totDatum);
+      } else if (box.vanafDatum) {
+        looptijdTekst = 'Te koop sinds ' + formatBoxDatum(box.vanafDatum);
+      } else {
+        looptijdTekst = 'Te koop tot ' + formatBoxDatum(box.totDatum);
+      }
+      html += '<span class="box-status box-status-vanaf">📅 ' + escapeHtml(looptijdTekst) + '</span>';
+    }
+  } else if (nogNietTeKoop) {
+    // Spelers zien deze kaart bij een nog-niet-te-koop kist alleen als sitebeheer
+    // "teaserZichtbaar" heeft aangezet (zie het filteren in laadWinkelBoxen). Is er ook
+    // een "tot"-datum ingesteld, dan laten we spelers meteen zien tot wanneer de kist
+    // er dan zal zijn, niet alleen wanneer hij begint.
+    const teaserTekst = box.totDatum
+      ? 'Binnenkort — te koop van ' + formatBoxDatum(box.vanafDatum) + ' tot ' + formatBoxDatum(box.totDatum)
+      : 'Binnenkort — te koop vanaf ' + formatBoxDatum(box.vanafDatum);
+    html += '<span class="box-status box-status-vanaf">⏳ ' + escapeHtml(teaserTekst) + '</span>';
+  } else if (box.totDatum) {
+    // Kist is nu gewoon te koop en heeft een tot-datum: laat spelers ook zien tot
+    // wanneer ze hem nog kunnen kopen.
+    html += '<span class="box-status box-status-vanaf">⏳ Nog te koop tot ' + escapeHtml(formatBoxDatum(box.totDatum)) + '</span>';
+  }
+  html += '</div>' +
+    '<div class="quiz-item-knoppen">' +
+    '<button class="btn btn-primary btn-koop-box" data-box="' + boxId + '"' + (genoegMunten ? '' : ' disabled') + '>' +
+    (nietTeKoop ? 'Nog niet te koop' : (genoegMunten ? 'Kopen' : 'Niet genoeg munten')) + '</button>';
+  if (sitebeheerActief) {
+    const offlineKnopTekst = isOffline ? '📶 Online zetten' : '📴 Offline halen';
+    html += '<button type="button" class="btn-aanpassen-quiz btn-aanpassen-box" data-box="' + boxId + '">Aanpassen</button>' +
+      '<button type="button" class="btn-blokkeren-quiz btn-offline-box' + (isOffline ? ' is-geblokkeerd' : '') + '" data-box="' + boxId + '">' + offlineKnopTekst + '</button>' +
+      '<button type="button" class="btn-verwijderen-quiz btn-verwijderen-box" data-box="' + boxId + '">Verwijderen</button>';
+  }
+  html += '</div></div>';
+  return html;
+}
+
+// Onthoudt of het overzicht "kisten die nog komen" open of ingeklapt staat.
+let komendeKistenOverzichtOpen = false;
+
+// Alleen voor sitebeheer: inklapbaar overzicht van kisten met een "te koop vanaf"-datum
+// die nog in de toekomst ligt, op datum gesorteerd (eerstkomende bovenaan).
+function toonKomendeKistenOverzicht(alleBoxen) {
+  const lijstEl = document.getElementById('winkel-boxen-lijst');
+  let overzichtEl = document.getElementById('winkel-komende-kisten-overzicht');
+
+  if (!sitebeheerActief) {
+    if (overzichtEl) overzichtEl.remove();
+    return;
+  }
+
+  const komendeKisten = Object.keys(alleBoxen)
+    .map(boxId => alleBoxen[boxId])
+    .filter(boxIsNogNietTeKoop)
+    .sort((a, b) => (a.vanafDatum || '').localeCompare(b.vanafDatum || ''));
+
+  if (!komendeKisten.length) {
+    if (overzichtEl) overzichtEl.remove();
+    return;
+  }
+
+  if (!overzichtEl) {
+    overzichtEl = document.createElement('div');
+    overzichtEl.id = 'winkel-komende-kisten-overzicht';
+    overzichtEl.className = 'sitebeheer-makers';
+    lijstEl.parentNode.insertBefore(overzichtEl, lijstEl);
+  }
+
+  const rijenHtml = komendeKisten.map(box => {
+    const offlineNotitie = box.offline ? ' · staat daarnaast ook nog handmatig offline' : '';
+    const teaserNotitie = box.teaserZichtbaar ? ' · 👀 spelers zien hem al' : ' · 🙈 nog onzichtbaar voor spelers';
+    const totNotitie = box.totDatum ? (' · daarna automatisch offline op ' + escapeHtml(formatBoxDatum(box.totDatum))) : '';
+    return '<div class="sitebeheer-maker-rij">' +
+      '<div class="sitebeheer-maker-naam-rij"><strong>🎁 ' + escapeHtml(box.naam || 'Mysteriebox') + '</strong>' +
+      '<span class="sitebeheer-maker-telling">' + (box.prijs || 0) + ' munten</span></div>' +
+      '<span class="sitebeheer-maker-telling">⏳ Te koop vanaf ' + escapeHtml(formatBoxDatum(box.vanafDatum)) + totNotitie + teaserNotitie + offlineNotitie + '</span>' +
+      '</div>';
+  }).join('');
+
+  overzichtEl.innerHTML =
+    '<details class="sitebeheer-makers-details"' + (komendeKistenOverzichtOpen ? ' open' : '') + '>' +
+    '<summary>🔜 Kisten die nog komen (' + komendeKisten.length + ')</summary>' +
+    rijenHtml +
+    '</details>';
+
+  const detailsEl = overzichtEl.querySelector('details');
+  detailsEl.addEventListener('toggle', () => {
+    komendeKistenOverzichtOpen = detailsEl.open;
+  });
+}
+
+function laadWinkelBoxen() {
+  werkMuntenWeergaveBij();
+  document.getElementById('btn-winkel-nieuwe-box').style.display = sitebeheerActief ? 'block' : 'none';
+  const lijstEl = document.getElementById('winkel-boxen-lijst');
+  const geenBoxenEl = document.getElementById('winkel-geen-boxen');
+  lijstEl.innerHTML = '<p class="subtitel">Boxen laden...</p>';
+  geenBoxenEl.style.display = 'none';
+
+  db.ref('mysterieboxen').once('value').then(snapshot => {
+    const alleBoxen = snapshot.val() || {};
+    alleMysterieboxenCache = alleBoxen;
+    toonKomendeKistenOverzicht(alleBoxen);
+    // Gewone spelers zien nooit offline of automatisch-offline kisten. Een kist die nog
+    // niet te koop is, blijft ook verborgen — tenzij sitebeheer bij die kist "teaser"
+    // heeft aangezet, dan mogen spelers alvast zien dat hij eraan komt (zonder te kunnen kopen).
+    const boxen = sitebeheerActief ? alleBoxen : Object.keys(alleBoxen).reduce((resultaat, boxId) => {
+      const box = alleBoxen[boxId];
+      if (box.offline || boxIsAutomatischOffline(box)) return resultaat;
+      if (boxIsNogNietTeKoop(box) && !box.teaserZichtbaar) return resultaat;
+      resultaat[boxId] = box;
+      return resultaat;
+    }, {});
+    const boxIds = Object.keys(boxen);
+    lijstEl.innerHTML = '';
+    geenBoxenEl.style.display = boxIds.length ? 'none' : 'block';
+
+    boxIds.forEach(boxId => {
+      const box = boxen[boxId];
+      const kaart = document.createElement('div');
+      kaart.className = 'quiz-item';
+      kaart.innerHTML = bouwBoxKaartHtml(boxId, box);
+      lijstEl.appendChild(kaart);
+    });
+
+    lijstEl.querySelectorAll('.btn-koop-box').forEach(knop => {
+      knop.addEventListener('click', () => koopMysteriebox(knop.dataset.box));
+    });
+    lijstEl.querySelectorAll('.btn-aanpassen-box').forEach(knop => {
+      knop.addEventListener('click', () => openBoxBewerken(knop.dataset.box, boxen[knop.dataset.box]));
+    });
+    lijstEl.querySelectorAll('.btn-verwijderen-box').forEach(knop => {
+      knop.addEventListener('click', () => verwijderMysteriebox(knop.dataset.box));
+    });
+    lijstEl.querySelectorAll('.btn-offline-box').forEach(knop => {
+      knop.addEventListener('click', () => zetBoxOffline(knop.dataset.box, !boxen[knop.dataset.box].offline));
+    });
+  }).catch(() => {
+    lijstEl.innerHTML = '<p class="subtitel">De boxen konden niet geladen worden.</p>';
+  });
+}
+
+// Zet een kist offline (alleen sitebeheer ziet hem dan nog) of weer online.
+function zetBoxOffline(boxId, offline) {
+  db.ref('mysterieboxen/' + boxId + '/offline').set(!!offline).then(laadWinkelBoxen).catch(() => {
+    alert('Dit is niet gelukt. Probeer het opnieuw.');
+  });
+}
+
+function koopMysteriebox(boxId) {
+  db.ref('mysterieboxen/' + boxId).once('value').then(snapshot => {
+    const box = snapshot.val();
+    if (!box) {
+      alert('Deze mysteriebox bestaat niet meer.');
+      laadWinkelBoxen();
+      return;
+    }
+    if (!sitebeheerActief && (box.offline || boxIsNogNietTeKoop(box) || boxIsAutomatischOffline(box))) {
+      alert('Deze mysteriebox is nu niet te koop.');
+      laadWinkelBoxen();
+      return;
+    }
+    if (haalMunten() < (box.prijs || 0)) {
+      alert('Je hebt niet genoeg munten voor deze box.');
+      return;
+    }
+
+    zetMunten(haalMunten() - (box.prijs || 0));
+    voegBezitToe(box.dieren, box.accessoires);
+    voegGekochteBoxToe(boxId);
+    // Telt voor sitebeheer bij hoeveel spelers deze box al gekocht is (transaction,
+    // want meerdere spelers kunnen tegelijk kopen).
+    db.ref('mysterieboxen/' + boxId + '/aantalGekocht').transaction(huidig => (huidig || 0) + 1);
+
+    const gekregenNamen = [].concat(
+      (box.dieren || []).filter(d => DIER_TEKENINGEN[d]),
+      (box.accessoires || []).filter(a => ACCESSOIRES[a]).map(a => ACCESSOIRES[a].naam)
+    );
+    alert('🎉 Je hebt "' + (box.naam || 'Mysteriebox') + '" geopend! Je hebt nu ook: ' + gekregenNamen.join(', '));
+
+    laadWinkelBoxen();
+  });
+}
+
+function verwijderMysteriebox(boxId) {
+  if (!confirm('Deze mysteriebox definitief verwijderen? Spelers die hem al gekocht hebben, houden gewoon wat ze al kregen.')) return;
+  db.ref('mysterieboxen/' + boxId).remove().then(laadWinkelBoxen).catch(() => {
+    alert('Verwijderen is niet gelukt. Controleer Firebase (regel voor mysterieboxen) en probeer het opnieuw.');
+  });
+}
+
+document.getElementById('btn-winkel-nieuwe-box').addEventListener('click', () => openBoxBewerken(null, null));
+
+// ---------- Mysteriebox ontwerpen (alleen sitebeheer) ----------
+
+let bewerkteBoxId = null;
+let bewerkteBoxOffline = false;
+let boxGeselecteerdeDieren = [];
+let boxGeselecteerdeAccessoires = [];
+
+const boxBewerkenOverlayEl = document.getElementById('box-bewerken-overlay');
+const inputBoxNaamEl = document.getElementById('input-box-naam');
+const inputBoxPrijsEl = document.getElementById('input-box-prijs');
+const inputBoxVanafEl = document.getElementById('input-box-vanaf');
+const inputBoxTotEl = document.getElementById('input-box-tot');
+const inputBoxTeaserEl = document.getElementById('input-box-teaser');
+const boxBewerkenFoutmeldingEl = document.getElementById('box-bewerken-foutmelding');
+
+// Telt in hoeveel andere kisten (dus niet de kist die nu bewerkt wordt) een bepaald
+// dier of accessoire al zit, zodat sitebeheer dat ziet als een getalletje op de knop.
+function telGebruikInAndereBoxen(soort, waarde) {
+  let aantal = 0;
+  Object.keys(alleMysterieboxenCache).forEach(boxId => {
+    if (boxId === bewerkteBoxId) return;
+    const andereBox = alleMysterieboxenCache[boxId];
+    if (andereBox && Array.isArray(andereBox[soort]) && andereBox[soort].indexOf(waarde) !== -1) {
+      aantal++;
+    }
+  });
+  return aantal;
+}
+
+// Bouwt de kiesknoppen voor élk dier en élk accessoire uit de hele catalogus
+// (niet alleen wat de sitebeheerder zelf al bezit): sitebeheer ontwerpt hier
+// immers juist de boxen waarmee andere spelers nieuwe dingen kunnen winnen.
+function bouwBoxItemsKiezer() {
+  const dierenEl = document.getElementById('box-items-dieren');
+  dierenEl.innerHTML = '';
+  DIEREN.forEach(dier => {
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'dier-knop';
+    knop.innerHTML = poppetjeSvg(dier, {});
+    const gebruiktIn = telGebruikInAndereBoxen('dieren', dier);
+    if (gebruiktIn > 0) {
+      knop.innerHTML += '<span class="dier-knop-badge" title="Zit al in ' + gebruiktIn + ' andere kist(en)">' + gebruiktIn + '</span>';
+    }
+    knop.classList.toggle('gekozen', boxGeselecteerdeDieren.indexOf(dier) !== -1);
+    knop.setAttribute('aria-label', 'Kies ' + dier);
+    knop.addEventListener('click', () => {
+      const i = boxGeselecteerdeDieren.indexOf(dier);
+      if (i === -1) boxGeselecteerdeDieren.push(dier); else boxGeselecteerdeDieren.splice(i, 1);
+      knop.classList.toggle('gekozen');
+    });
+    dierenEl.appendChild(knop);
+  });
+
+  const accEl = document.getElementById('box-items-accessoires');
+  accEl.innerHTML = '';
+  const voorbeeldDier = DIEREN[0];
+  ACCESSOIRE_GROEPEN.forEach(groep => {
+    groep.items.forEach(emoji => {
+      const voorbeeld = {};
+      voorbeeld[groep.plek] = emoji;
+      const knop = document.createElement('button');
+      knop.type = 'button';
+      knop.className = 'dier-knop';
+      knop.innerHTML = poppetjeSvg(voorbeeldDier, voorbeeld);
+      knop.title = ACCESSOIRES[emoji].naam;
+      const gebruiktIn = telGebruikInAndereBoxen('accessoires', emoji);
+      if (gebruiktIn > 0) {
+        knop.innerHTML += '<span class="dier-knop-badge" title="Zit al in ' + gebruiktIn + ' andere kist(en)">' + gebruiktIn + '</span>';
+      }
+      knop.setAttribute('aria-label', 'Kies ' + ACCESSOIRES[emoji].naam);
+      knop.classList.toggle('gekozen', boxGeselecteerdeAccessoires.indexOf(emoji) !== -1);
+      knop.addEventListener('click', () => {
+        const i = boxGeselecteerdeAccessoires.indexOf(emoji);
+        if (i === -1) boxGeselecteerdeAccessoires.push(emoji); else boxGeselecteerdeAccessoires.splice(i, 1);
+        knop.classList.toggle('gekozen');
+      });
+      accEl.appendChild(knop);
+    });
+  });
+}
+
+function openBoxBewerken(boxId, box) {
+  bewerkteBoxId = boxId;
+  bewerkteBoxOffline = box ? !!box.offline : false;
+  boxGeselecteerdeDieren = (box && box.dieren) ? box.dieren.slice() : [];
+  boxGeselecteerdeAccessoires = (box && box.accessoires) ? box.accessoires.slice() : [];
+
+  document.getElementById('box-bewerken-titel').textContent = boxId ? 'Mysteriebox aanpassen' : 'Nieuwe mysteriebox';
+  inputBoxNaamEl.value = box ? (box.naam || '') : '';
+  inputBoxPrijsEl.value = box ? (box.prijs || 0) : 100;
+  inputBoxVanafEl.value = box ? (box.vanafDatum || '') : '';
+  inputBoxTotEl.value = box ? (box.totDatum || '') : '';
+  inputBoxTeaserEl.checked = box ? !!box.teaserZichtbaar : false;
+  boxBewerkenFoutmeldingEl.textContent = '';
+  document.getElementById('btn-box-verwijderen').style.display = boxId ? 'inline-block' : 'none';
+
+  bouwBoxItemsKiezer();
+  boxBewerkenOverlayEl.classList.add('actief');
+}
+
+document.getElementById('btn-box-annuleren').addEventListener('click', () => {
+  boxBewerkenOverlayEl.classList.remove('actief');
+});
+
+document.getElementById('btn-box-verwijderen').addEventListener('click', () => {
+  if (!bewerkteBoxId) return;
+  const boxId = bewerkteBoxId;
+  boxBewerkenOverlayEl.classList.remove('actief');
+  verwijderMysteriebox(boxId);
+});
+
+document.getElementById('btn-box-opslaan').addEventListener('click', () => {
+  const naam = inputBoxNaamEl.value.trim();
+  const prijs = parseInt(inputBoxPrijsEl.value, 10) || 0;
+
+  if (!naam) {
+    boxBewerkenFoutmeldingEl.textContent = 'Vul een naam voor de box in.';
+    return;
+  }
+  if (prijs < 0) {
+    boxBewerkenFoutmeldingEl.textContent = 'De prijs kan niet negatief zijn.';
+    return;
+  }
+  if (!boxGeselecteerdeDieren.length && !boxGeselecteerdeAccessoires.length) {
+    boxBewerkenFoutmeldingEl.textContent = 'Kies minstens één dier of accessoire voor in de box.';
+    return;
+  }
+  if (inputBoxVanafEl.value && inputBoxTotEl.value && inputBoxTotEl.value <= inputBoxVanafEl.value) {
+    boxBewerkenFoutmeldingEl.textContent = '"Automatisch offline vanaf" moet na "Te koop vanaf" liggen.';
+    return;
+  }
+
+  const boxData = {
+    naam: naam,
+    prijs: prijs,
+    dieren: boxGeselecteerdeDieren,
+    accessoires: boxGeselecteerdeAccessoires,
+    vanafDatum: inputBoxVanafEl.value || null,
+    totDatum: inputBoxTotEl.value || null,
+    teaserZichtbaar: !!inputBoxTeaserEl.checked,
+    offline: bewerkteBoxOffline
+  };
+
+  const ref = bewerkteBoxId ? db.ref('mysterieboxen/' + bewerkteBoxId) : db.ref('mysterieboxen').push();
+  ref.set(boxData).then(() => {
+    boxBewerkenOverlayEl.classList.remove('actief');
+    laadWinkelBoxen();
+  }).catch(() => {
+    boxBewerkenFoutmeldingEl.textContent = 'Opslaan is niet gelukt. Probeer het opnieuw.';
+  });
+});
+
+// ---------- Geluksrad (1x per dag gratis draaien voor munten) ----------
+// Rad staat in Firebase onder "geluksrad/segmenten" (een array), naast mysterieboxen —
+// zie readme.md voor de bijbehorende Firebase-regel. Is er nog niets ingesteld door
+// sitebeheer, dan gebruiken we STANDAARD_WIEL_SEGMENTEN zodat het rad meteen werkt.
+
+const WIEL_LAATSTE_DRAAI_SLEUTEL = 'quizAppWielLaatsteDraai';
+const WIEL_LAATSTE_RESULTAAT_SLEUTEL = 'quizAppWielLaatsteResultaat';
+// Hoeveel volle rondes het rad draait vóór het bij het gekozen vak uitkomt (voor het effect).
+const WIEL_EXTRA_RONDES = 5;
+// Moet gelijk zijn aan de transition-duration van .wiel-schijf in style.css (in ms).
+const WIEL_DRAAI_DUUR_MS = 4200;
+// Kleuren voor de vakken, worden cyclisch gebruikt (zoals in het voorbeeldplaatje van een geluksrad).
+const WIEL_KLEUREN = ['#f2c14e', '#3fc6f0', '#e0459a', '#8b3fe0', '#f0524a', '#f2933e', '#39c98f', '#4a6bf0'];
+
+const STANDAARD_WIEL_SEGMENTEN = [
+  { naam: '5 munten', type: 'munten', munten: 5, kans: 3 },
+  { naam: '10 munten', type: 'munten', munten: 10, kans: 3 },
+  { naam: '2 munten', type: 'munten', munten: 2, kans: 4 },
+  { naam: '20 munten', type: 'munten', munten: 20, kans: 2 },
+  { naam: '🐶', type: 'dier', dier: '🐶', kans: 1 },
+  { naam: '5 munten', type: 'munten', munten: 5, kans: 3 },
+  { naam: '50 munten', type: 'munten', munten: 50, kans: 1 },
+  { naam: '10 munten', type: 'munten', munten: 10, kans: 3 },
+  { naam: '🐱', type: 'dier', dier: '🐱', kans: 1 },
+  { naam: '100 munten', type: 'munten', munten: 100, kans: 1 }
+];
+
+let wielSegmentenCache = STANDAARD_WIEL_SEGMENTEN;
+let wielSegmentenMetHoek = [];
+let wielHuidigeRotatie = 0;
+let wielDraaitNu = false;
+
+// Zet de rauwe segmenten (naam/munten/kans) om naar segmenten met een startHoek en
+// breedteHoek (in graden, 0° = boven bij de wijzer, met de klok mee) op basis van de
+// "kans"-gewichten. Een groter vak = een hoger gewicht = vaker gewonnen.
+function berekenWielHoeken(segmenten) {
+  const totaalKans = segmenten.reduce((som, s) => som + (s.kans > 0 ? s.kans : 0), 0);
+  let cursor = 0;
+  return segmenten.map((s, i) => {
+    const gewicht = s.kans > 0 ? s.kans : 1;
+    const breedte = totaalKans > 0 ? (gewicht / totaalKans) * 360 : (360 / segmenten.length);
+    const metHoek = {
+      naam: s.naam, type: s.type || 'munten', munten: s.munten, dier: s.dier, accessoire: s.accessoire,
+      kans: s.kans, kleur: WIEL_KLEUREN[i % WIEL_KLEUREN.length], startHoek: cursor, breedteHoek: breedte
+    };
+    cursor += breedte;
+    return metHoek;
+  });
+}
+
+// Kiest een vak, met precies dezelfde kansverhouding als de grootte van de vakken op het rad.
+function kiesGewogenWielSegment(segmentenMetHoek) {
+  const totaal = segmentenMetHoek.reduce((som, s) => som + s.breedteHoek, 0);
+  let r = Math.random() * totaal;
+  for (let i = 0; i < segmentenMetHoek.length; i++) {
+    if (r < segmentenMetHoek[i].breedteHoek) return segmentenMetHoek[i];
+    r -= segmentenMetHoek[i].breedteHoek;
+  }
+  return segmentenMetHoek[segmentenMetHoek.length - 1];
+}
+
+// Bouwt de SVG-taart van het rad op basis van de segmenten-met-hoek.
+function bouwWielSvg(segmentenMetHoek) {
+  const cx = 140, cy = 140, r = 132;
+  const naarPunt = (hoekGraden) => {
+    const rad = (hoekGraden - 90) * Math.PI / 180; // -90 zodat 0° boven is
+    return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+  };
+  let paden = '';
+  let labels = '';
+  segmentenMetHoek.forEach(s => {
+    const start = naarPunt(s.startHoek);
+    const eind = naarPunt(s.startHoek + s.breedteHoek);
+    const grootBoog = s.breedteHoek > 180 ? 1 : 0;
+    paden += '<path d="M ' + cx + ' ' + cy + ' L ' + start[0].toFixed(1) + ' ' + start[1].toFixed(1) +
+      ' A ' + r + ' ' + r + ' 0 ' + grootBoog + ' 1 ' + eind[0].toFixed(1) + ' ' + eind[1].toFixed(1) + ' Z" fill="' + s.kleur + '" stroke="#0b1029" stroke-width="2"></path>';
+    if (s.breedteHoek > 8) {
+      const midHoek = s.startHoek + s.breedteHoek / 2;
+      const labelPunt = naarPunt(midHoek);
+      const labelX = cx + (labelPunt[0] - cx) * 0.62;
+      const labelY = cy + (labelPunt[1] - cy) * 0.62;
+      labels += '<text x="' + labelX.toFixed(1) + '" y="' + labelY.toFixed(1) + '" text-anchor="middle" dominant-baseline="middle" font-size="15" font-weight="700" fill="#0b1029">' + escapeHtml(s.naam) + '</text>';
+    }
+  });
+  return '<svg viewBox="0 0 280 280" xmlns="http://www.w3.org/2000/svg">' + paden + labels + '</svg>';
+}
+
+// Werkt de knop-tekst en de statusregel onder het rad bij, afhankelijk van of er vandaag
+// al gedraaid is.
+function werkWielStatusBij() {
+  const knopEl = document.getElementById('btn-wiel-draaien');
+  const statusEl = document.getElementById('wiel-status');
+  const resultaatEl = document.getElementById('wiel-resultaat');
+  const vandaag = huidigeDatumTekst();
+  const alGedraaidVandaag = localStorage.getItem(WIEL_LAATSTE_DRAAI_SLEUTEL) === vandaag;
+
+  if (alGedraaidVandaag) {
+    knopEl.disabled = true;
+    statusEl.textContent = '⏳ Je hebt vandaag al gedraaid. Kom morgen terug voor een nieuwe beurt!';
+    const laatsteResultaat = localStorage.getItem(WIEL_LAATSTE_RESULTAAT_SLEUTEL);
+    resultaatEl.textContent = laatsteResultaat ? ('🎉 Vandaag gewonnen: ' + laatsteResultaat) : '';
+  } else {
+    knopEl.disabled = wielDraaitNu;
+    statusEl.textContent = wielDraaitNu ? '' : 'Klik op de knop in het midden van het rad om te draaien!';
+    if (!wielDraaitNu) resultaatEl.textContent = '';
+  }
+}
+
+function laadGeluksrad() {
+  werkMuntenWeergaveBij();
+  document.getElementById('btn-wiel-aanpassen').style.display = sitebeheerActief ? 'inline-block' : 'none';
+  wielHuidigeRotatie = 0;
+  const schijfEl = document.getElementById('wiel-schijf');
+  schijfEl.style.transition = 'none';
+  schijfEl.style.transform = 'rotate(0deg)';
+
+  db.ref('geluksrad/segmenten').once('value').then(snapshot => {
+    const opgeslagen = snapshot.val();
+    wielSegmentenCache = (Array.isArray(opgeslagen) && opgeslagen.length >= 2) ? opgeslagen : STANDAARD_WIEL_SEGMENTEN;
+    wielSegmentenMetHoek = berekenWielHoeken(wielSegmentenCache);
+    schijfEl.innerHTML = bouwWielSvg(wielSegmentenMetHoek);
+    // Forceer een reflow zodat de volgende draai-transitie weer gewoon animeert
+    // (na het instant terugzetten naar 0° hierboven).
+    void schijfEl.offsetWidth;
+    schijfEl.style.transition = '';
+    werkWielStatusBij();
+  }).catch(() => {
+    wielSegmentenCache = STANDAARD_WIEL_SEGMENTEN;
+    wielSegmentenMetHoek = berekenWielHoeken(wielSegmentenCache);
+    schijfEl.innerHTML = bouwWielSvg(wielSegmentenMetHoek);
+    werkWielStatusBij();
+  });
+}
+
+function draaiRad() {
+  if (wielDraaitNu) return;
+  const vandaag = huidigeDatumTekst();
+  if (localStorage.getItem(WIEL_LAATSTE_DRAAI_SLEUTEL) === vandaag) return;
+  if (!wielSegmentenMetHoek.length) return;
+
+  wielDraaitNu = true;
+  werkWielStatusBij();
+
+  const gekozenSegment = kiesGewogenWielSegment(wielSegmentenMetHoek);
+  const marge = Math.min(wielSegmentenMetHoek.length > 1 ? gekozenSegment.breedteHoek * 0.15 : 0, 10);
+  const speling = Math.max(gekozenSegment.breedteHoek - marge * 2, 0.01);
+  const doelHoek = gekozenSegment.startHoek + marge + Math.random() * speling;
+
+  const huidigeBasis = ((wielHuidigeRotatie % 360) + 360) % 360;
+  let extra = (360 - doelHoek) - huidigeBasis;
+  extra = ((extra % 360) + 360) % 360;
+  wielHuidigeRotatie += WIEL_EXTRA_RONDES * 360 + extra;
+
+  document.getElementById('wiel-schijf').style.transform = 'rotate(' + wielHuidigeRotatie + 'deg)';
+
+  setTimeout(() => {
+    wielDraaitNu = false;
+    localStorage.setItem(WIEL_LAATSTE_DRAAI_SLEUTEL, vandaag);
+    localStorage.setItem(WIEL_LAATSTE_RESULTAAT_SLEUTEL, gekozenSegment.naam);
+    if (gekozenSegment.type === 'dier' && gekozenSegment.dier) {
+      voegBezitToe([gekozenSegment.dier], []);
+    } else if (gekozenSegment.type === 'accessoire' && gekozenSegment.accessoire) {
+      voegBezitToe([], [gekozenSegment.accessoire]);
+    } else if (gekozenSegment.munten) {
+      geefMunten(gekozenSegment.munten);
+    }
+    document.getElementById('wiel-resultaat').textContent = '🎉 Je hebt gewonnen: ' + gekozenSegment.naam + '!';
+    werkWielStatusBij();
+  }, WIEL_DRAAI_DUUR_MS);
+}
+
+document.getElementById('btn-wiel-draaien').addEventListener('click', draaiRad);
+
+// ---------- Geluksrad aanpassen (alleen sitebeheer) ----------
+
+const wielBewerkenOverlayEl = document.getElementById('wiel-bewerken-overlay');
+const wielSegmentenLijstEl = document.getElementById('wiel-segmenten-lijst');
+const sjabloonWielSegmentRij = document.getElementById('sjabloon-wiel-segment-rij');
+const wielBewerkenFoutmeldingEl = document.getElementById('wiel-bewerken-foutmelding');
+
+// Vult de dier- en accessoire-keuzelijst van één rij met de hele catalogus (net als bij
+// het maken van een mysteriebox: ook de dieren/accessoires die niet standaard te kiezen zijn).
+function vulWielDierAccessoireSelects(rij) {
+  const dierSelectEl = rij.querySelector('.wiel-segment-dier');
+  DIEREN.forEach(dier => {
+    const optie = document.createElement('option');
+    optie.value = dier;
+    optie.textContent = dier;
+    dierSelectEl.appendChild(optie);
+  });
+
+  const accSelectEl = rij.querySelector('.wiel-segment-accessoire');
+  ACCESSOIRE_GROEPEN.forEach(groep => {
+    groep.items.forEach(emoji => {
+      const optie = document.createElement('option');
+      optie.value = emoji;
+      optie.textContent = emoji + ' ' + ACCESSOIRES[emoji].naam;
+      accSelectEl.appendChild(optie);
+    });
+  });
+}
+
+// Laat bij een rij alleen het invoerveld zien dat bij het gekozen type hoort
+// (munten-aantal, dier-keuze of accessoire-keuze).
+function werkWielSegmentTypeWeergaveBij(rij) {
+  const type = rij.querySelector('.wiel-segment-type').value;
+  rij.querySelector('.wiel-segment-munten').style.display = type === 'munten' ? '' : 'none';
+  rij.querySelector('.wiel-segment-dier').style.display = type === 'dier' ? '' : 'none';
+  rij.querySelector('.wiel-segment-accessoire').style.display = type === 'accessoire' ? '' : 'none';
+}
+
+function voegWielSegmentRijToe(segment) {
+  const kloon = sjabloonWielSegmentRij.content.cloneNode(true);
+  const rij = kloon.querySelector('.wiel-segment-rij');
+  const type = segment ? (segment.type || 'munten') : 'munten';
+
+  vulWielDierAccessoireSelects(rij);
+
+  rij.querySelector('.wiel-segment-type').value = type;
+  rij.querySelector('.wiel-segment-naam').value = segment ? (segment.naam || '') : '';
+  rij.querySelector('.wiel-segment-munten').value = segment ? (segment.munten || 0) : 10;
+  if (segment && segment.dier) rij.querySelector('.wiel-segment-dier').value = segment.dier;
+  if (segment && segment.accessoire) rij.querySelector('.wiel-segment-accessoire').value = segment.accessoire;
+  rij.querySelector('.wiel-segment-kans').value = segment ? (segment.kans || 1) : 1;
+
+  werkWielSegmentTypeWeergaveBij(rij);
+  rij.querySelector('.wiel-segment-type').addEventListener('change', () => werkWielSegmentTypeWeergaveBij(rij));
+  rij.querySelector('.wiel-segment-verwijderen').addEventListener('click', () => rij.remove());
+  wielSegmentenLijstEl.appendChild(kloon);
+}
+
+function openGeluksradBewerken() {
+  wielSegmentenLijstEl.innerHTML = '';
+  wielBewerkenFoutmeldingEl.textContent = '';
+  wielSegmentenCache.forEach(segment => voegWielSegmentRijToe(segment));
+  wielBewerkenOverlayEl.classList.add('actief');
+}
+
+document.getElementById('btn-wiel-aanpassen').addEventListener('click', openGeluksradBewerken);
+
+document.getElementById('btn-wiel-segment-toevoegen').addEventListener('click', () => {
+  voegWielSegmentRijToe(null);
+});
+
+document.getElementById('btn-wiel-annuleren').addEventListener('click', () => {
+  wielBewerkenOverlayEl.classList.remove('actief');
+});
+
+document.getElementById('btn-wiel-opslaan').addEventListener('click', () => {
+  const rijen = wielSegmentenLijstEl.querySelectorAll('.wiel-segment-rij');
+  const segmenten = [];
+  let fout = '';
+
+  rijen.forEach(rij => {
+    if (fout) return;
+    const type = rij.querySelector('.wiel-segment-type').value;
+    const naamRuw = rij.querySelector('.wiel-segment-naam').value.trim();
+    const kans = parseInt(rij.querySelector('.wiel-segment-kans').value, 10);
+    if (isNaN(kans) || kans < 1) { fout = 'Vul bij elk vak een kans van minstens 1 in.'; return; }
+
+    if (type === 'dier') {
+      const dier = rij.querySelector('.wiel-segment-dier').value;
+      if (!dier) { fout = 'Kies bij elk "dier"-vak welk dier het is.'; return; }
+      segmenten.push({ naam: naamRuw || dier, type: 'dier', dier: dier, kans: kans });
+    } else if (type === 'accessoire') {
+      const accessoire = rij.querySelector('.wiel-segment-accessoire').value;
+      if (!accessoire) { fout = 'Kies bij elk "accessoire"-vak welk accessoire het is.'; return; }
+      segmenten.push({ naam: naamRuw || accessoire, type: 'accessoire', accessoire: accessoire, kans: kans });
+    } else {
+      const munten = parseInt(rij.querySelector('.wiel-segment-munten').value, 10);
+      if (isNaN(munten) || munten < 0) { fout = 'Vul bij elk "munten"-vak een geldig aantal munten in (0 of meer).'; return; }
+      segmenten.push({ naam: naamRuw || (munten + ' munten'), type: 'munten', munten: munten, kans: kans });
+    }
+  });
+
+  if (!fout && segmenten.length < 2) {
+    fout = 'Voeg minstens 2 vakken toe aan het rad.';
+  }
+  if (fout) {
+    wielBewerkenFoutmeldingEl.textContent = fout;
+    return;
+  }
+
+  db.ref('geluksrad/segmenten').set(segmenten).then(() => {
+    wielBewerkenOverlayEl.classList.remove('actief');
+    laadGeluksrad();
+  }).catch(() => {
+    wielBewerkenFoutmeldingEl.textContent = 'Opslaan is niet gelukt. Probeer het opnieuw.';
+  });
+});
+
+// Toont de foto van een vraag (of verbergt het plaatje als er geen foto is).
+function toonVraagFoto(imgId, url) {
+  const imgEl = document.getElementById(imgId);
+  if (url) {
+    imgEl.src = url;
+    imgEl.hidden = false;
+  } else {
+    imgEl.removeAttribute('src');
+    imgEl.hidden = true;
+  }
+}
+
+// Zet het/de goede antwoord(en) in het groot op het scherm.
+// prefix is 'host' of 'speler' (bepaalt welke elementen gevuld worden).
+function renderGroteAntwoorden(prefix, vraag) {
+  document.getElementById(prefix + '-antwoord-label').textContent =
+    vraag.goedAntwoorden.length > 1 ? 'De goede antwoorden' : 'Het goede antwoord';
+
+  const containerEl = document.getElementById(prefix + '-antwoord-groot');
+  containerEl.innerHTML = '';
+  vraag.goedAntwoorden.forEach(nummer => {
+    const optie = document.createElement('div');
+    optie.className = 'antwoord-optie goed antwoord-groot';
+    optie.textContent = vraag.antwoorden[nummer - 1];
+    containerEl.appendChild(optie);
+  });
+}
+
+function stopSessieListener() {
+  if (huidigeSessieRef) {
+    huidigeSessieRef.off();
+    huidigeSessieRef = null;
+  }
+  stopHostTimer();
+}
+
+function luisterNaarSessie(code) {
+  stopSessieListener();
+  huidigeSessieRef = db.ref('sessies/' + code);
+  huidigeSessieRef.on('value', snapshot => {
+    const sessie = snapshot.val();
+    if (!sessie) {
+      // De sessie bestaat niet meer, bijv. omdat de quizmaster is gestopt/weggegaan.
+      if (huidigeRol === 'speler') {
+        stopSessieListener();
+        huidigeRol = null;
+        toonScherm('scherm-speler-host-weg');
+      }
+      return;
+    }
+    if (huidigeRol === 'host') {
+      renderSessieVoorHost(sessie);
+    } else if (huidigeRol === 'speler') {
+      renderSessieVoorSpeler(sessie);
+    }
+  });
+}
+
+function renderScorebordLijst(containerId, spelers, eigenSpelerId) {
+  const lijstEl = document.getElementById(containerId);
+  lijstEl.innerHTML = '';
+
+  const gesorteerdeSpelers = Object.entries(spelers || {}).sort((a, b) => {
+    const scoreA = (a[1].score) || 0;
+    const scoreB = (b[1].score) || 0;
+    if (scoreB !== scoreA) return scoreB - scoreA;
+    const tijdA = (a[1].totaleReactietijd) || 0;
+    const tijdB = (b[1].totaleReactietijd) || 0;
+    return tijdA - tijdB; // sneller (lagere tijd) wint bij gelijke stand
+  });
+
+  gesorteerdeSpelers.forEach(([spelerId, speler], index) => {
+    const rij = document.createElement('div');
+    rij.className = 'scorebord-rij' + (spelerId === eigenSpelerId ? ' eigen' : '');
+
+    const plek = document.createElement('div');
+    plek.className = 'scorebord-plek';
+    plek.textContent = '#' + (index + 1);
+
+    const naam = document.createElement('div');
+    naam.className = 'scorebord-naam';
+    naam.textContent = speler.naam;
+
+    const score = document.createElement('div');
+    score.className = 'scorebord-score';
+    score.textContent = formatPunten(speler.score || 0) + ' pt';
+
+    rij.appendChild(plek); // 1e, 2e, 3e plek enz. blijven gewoon staan
+    const dier = geldigDier(speler.dier);
+    if (dier) {
+      const dierEl = document.createElement('div');
+      dierEl.className = 'scorebord-dier';
+      dierEl.appendChild(maakPoppetje(dier, speler.accessoires));
+      rij.appendChild(dierEl);
+    }
+    rij.appendChild(naam);
+    rij.appendChild(score);
+    lijstEl.appendChild(rij);
+  });
+}
+
+// ---------- Hosten (de maker van de quiz speelt hem live) ----------
+
+function startHostenVanQuiz(code) {
+  db.ref('quizzen/' + code).once('value').then(snapshot => {
+    const quizData = snapshot.val();
+    if (!quizData) {
+      alert('Deze quiz kon niet gevonden worden (misschien is hij verwijderd).');
+      return;
+    }
+
+    huidigeQuizVragen = (quizData.vragen || []).map(normaliseerVraag);
+    huidigeQuizTitel = quizData.titel;
+    huidigeQuizTijdslimiet = quizData.tijdslimiet || TIJDSLIMIET_STANDAARD;
+    huidigeSessieCode = code;
+    huidigeRol = 'host';
+    huidigeVraagIndexHost = -1;
+
+    const nieuweSessie = {
+      status: 'wachtkamer',
+      huidigeVraagIndex: -1,
+      spelers: {},
+      antwoorden: {}
+    };
+
+    const sessieRef = db.ref('sessies/' + code);
+    sessieRef.set(nieuweSessie).then(() => {
+      // Als de host de pagina sluit of de verbinding verliest, wordt de sessie
+      // automatisch verwijderd. Spelers krijgen dit meteen te zien (zie luisterNaarSessie).
+      sessieRef.onDisconnect().remove();
+
+      document.getElementById('host-wachtkamer-titel').textContent = huidigeQuizTitel;
+      document.getElementById('host-wachtkamer-code').textContent = code;
+      toonScherm('scherm-host-wachtkamer');
+      luisterNaarSessie(code);
+    });
+  });
+}
+
+// ---------- Wekker per vraag (alleen bij de quizmaster) ----------
+//
+// `vraagGestartOp` staat al in de sessie (wordt gezet zodra een vraag begint).
+// De host telt daarvandaan zelf af; zo blijft de klok kloppen ook als het
+// scherm om een andere reden opnieuw tekent (bijv. een speler antwoordt).
+// Loopt de tijd af, dan gaat de host automatisch door naar het resultaat —
+// hetzelfde als zelf op "Doorgaan" klikken, wat ook eerder mag.
+
+function stopHostTimer() {
+  if (hostTimerInterval) {
+    clearInterval(hostTimerInterval);
+    hostTimerInterval = null;
+  }
+  hostTimerVoorVraagGestartOp = null;
+  const timerEl = document.getElementById('host-vraag-timer');
+  if (timerEl) timerEl.hidden = true;
+}
+
+function werkHostTimerWeergaveBij(secondenOver) {
+  const OMTREK = 283; // 2 * pi * 45 (zelfde als stroke-dasharray in de CSS)
+  const fractie = huidigeQuizTijdslimiet > 0 ? secondenOver / huidigeQuizTijdslimiet : 0;
+  document.getElementById('host-vraag-timer-getal').textContent = String(secondenOver);
+  document.getElementById('host-vraag-timer-vulling')
+    .style.setProperty('--doel', String(Math.round(OMTREK * (1 - fractie))));
+  document.getElementById('host-vraag-timer').classList.toggle('bijna-om', secondenOver <= 5);
+}
+
+function startHostTimerAlsNodig(sessie) {
+  const gestartOp = sessie.vraagGestartOp;
+  if (!huidigeQuizTijdslimiet || !gestartOp) {
+    stopHostTimer();
+    return;
+  }
+  // Loopt de klok al voor deze vraag? Dan niet opnieuw beginnen bij elke
+  // hertekening (bijv. omdat een speler net geantwoord heeft).
+  if (hostTimerVoorVraagGestartOp === gestartOp) return;
+
+  stopHostTimer();
+  hostTimerVoorVraagGestartOp = gestartOp;
+  document.getElementById('host-vraag-timer').hidden = false;
+
+  const tick = () => {
+    const verstrekenMs = Date.now() - gestartOp;
+    const secondenOver = Math.max(0, Math.ceil((huidigeQuizTijdslimiet * 1000 - verstrekenMs) / 1000));
+    werkHostTimerWeergaveBij(secondenOver);
+    if (secondenOver <= 0) {
+      stopHostTimer();
+      berekenScoresEnToonResultaat();
+    }
+  };
+
+  tick();
+  hostTimerInterval = setInterval(tick, 250);
+}
+
+function renderSessieVoorHost(sessie) {
+  huidigeVraagIndexHost = sessie.huidigeVraagIndex;
+  const spelers = sessie.spelers || {};
+  const aantalSpelers = Object.keys(spelers).length;
+
+  // De wekker loopt alleen tijdens een vraag; bij elke andere status stoppen.
+  if (sessie.status !== 'vraag') stopHostTimer();
+
+  if (sessie.status === 'wachtkamer') {
+    document.getElementById('host-wachtkamer-aantal').textContent = aantalSpelers + ' speler(s) aanwezig';
+
+    const lijstEl = document.getElementById('host-wachtkamer-spelerslijst');
+    lijstEl.innerHTML = '';
+    Object.entries(spelers).forEach(([spelerId, speler]) => {
+      const chip = document.createElement('div');
+      chip.className = 'speler-chip';
+      chip.title = 'Klik om ' + speler.naam + ' te verwijderen';
+      const chipDier = geldigDier(speler.dier);
+      if (chipDier) {
+        const chipDierEl = document.createElement('span');
+        chipDierEl.className = 'speler-chip-dier';
+        chipDierEl.appendChild(maakPoppetje(chipDier, speler.accessoires));
+        chip.appendChild(chipDierEl);
+      }
+      const chipNaamEl = document.createElement('span');
+      chipNaamEl.className = 'speler-chip-naam';
+      chipNaamEl.textContent = speler.naam;
+      chip.appendChild(chipNaamEl);
+      const chipKruisEl = document.createElement('span');
+      chipKruisEl.className = 'speler-chip-kruis';
+      chipKruisEl.innerHTML = '&times;';
+      chip.appendChild(chipKruisEl);
+      chip.addEventListener('click', () => {
+        db.ref('sessies/' + huidigeSessieCode + '/spelers/' + spelerId).remove();
+        db.ref('sessies/' + huidigeSessieCode + '/antwoorden').once('value').then(antwoordenSnapshot => {
+          const antwoorden = antwoordenSnapshot.val() || {};
+          Object.keys(antwoorden).forEach(vraagIndex => {
+            if (antwoorden[vraagIndex] && antwoorden[vraagIndex][spelerId]) {
+              db.ref('sessies/' + huidigeSessieCode + '/antwoorden/' + vraagIndex + '/' + spelerId).remove();
+            }
+          });
+        });
+      });
+      lijstEl.appendChild(chip);
+    });
+
+    toonScherm('scherm-host-wachtkamer');
+  }
+
+  if (sessie.status === 'vraag') {
+    const vraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
+
+    document.getElementById('host-voortgang-weergave').textContent =
+      'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length +
+      ' · ' + vraag.punten + (vraag.punten === 1 ? ' punt' : ' punten');
+    document.getElementById('host-vraag-weergave').textContent = vraag.vraag;
+    toonVraagFoto('host-vraag-foto', vraag.afbeelding);
+
+    const antwoordenEl = document.getElementById('host-antwoorden-weergave');
+    antwoordenEl.innerHTML = '';
+    vraag.antwoorden.forEach(tekst => {
+      const optie = document.createElement('div');
+      optie.className = 'antwoord-optie';
+      optie.textContent = tekst;
+      antwoordenEl.appendChild(optie);
+    });
+
+    const antwoordenVoorVraag = (sessie.antwoorden && sessie.antwoorden[sessie.huidigeVraagIndex]) || {};
+    const aantalGeantwoord = Object.keys(antwoordenVoorVraag).length;
+    const tellerEl = document.getElementById('host-antwoord-teller');
+    tellerEl.classList.add('laad-rij');
+    tellerEl.innerHTML = '<span class="laad-spinner"></span>' +
+      aantalGeantwoord + ' van ' + aantalSpelers + ' spelers hebben geantwoord';
+
+    toonScherm('scherm-host-vraag');
+
+    // Heeft iedereen al geantwoord? Dan hoeft er niet meer gewacht te worden
+    // op de wekker: automatisch door naar het resultaat (geen knop meer nodig
+    // bij de vraag zelf). Zonder spelers (bijv. net allemaal verwijderd) wacht
+    // de vraag gewoon op de wekker, in plaats van meteen door te schieten.
+    if (aantalSpelers > 0 && aantalGeantwoord >= aantalSpelers) {
+      stopHostTimer();
+      berekenScoresEnToonResultaat();
+    } else {
+      startHostTimerAlsNodig(sessie);
+    }
+  }
+
+  if (sessie.status === 'resultaat') {
+    const vraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
+    const antwoordenVoorVraag = (sessie.antwoorden && sessie.antwoorden[sessie.huidigeVraagIndex]) || {};
+    const gegeven = Object.entries(antwoordenVoorVraag).filter(([spelerId]) => spelers[spelerId]);
+    const aantalGeantwoord = gegeven.length;
+    const aantalGoed = gegeven
+      .filter(([, a]) => setsGelijk(a.antwoordIndexen || [], vraag.goedAntwoorden)).length;
+    const aantalFout = aantalGeantwoord - aantalGoed;
+    const aantalGeen = Math.max(0, aantalSpelers - aantalGeantwoord);
+
+    document.getElementById('host-resultaat-voortgang').textContent =
+      'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length;
+    document.getElementById('host-resultaat-vraag').textContent = vraag.vraag;
+    renderGroteAntwoorden('host', vraag);
+
+    // Kop met een passende reactie
+    let kop;
+    if (aantalSpelers > 0 && aantalGoed === aantalSpelers) {
+      kop = aantalSpelers === 1 ? '🎉 Goed gedaan!' : '🎉 Iedereen had het goed!';
+    } else if (aantalGoed === 0) {
+      kop = '😬 Niemand had het goed';
+    } else if (aantalGoed * 2 >= aantalSpelers) {
+      kop = '👏 Best goed gedaan!';
+    } else {
+      kop = '🤔 Dat was een lastige!';
+    }
+    document.getElementById('host-resultaat-kop').textContent = kop;
+
+    // Ring: hoeveel van de spelers het goed had
+    const OMTREK = 377; // 2 * pi * 60 (zelfde als stroke-dasharray in de CSS)
+    const fractie = aantalSpelers > 0 ? aantalGoed / aantalSpelers : 0;
+    const ringEl = document.getElementById('host-resultaat-ring');
+    ringEl.style.setProperty('--doel', String(Math.round(OMTREK * (1 - fractie))));
+    ringEl.classList.toggle('leeg', aantalGoed === 0);
+
+    document.getElementById('host-resultaat-aantal').textContent = aantalGoed + '/' + aantalSpelers;
+    document.getElementById('host-resultaat-telling').textContent =
+      aantalGoed + ' van ' + aantalSpelers + (aantalSpelers === 1 ? ' speler' : ' spelers') +
+      (aantalGoed === 1 ? ' had' : ' hadden') + ' het goed';
+
+    document.getElementById('host-resultaat-chip-goed').textContent = '✔ ' + aantalGoed + ' goed';
+    document.getElementById('host-resultaat-chip-fout').textContent = '✗ ' + aantalFout + ' fout';
+    const geenChipEl = document.getElementById('host-resultaat-chip-geen');
+    geenChipEl.textContent = '⏳ ' + aantalGeen + ' niet geantwoord';
+    geenChipEl.hidden = aantalGeen === 0;
+
+    toonScherm('scherm-host-resultaat');
+  }
+
+  if (sessie.status === 'scorebord' || sessie.status === 'afgelopen') {
+    document.getElementById('host-scorebord-titel').textContent =
+      sessie.status === 'afgelopen' ? 'Eindstand 🏆' : 'Scorebord';
+
+    renderScorebordLijst('host-scorebord-lijst', spelers, null);
+
+    const isLaatsteVraag = sessie.huidigeVraagIndex + 1 >= huidigeQuizVragen.length;
+    const volgendeKnop = document.getElementById('btn-host-volgende-vraag');
+    volgendeKnop.style.display = sessie.status === 'afgelopen' ? 'none' : 'block';
+    volgendeKnop.textContent = isLaatsteVraag ? 'Bekijk eindstand' : 'Volgende vraag';
+
+    toonScherm('scherm-host-scorebord');
+  }
+}
+
+document.getElementById('btn-host-start-quiz').addEventListener('click', () => {
+  db.ref('sessies/' + huidigeSessieCode).update({
+    huidigeVraagIndex: 0,
+    status: 'vraag',
+    vraagGestartOp: Date.now()
+  });
+});
+
+// Stap 1 (na de vraag): punten tellen en de spelers laten zien of ze het goed hadden.
+// Gebeurt automatisch — er is geen "Doorgaan"-knop meer bij de vraag zelf:
+// zodra iedereen geantwoord heeft (zie renderSessieVoorHost) of zodra de
+// wekker afloopt (zie startHostTimerAlsNodig). De vergrendeling voorkomt dat
+// punten dubbel geteld worden als dat toevallig tegelijk gebeurt.
+function berekenScoresEnToonResultaat() {
+  if (resultaatWordtBerekend) return Promise.resolve();
+  resultaatWordtBerekend = true;
+  const sessieRef = db.ref('sessies/' + huidigeSessieCode);
+  return sessieRef.once('value').then(snapshot => {
+    const sessie = snapshot.val();
+    // Alleen tellen zolang de vraag nog loopt (voorkomt dubbel punten geven).
+    if (!sessie || sessie.status !== 'vraag') return;
+
+    const vraagIndex = sessie.huidigeVraagIndex;
+    const vraag = huidigeQuizVragen[vraagIndex];
+    const antwoordenVoorVraag = (sessie.antwoorden && sessie.antwoorden[vraagIndex]) || {};
+    const spelers = sessie.spelers || {};
+
+    const updates = {};
+    Object.keys(antwoordenVoorVraag).forEach(spelerId => {
+      if (!spelers[spelerId]) return; // speler is inmiddels weg
+      const antwoord = antwoordenVoorVraag[spelerId];
+      const gekozenIndexen = antwoord.antwoordIndexen || [];
+      if (setsGelijk(gekozenIndexen, vraag.goedAntwoorden)) {
+        const huidigeScore = spelers[spelerId].score || 0;
+        const huidigeTijd = spelers[spelerId].totaleReactietijd || 0;
+        updates['spelers/' + spelerId + '/score'] = huidigeScore + (typeof vraag.punten === 'number' ? vraag.punten : 1000);
+        updates['spelers/' + spelerId + '/totaleReactietijd'] = huidigeTijd + (antwoord.reactietijdMs || 0);
+      }
+    });
+    updates['status'] = 'resultaat';
+
+    return sessieRef.update(updates);
+  }).finally(() => {
+    resultaatWordtBerekend = false;
+  });
+}
+
+// Stap 2: het scorebord (zonder vraag en antwoord).
+document.getElementById('btn-host-naar-scorebord').addEventListener('click', () => {
+  db.ref('sessies/' + huidigeSessieCode).update({ status: 'scorebord' });
+});
+
+document.getElementById('btn-host-volgende-vraag').addEventListener('click', () => {
+  const volgende = huidigeVraagIndexHost + 1;
+  const sessieRef = db.ref('sessies/' + huidigeSessieCode);
+
+  if (volgende < huidigeQuizVragen.length) {
+    sessieRef.update({
+      huidigeVraagIndex: volgende,
+      status: 'vraag',
+      vraagGestartOp: Date.now()
+    });
+  } else {
+    sessieRef.update({ status: 'afgelopen' });
+  }
+});
+
+document.getElementById('btn-host-afronden').addEventListener('click', () => {
+  if (huidigeSessieCode) {
+    db.ref('sessies/' + huidigeSessieCode).remove();
+  }
+  stopSessieListener();
+  huidigeRol = null;
+  toonScherm('scherm-algemeen');
+});
+
+document.getElementById('btn-host-verlaat-wachtkamer').addEventListener('click', () => {
+  if (huidigeSessieCode) {
+    db.ref('sessies/' + huidigeSessieCode).remove();
+  }
+  stopSessieListener();
+  huidigeRol = null;
+  toonScherm('scherm-algemeen');
+});
+
+// ---------- Meedoen aan quiz (speler) ----------
+
+document.getElementById('btn-ga-naar-quiz').addEventListener('click', () => {
+  const code = document.getElementById('input-code').value.trim().toUpperCase();
+  const naam = document.getElementById('input-speler-naam').value.trim();
+  const foutmelding = document.getElementById('meedoen-foutmelding');
+  foutmelding.textContent = '';
+
+  if (!code) {
+    foutmelding.textContent = 'Vul een code in.';
+    return;
+  }
+  if (!naam) {
+    foutmelding.textContent = 'Vul je naam in.';
+    return;
+  }
+
+  db.ref('quizzen/' + code).once('value')
+    .then(snapshot => {
+      const quizData = snapshot.val();
+      if (!quizData) {
+        foutmelding.textContent = 'Geen quiz gevonden met deze code.';
+        return;
+      }
+
+      return db.ref('sessies/' + code).once('value').then(sessieSnapshot => {
+        const sessie = sessieSnapshot.val();
+
+        if (!sessie) {
+          foutmelding.textContent = 'Deze quiz is nog niet gestart. Vraag de quizmaster om op "Spelen" te klikken op zijn/haar laptop.';
+          return;
+        }
+        if (sessie.status !== 'wachtkamer') {
+          foutmelding.textContent = 'Deze quiz is al begonnen, je kan er nu niet meer bij.';
+          return;
+        }
+
+        huidigeQuizVragen = (quizData.vragen || []).map(normaliseerVraag);
+        huidigeQuizTitel = quizData.titel;
+        huidigeSessieCode = code;
+        huidigeRol = 'speler';
+        huidigeSpelerId = 'speler-' + Math.random().toString(36).slice(2, 10);
+        laatstGetoondeVraagIndexSpeler = -1;
+        muntenToegekendVoorSessie = null; // nieuwe sessie: nog geen munten toegekend
+
+        // Iedereen begint met een willekeurig dier; in de wachtkamer kun je een ander kiezen.
+        const startDier = willekeurigDier();
+
+        return db.ref('sessies/' + code + '/spelers/' + huidigeSpelerId)
+          .set({ naam: naam, dier: startDier, score: 0, totaleReactietijd: 0 })
+          .then(() => {
+            huidigeStatusSpeler = 'wachtkamer';
+            kiezerTab = 'dieren';
+            bouwKiezer();
+            toonGekozenPoppetje({ dier: startDier });
+            document.getElementById('speler-wachtkamer-naam').textContent = naam;
+            document.getElementById('input-code').value = '';
+            toonScherm('scherm-speler-wachtkamer');
+            luisterNaarSessie(code);
+          });
+      });
+    })
+    .catch(err => {
+      foutmelding.textContent = 'Er ging iets mis: ' + err.message;
+    });
+});
+
+document.getElementById('btn-speler-verlaat-wachtkamer').addEventListener('click', () => {
+  if (huidigeSessieCode && huidigeSpelerId) {
+    db.ref('sessies/' + huidigeSessieCode + '/spelers/' + huidigeSpelerId).remove();
+  }
+  stopSessieListener();
+  huidigeRol = null;
+  toonScherm('scherm-algemeen');
+});
+
+document.getElementById('btn-speler-terug-naar-start').addEventListener('click', () => {
+  stopSessieListener();
+  huidigeRol = null;
+  toonScherm('scherm-algemeen');
+});
+
+document.getElementById('btn-speler-verwijderd-terug').addEventListener('click', () => {
+  toonScherm('scherm-algemeen');
+});
+
+document.getElementById('btn-speler-host-weg-terug').addEventListener('click', () => {
+  toonScherm('scherm-algemeen');
+});
+
+function renderSessieVoorSpeler(sessie) {
+  const spelers = sessie.spelers || {};
+  huidigeStatusSpeler = sessie.status;
+
+  if (huidigeSpelerId && !spelers[huidigeSpelerId]) {
+    // De host heeft deze speler uit de sessie verwijderd.
+    stopSessieListener();
+    huidigeRol = null;
+    toonScherm('scherm-speler-verwijderd');
+    return;
+  }
+
+  if (sessie.status === 'wachtkamer') {
+    toonGekozenPoppetje(spelers[huidigeSpelerId]);
+    toonScherm('scherm-speler-wachtkamer');
+  }
+
+  if (sessie.status === 'vraag') {
+    if (sessie.huidigeVraagIndex !== laatstGetoondeVraagIndexSpeler) {
+      laatstGetoondeVraagIndexSpeler = sessie.huidigeVraagIndex;
+      vraagGetoondOpSpeler = Date.now();
+      spelerHeeftGeantwoord = false;
+      spelerGeselecteerdeAntwoorden = [];
+    }
+
+    const vraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
+    const eigenAntwoorden = (sessie.antwoorden && sessie.antwoorden[sessie.huidigeVraagIndex]) || {};
+    const eigenAntwoord = eigenAntwoorden[huidigeSpelerId];
+
+    if (eigenAntwoord) {
+      // Al geantwoord: alleen een groot laadteken. Of het goed was, ziet de
+      // speler pas als de quizmaster doorklikt (status 'resultaat').
+      toonScherm('scherm-speler-antwoord-verzonden');
+    } else {
+      document.getElementById('speler-voortgang-weergave').textContent =
+        'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length +
+        ' · ' + vraag.punten + (vraag.punten === 1 ? ' punt' : ' punten');
+      document.getElementById('speler-vraag-weergave').textContent = vraag.vraag;
+      toonVraagFoto('speler-vraag-foto', vraag.afbeelding);
+
+      // Bij precies 1 goed antwoord werkt het net als vroeger: 1 tik = meteen
+      // versturen. Alleen als er meerdere antwoorden goed kunnen zijn, moet de
+      // speler eerst aanvinken en daarna bewust op "Antwoord versturen" klikken
+      // (anders is het niet uit te drukken welke combinatie bedoeld is).
+      const meerdereGoedMogelijk = vraag.goedAntwoorden.length > 1;
+
+      const verstuurKnop = document.getElementById('btn-speler-antwoord-versturen');
+      const instructieEl = document.getElementById('speler-vraag-instructie');
+      const antwoordenEl = document.getElementById('speler-antwoorden-weergave');
+      antwoordenEl.innerHTML = '';
+
+      const verstuurAntwoord = (indexen) => {
+        if (spelerHeeftGeantwoord || huidigeStatusSpeler !== 'vraag') return;
+        spelerHeeftGeantwoord = true;
+        const reactietijdMs = Date.now() - vraagGetoondOpSpeler;
+        db.ref('sessies/' + huidigeSessieCode + '/antwoorden/' + sessie.huidigeVraagIndex + '/' + huidigeSpelerId)
+          .set({ antwoordIndexen: indexen, reactietijdMs: reactietijdMs });
+      };
+
+      if (meerdereGoedMogelijk) {
+        instructieEl.textContent = 'Tik op alle antwoorden die je goed denkt dat zijn en klik daarna op "Antwoord versturen".';
+        verstuurKnop.style.display = '';
+        verstuurKnop.disabled = spelerGeselecteerdeAntwoorden.length === 0;
+
+        vraag.antwoorden.forEach((tekst, index) => {
+          const antwoordIndex = index + 1;
+          const optie = document.createElement('div');
+          optie.className = 'antwoord-optie' + (spelerGeselecteerdeAntwoorden.includes(antwoordIndex) ? ' geselecteerd' : '');
+          optie.textContent = tekst;
+
+          optie.addEventListener('click', () => {
+            if (spelerHeeftGeantwoord) return;
+
+            const positie = spelerGeselecteerdeAntwoorden.indexOf(antwoordIndex);
+            if (positie === -1) {
+              spelerGeselecteerdeAntwoorden.push(antwoordIndex);
+            } else {
+              spelerGeselecteerdeAntwoorden.splice(positie, 1);
+            }
+            optie.classList.toggle('geselecteerd');
+            verstuurKnop.disabled = spelerGeselecteerdeAntwoorden.length === 0;
+          });
+
+          antwoordenEl.appendChild(optie);
+        });
+
+        verstuurKnop.onclick = () => {
+          if (spelerGeselecteerdeAntwoorden.length === 0) return;
+          verstuurAntwoord(spelerGeselecteerdeAntwoorden.slice());
+        };
+      } else {
+        instructieEl.textContent = 'Tik op het antwoord dat je goed denkt dat is.';
+        verstuurKnop.style.display = 'none';
+        verstuurKnop.onclick = null;
+
+        vraag.antwoorden.forEach((tekst, index) => {
+          const antwoordIndex = index + 1;
+          const optie = document.createElement('div');
+          optie.className = 'antwoord-optie';
+          optie.textContent = tekst;
+
+          optie.addEventListener('click', () => {
+            verstuurAntwoord([antwoordIndex]);
+          });
+
+          antwoordenEl.appendChild(optie);
+        });
+      }
+
+      toonScherm('scherm-speler-vraag');
+    }
+  }
+
+  if (sessie.status === 'resultaat') {
+    const vraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
+    const antwoordenVraag = (sessie.antwoorden && sessie.antwoorden[sessie.huidigeVraagIndex]) || {};
+    const eigenAntwoord = antwoordenVraag[huidigeSpelerId];
+    const resultaatEl = document.getElementById('speler-resultaat-tekst');
+
+    if (!eigenAntwoord) {
+      resultaatEl.className = 'groot-resultaat fout';
+      resultaatEl.textContent = 'Geen antwoord ✗';
+    } else if (setsGelijk(eigenAntwoord.antwoordIndexen || [], vraag.goedAntwoorden)) {
+      resultaatEl.className = 'groot-resultaat goed';
+      resultaatEl.textContent = 'Goed! ✔';
+    } else {
+      resultaatEl.className = 'groot-resultaat fout';
+      resultaatEl.textContent = 'Fout ✗';
+    }
+
+    renderGroteAntwoorden('speler', vraag);
+    toonScherm('scherm-speler-resultaat');
+  }
+
+  if (sessie.status === 'scorebord' || sessie.status === 'afgelopen') {
+    document.getElementById('speler-scorebord-titel').textContent =
+      sessie.status === 'afgelopen' ? 'Eindstand 🏆' : 'Scorebord';
+
+    let scorebordBericht = sessie.status === 'afgelopen' ? 'Bedankt voor het meespelen!' : '';
+
+    // Won je deze live quiz? Dan krijg je eenmalig munten (voor de winkel).
+    if (sessie.status === 'afgelopen' && muntenToegekendVoorSessie !== huidigeSessieCode) {
+      muntenToegekendVoorSessie = huidigeSessieCode;
+      const eindstand = Object.entries(spelers || {}).sort((a, b) => {
+        const scoreA = a[1].score || 0, scoreB = b[1].score || 0;
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return (a[1].totaleReactietijd || 0) - (b[1].totaleReactietijd || 0);
+      });
+      const mijnPlek = eindstand.findIndex(regel => regel[0] === huidigeSpelerId);
+      if (mijnPlek !== -1 && mijnPlek < MUNTEN_LIVE_PER_PLEK.length) {
+        const verdiend = MUNTEN_LIVE_PER_PLEK[mijnPlek];
+        geefMunten(verdiend);
+        const medaille = ['🥇', '🥈', '🥉'][mijnPlek];
+        scorebordBericht = medaille + ' Je bent ' + (mijnPlek + 1) + 'e geworden: +' + verdiend + ' munten! Bekijk de winkel voor mysterieboxen.';
+      }
+    }
+    document.getElementById('speler-scorebord-bericht').textContent = scorebordBericht;
+
+    renderScorebordLijst('speler-scorebord-lijst', spelers, huidigeSpelerId);
+
+    const scorebordStatusEl = document.getElementById('speler-scorebord-status');
+    if (sessie.status === 'afgelopen') {
+      scorebordStatusEl.classList.remove('laad-rij');
+      scorebordStatusEl.textContent = '';
+    } else {
+      scorebordStatusEl.classList.add('laad-rij');
+      scorebordStatusEl.innerHTML = '<span class="laad-spinner"></span>Wacht tot de quizmaster verdergaat...';
+    }
+
+    document.getElementById('btn-speler-terug-naar-start').style.display =
+      sessie.status === 'afgelopen' ? 'block' : 'none';
+
+    toonScherm('scherm-speler-scorebord');
+  }
+}
+
+// ================================================================
+//  SPELEN: met mensen (live, met quizmaster) of zonder mensen (alleen)
+// ================================================================
+
+function isEigenQuizCode(code) {
+  try {
+    return JSON.parse(localStorage.getItem('eigenQuizzen') || '[]').some(q => q.code === code);
+  } catch (e) {
+    return false;
+  }
+}
+
+const speelKeuzeOverlayEl = document.getElementById('speelkeuze-overlay');
+const btnSpeelKeuzeAlleenEl = document.getElementById('btn-speelkeuze-alleen');
+const speelKeuzeAlleenUitlegEl = document.getElementById('speelkeuze-alleen-uitleg');
+const SPEELKEUZE_ALLEEN_STANDAARD_UITLEG = 'Speel de quiz zelf, zonder quizmaster.';
+
+let speelKeuze = null; // { code, terugScherm }
+
+function toonSpeelKeuze(code, titel, soloToegestaan, terugScherm) {
+  speelKeuze = { code: code, terugScherm: terugScherm };
+  document.getElementById('speelkeuze-quiztitel').textContent = titel || '';
+
+  btnSpeelKeuzeAlleenEl.disabled = !soloToegestaan;
+  speelKeuzeAlleenUitlegEl.textContent = soloToegestaan
+    ? SPEELKEUZE_ALLEEN_STANDAARD_UITLEG
+    : 'De maker heeft niet toegestaan dat je deze quiz alleen speelt.';
+
+  speelKeuzeOverlayEl.classList.add('actief');
+}
+
+function sluitSpeelKeuze() {
+  speelKeuzeOverlayEl.classList.remove('actief');
+}
+
+document.getElementById('btn-speelkeuze-mensen').addEventListener('click', () => {
+  if (!speelKeuze) return;
+  const code = speelKeuze.code;
+  sluitSpeelKeuze();
+  startHostenVanQuiz(code);
+});
+
+btnSpeelKeuzeAlleenEl.addEventListener('click', () => {
+  if (!speelKeuze || btnSpeelKeuzeAlleenEl.disabled) return;
+  const { code, terugScherm } = speelKeuze;
+  sluitSpeelKeuze();
+  startSoloVanQuiz(code, terugScherm);
+});
+
+document.getElementById('btn-speelkeuze-annuleren').addEventListener('click', sluitSpeelKeuze);
+
+// Klik naast het venster (op de donkere achtergrond) sluit het ook.
+speelKeuzeOverlayEl.addEventListener('click', (e) => {
+  if (e.target === speelKeuzeOverlayEl) sluitSpeelKeuze();
+});
+
+// ---------- Alleen spelen (zonder quizmaster, niets hiervan gaat via Firebase-sessies) ----------
+
+let soloCode = null;
+let soloTitel = '';
+let soloVragen = [];
+let soloIndex = 0;
+let soloAantalGoed = 0;
+let soloTerugScherm = 'scherm-speelbare-quizzen';
+let soloHeeftGeantwoord = false;
+let soloGeselecteerdeAntwoorden = [];
+
+function startSoloVanQuiz(code, terugScherm) {
+  db.ref('quizzen/' + code).once('value').then(snapshot => {
+    const quizData = snapshot.val();
+    if (!quizData) {
+      alert('Deze quiz kon niet gevonden worden (misschien is hij verwijderd).');
+      return;
+    }
+    // Nog een keer controleren (de maker kan het net hebben uitgezet).
+    if (quizData.soloToegestaan === false && !isEigenQuizCode(code)) {
+      alert('De maker heeft niet toegestaan dat deze quiz alleen gespeeld wordt.');
+      return;
+    }
+
+    const vragen = (quizData.vragen || []).map(normaliseerVraag);
+    if (vragen.length === 0) {
+      alert('Deze quiz heeft geen vragen.');
+      return;
+    }
+
+    soloCode = code;
+    soloTitel = quizData.titel || '';
+    soloVragen = vragen;
+    soloIndex = 0;
+    soloAantalGoed = 0;
+    soloTerugScherm = terugScherm || 'scherm-speelbare-quizzen';
+    toonSoloVraag();
+  }).catch(err => {
+    alert('Quiz starten mislukt: ' + err.message);
+  });
+}
+
+function toonSoloVraag() {
+  const vraag = soloVragen[soloIndex];
+  soloHeeftGeantwoord = false;
+  soloGeselecteerdeAntwoorden = [];
+
+  document.getElementById('solo-voortgang').textContent =
+    'Vraag ' + (soloIndex + 1) + ' van ' + soloVragen.length;
+  document.getElementById('solo-vraag-weergave').textContent = vraag.vraag;
+  toonVraagFoto('solo-vraag-foto', vraag.afbeelding);
+
+  const meerdereGoedMogelijk = vraag.goedAntwoorden.length > 1;
+  const verstuurKnop = document.getElementById('btn-solo-antwoord-versturen');
+  const instructieEl = document.getElementById('solo-vraag-instructie');
+  const antwoordenEl = document.getElementById('solo-antwoorden-weergave');
+  antwoordenEl.innerHTML = '';
+
+  if (meerdereGoedMogelijk) {
+    instructieEl.textContent = 'Tik op alle antwoorden die je goed denkt dat zijn en klik daarna op "Antwoord versturen".';
+    verstuurKnop.style.display = '';
+    verstuurKnop.disabled = true;
+
+    vraag.antwoorden.forEach((tekst, index) => {
+      const antwoordIndex = index + 1;
+      const optie = document.createElement('div');
+      optie.className = 'antwoord-optie';
+      optie.textContent = tekst;
+      optie.addEventListener('click', () => {
+        if (soloHeeftGeantwoord) return;
+        const positie = soloGeselecteerdeAntwoorden.indexOf(antwoordIndex);
+        if (positie === -1) {
+          soloGeselecteerdeAntwoorden.push(antwoordIndex);
+        } else {
+          soloGeselecteerdeAntwoorden.splice(positie, 1);
+        }
+        optie.classList.toggle('geselecteerd');
+        verstuurKnop.disabled = soloGeselecteerdeAntwoorden.length === 0;
+      });
+      antwoordenEl.appendChild(optie);
+    });
+
+    verstuurKnop.onclick = () => {
+      if (soloGeselecteerdeAntwoorden.length === 0) return;
+      verstuurSoloAntwoord(soloGeselecteerdeAntwoorden.slice());
+    };
+  } else {
+    instructieEl.textContent = 'Tik op het antwoord dat je goed denkt dat is.';
+    verstuurKnop.style.display = 'none';
+    verstuurKnop.onclick = null;
+
+    vraag.antwoorden.forEach((tekst, index) => {
+      const optie = document.createElement('div');
+      optie.className = 'antwoord-optie';
+      optie.textContent = tekst;
+      optie.addEventListener('click', () => {
+        verstuurSoloAntwoord([index + 1]);
+      });
+      antwoordenEl.appendChild(optie);
+    });
+  }
+
+  toonScherm('scherm-solo-vraag');
+}
+
+function verstuurSoloAntwoord(indexen) {
+  if (soloHeeftGeantwoord) return;
+  soloHeeftGeantwoord = true;
+
+  const vraag = soloVragen[soloIndex];
+  const goed = setsGelijk(indexen, vraag.goedAntwoorden);
+  if (goed) soloAantalGoed++;
+
+  const resultaatEl = document.getElementById('solo-resultaat-tekst');
+  resultaatEl.className = 'groot-resultaat ' + (goed ? 'goed' : 'fout');
+  resultaatEl.textContent = goed ? 'Goed! ✔' : 'Fout ✗';
+  renderGroteAntwoorden('solo', vraag);
+
+  const isLaatsteVraag = soloIndex + 1 >= soloVragen.length;
+  document.getElementById('btn-solo-volgende').textContent =
+    isLaatsteVraag ? 'Bekijk resultaat' : 'Volgende vraag';
+
+  toonScherm('scherm-solo-resultaat');
+}
+
+document.getElementById('btn-solo-volgende').addEventListener('click', () => {
+  if (soloIndex + 1 < soloVragen.length) {
+    soloIndex++;
+    toonSoloVraag();
+  } else {
+    toonSoloEinde();
+  }
+});
+
+function toonSoloEinde() {
+  const totaal = soloVragen.length;
+  const OMTREK = 377; // zelfde als stroke-dasharray in de CSS
+  const fractie = totaal > 0 ? soloAantalGoed / totaal : 0;
+
+  document.getElementById('solo-einde-titel').textContent = soloTitel;
+
+  let kop;
+  if (soloAantalGoed === totaal) {
+    kop = '🏆 Perfect!';
+  } else if (soloAantalGoed * 2 >= totaal) {
+    kop = '👏 Goed gedaan!';
+  } else {
+    kop = '💪 Blijf oefenen!';
+  }
+  document.getElementById('solo-einde-kop').textContent = kop;
+
+  const ringEl = document.getElementById('solo-einde-ring');
+  ringEl.style.setProperty('--doel', String(Math.round(OMTREK * (1 - fractie))));
+  ringEl.classList.toggle('leeg', soloAantalGoed === 0);
+
+  document.getElementById('solo-einde-aantal').textContent = soloAantalGoed + '/' + totaal;
+  let eindTekst = 'Je had ' + soloAantalGoed + ' van de ' + totaal + (totaal === 1 ? ' vraag' : ' vragen') + ' goed';
+  if (totaal > 0 && soloAantalGoed === totaal) {
+    geefMunten(MUNTEN_SOLO_ALLES_GOED);
+    eindTekst += ' — 🎉 +' + MUNTEN_SOLO_ALLES_GOED + ' munten!';
+  }
+  document.getElementById('solo-einde-tekst').textContent = eindTekst;
+
+  toonScherm('scherm-solo-einde');
+}
+
+function verlaatSoloQuiz() {
+  soloVragen = [];
+  toonScherm('scherm-algemeen');
+}
+
+document.getElementById('btn-solo-stoppen').addEventListener('click', verlaatSoloQuiz);
+document.getElementById('btn-solo-terug').addEventListener('click', verlaatSoloQuiz);
+
+document.getElementById('btn-solo-opnieuw').addEventListener('click', () => {
+  soloIndex = 0;
+  soloAantalGoed = 0;
+  toonSoloVraag();
+});
+
+
+// ================================================================
+// SITEBEHEER: al eerder gemaakte eigen poppetjes/accessoires laden
+// ----------------------------------------------------------------
+// Poppetjes maken uit een emoji kan niet meer (er zijn nu genoeg vaste dieren
+// en accessoires). Wat eerder gemaakt is en in Firebase staat, blijft gewoon
+// werken en wordt hier nog geladen.
+// ================================================================
+
+function laadAangepasteCatalogus() {
+  return db.ref('aangepastePoppetjes').once('value').then(snapshot => {
+    Object.keys(AANGEPASTE_POPPETJES).forEach(k => verwijderAangepastPoppetjeUitCatalogus(k));
+    Object.keys(AANGEPASTE_ACCESSOIRES).forEach(k => verwijderAangepastAccessoireUitCatalogus(k));
+    const data = snapshot.val() || {};
+    Object.entries(data.dieren || {}).forEach(([id,item]) => registreerAangepastPoppetje(id,item));
+    Object.entries(data.accessoires || {}).forEach(([id,item]) => registreerAangepastAccessoire(id,item));
+  }).catch(() => {});
+}
+
+bouwKiezer();
+laadAangepasteCatalogus().then(() => { bouwKiezer(); bouwVerzamelingKiezer(); werkMuntenWeergaveBij(); werkProfielBadgeBij(); });
+werkMuntenWeergaveBij();
+
+// ---------- Bij het openen van de site: naam bij eigen quizzen zetten ----------
+koppelMakerNaamAanEigenQuizzen();
+
+// ---------- Profiel: badge, slotjes op de vakken en het profiel-overlay ----------
+
+// Zet een 🔒 op de vakken die pas werken met een profiel, zolang er nog
+// geen profiel is aangemaakt.
+function werkVakSlotjesBij() {
+  const opSlot = !heeftProfiel();
+  ['btn-naar-quizmaken', 'btn-naar-winkel', 'btn-naar-dierentuin', 'btn-naar-wiel'].forEach(id => {
+    document.getElementById(id).classList.toggle('vak-op-slot', opSlot);
+  });
+  document.getElementById('profiel-vereist-hint').style.display = opSlot ? '' : 'none';
+}
+
+const PROFIEL_ACCESSOIRES_SLEUTEL = 'profielAccessoires';
+
+function huidigeProfielAccessoires() {
+  try {
+    return geldigeAccessoires(JSON.parse(localStorage.getItem(PROFIEL_ACCESSOIRES_SLEUTEL) || '{}'));
+  } catch (e) {
+    return {};
+  }
+}
+
+function slaProfielAccessoiresOp(accessoires) {
+  localStorage.setItem(PROFIEL_ACCESSOIRES_SLEUTEL, JSON.stringify(geldigeAccessoires(accessoires)));
+}
+
+function profielPoppetjeHtml() {
+  const dier = geldigDier(huidigProfielDier());
+  if (!dier) return '';
+  return poppetjeSvg(dier, huidigeProfielAccessoires());
+}
+
+function werkProfielPoppetjeWeergaveBij() {
+  const overlayPoppetjeEl = document.getElementById('profiel-overlay-poppetje');
+  const badgePoppetjeEl = document.getElementById('profiel-badge-poppetje');
+
+  if (heeftProfiel() && geldigDier(huidigProfielDier())) {
+    const svg = profielPoppetjeHtml();
+    overlayPoppetjeEl.innerHTML = svg;
+    badgePoppetjeEl.innerHTML = svg;
+  } else {
+    overlayPoppetjeEl.innerHTML = '';
+    badgePoppetjeEl.innerHTML = '';
+  }
+}
+
+// Werkt de badge rechtsboven bij.
+// Met een bestaand profiel zie je hier alleen je poppetje/gezichtje.
+function werkProfielBadgeBij() {
+  const poppetjeEl = document.getElementById('profiel-badge-poppetje');
+  const tekstEl = document.getElementById('profiel-badge-tekst');
+
+  if (heeftProfiel()) {
+    tekstEl.textContent = '';
+    werkProfielPoppetjeWeergaveBij();
+  } else {
+    poppetjeEl.innerHTML = '';
+    tekstEl.textContent = '👤 Profiel maken';
+  }
+}
+
+const profielOverlayEl = document.getElementById('profiel-overlay');
+const PE_TAB_NAMEN = { boven: 'Hoeden', gezicht: 'Brillen', hoek: 'Extra' };
+const PE_TAB_ICONEN = { dieren: '🐶', boven: '🎩', gezicht: '👓', hoek: '✨' };
+let peTab = 'dieren';
+
+function openPoppetjeEditor() {
+  peTab = 'dieren';
+  document.getElementById('poppetje-editor').classList.add('actief');
+  document.body.classList.add('chat-open');
+  bouwPoppetjeEditor();
+}
+
+function sluitPoppetjeEditor() {
+  document.getElementById('poppetje-editor').classList.remove('actief');
+  if (!document.getElementById('chat-overlay').classList.contains('actief')) document.body.classList.remove('chat-open');
+  werkProfielPoppetjeWeergaveBij();
+}
+
+// Oude naam blijft bestaan, want andere plekken in de code sluiten hiermee de kiezer.
+function sluitProfielPoppetjeKiezer() { sluitPoppetjeEditor(); }
+
+function peKaart(svg, label, gekozen, onKlik) {
+  const knop = document.createElement('button');
+  knop.type = 'button';
+  knop.className = 'pe-kaart' + (gekozen ? ' gekozen' : '');
+  const plaat = document.createElement('div');
+  plaat.className = 'pe-kaart-plaat';
+  plaat.innerHTML = svg;
+  knop.appendChild(plaat);
+  if (label) {
+    const l = document.createElement('div');
+    l.className = 'pe-kaart-label';
+    l.textContent = label;
+    knop.appendChild(l);
+  }
+  if (gekozen) {
+    const vink = document.createElement('span');
+    vink.className = 'pe-vink';
+    vink.textContent = '✓';
+    knop.appendChild(vink);
+  }
+  knop.addEventListener('click', onKlik);
+  return knop;
+}
+
+function peNaLetter() {
+  werkProfielBadgeBij();
+  werkProfielPoppetjeWeergaveBij();
+  bouwPoppetjeEditor();
+}
+
+function bouwPoppetjeEditor() {
+  const bezitDieren = haalBezitDieren();
+  const bezitAcc = haalBezitAccessoires();
+  const dier = geldigDier(huidigProfielDier()) || bezitDieren[0] || DIEREN[0];
+  const acc = huidigeProfielAccessoires();
+
+  // Groot voorbeeld + chips met wat je nu aan hebt
+  document.getElementById('pe-voorbeeld-poppetje').innerHTML = poppetjeSvg(dier, acc);
+  const chips = document.getElementById('pe-chips');
+  chips.innerHTML = '';
+  let aantalChips = 0;
+  ACCESSOIRE_GROEPEN.forEach(groep => {
+    const emoji = acc[groep.plek];
+    if (!emoji) return;
+    aantalChips++;
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'pe-chip';
+    chip.textContent = PE_TAB_ICONEN[groep.plek] + ' ' + ((ACCESSOIRES[emoji] && ACCESSOIRES[emoji].naam) || 'accessoire') + '  ✕';
+    chip.title = 'Weghalen';
+    chip.addEventListener('click', () => {
+      const nieuw = Object.assign({}, huidigeProfielAccessoires());
+      delete nieuw[groep.plek];
+      slaProfielAccessoiresOp(nieuw);
+      peNaLetter();
+    });
+    chips.appendChild(chip);
+  });
+  if (!aantalChips) {
+    const leeg = document.createElement('span');
+    leeg.className = 'pe-chips-leeg';
+    leeg.textContent = 'Nog geen accessoires aan';
+    chips.appendChild(leeg);
+  }
+
+  // Tabbladen
+  const tabs = document.getElementById('pe-tabs');
+  tabs.innerHTML = '';
+  const tabLijst = [{ id: 'dieren', naam: 'Dieren' }].concat(ACCESSOIRE_GROEPEN.map(g => ({ id: g.plek, naam: PE_TAB_NAMEN[g.plek] || g.titel })));
+  tabLijst.forEach(t => {
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'pe-tab' + (t.id === peTab ? ' actief' : '');
+    knop.innerHTML = '<span class="pe-tab-icoon">' + PE_TAB_ICONEN[t.id] + '</span><span>' + t.naam + '</span>';
+    knop.addEventListener('click', () => { peTab = t.id; bouwPoppetjeEditor(); });
+    tabs.appendChild(knop);
+  });
+
+  // Inhoud van het gekozen tabblad
+  const inhoud = document.getElementById('pe-inhoud');
+  inhoud.innerHTML = '';
+  const raster = document.createElement('div');
+  raster.className = 'pe-raster';
+  const hint = document.createElement('p');
+  hint.className = 'pe-hint';
+
+  if (peTab === 'dieren') {
+    bezitDieren.forEach(d => {
+      raster.appendChild(peKaart(poppetjeSvg(d, acc), '', d === dier, () => {
+        localStorage.setItem(PROFIEL_DIER_SLEUTEL, d);
+        peNaLetter();
+      }));
+    });
+    hint.textContent = 'Je hebt ' + bezitDieren.length + ' van de ' + DIEREN.length + ' dieren. Meer dieren krijg je in de Winkel en bij het Geluksrad.';
+  } else {
+    const groep = ACCESSOIRE_GROEPEN.find(g => g.plek === peTab);
+    if (groep) {
+      const items = groep.items.filter(i => bezitAcc.indexOf(i) !== -1);
+      const zonder = Object.assign({}, acc);
+      delete zonder[groep.plek];
+      raster.appendChild(peKaart(poppetjeSvg(dier, zonder), 'Geen', !acc[groep.plek], () => {
+        const nieuw = Object.assign({}, huidigeProfielAccessoires());
+        delete nieuw[groep.plek];
+        slaProfielAccessoiresOp(nieuw);
+        peNaLetter();
+      }));
+      items.forEach(emoji => {
+        const proef = Object.assign({}, acc);
+        proef[groep.plek] = emoji;
+        raster.appendChild(peKaart(poppetjeSvg(dier, proef), (ACCESSOIRES[emoji] && ACCESSOIRES[emoji].naam) || '', acc[groep.plek] === emoji, () => {
+          const nieuw = Object.assign({}, huidigeProfielAccessoires());
+          if (nieuw[groep.plek] === emoji) delete nieuw[groep.plek]; else nieuw[groep.plek] = emoji;
+          slaProfielAccessoiresOp(nieuw);
+          peNaLetter();
+        }));
+      });
+      hint.textContent = 'Je hebt ' + items.length + ' van de ' + groep.items.length + ' items in "' + groep.titel + '". Meer krijg je in de Winkel en bij het Geluksrad.';
+    }
+  }
+  inhoud.appendChild(raster);
+  inhoud.appendChild(hint);
+}
+
+document.getElementById('btn-profiel-poppetje-wijzigen').addEventListener('click', openPoppetjeEditor);
+document.getElementById('btn-pe-terug').addEventListener('click', sluitPoppetjeEditor);
+document.getElementById('btn-pe-klaar').addEventListener('click', sluitPoppetjeEditor);
+
+document.getElementById('btn-profiel-badge').addEventListener('click', () => {
+  if (heeftProfiel()) {
+    document.getElementById('profiel-overlay-naam').textContent = 'Ingelogd als ' + huidigeMakerNaam();
+    werkProfielPoppetjeWeergaveBij();
+    sluitProfielPoppetjeKiezer();
+    profielOverlayEl.classList.add('actief');
+  } else {
+    naProfielActie = null;
+    openProfielMakenScherm();
+  }
+});
+
+document.getElementById('btn-profiel-overlay-sluiten').addEventListener('click', () => {
+  profielOverlayEl.classList.remove('actief');
+  sluitProfielPoppetjeKiezer();
+});
+
+werkProfielBadgeBij();
+werkVakSlotjesBij();
+
+
+
+// ================================================================
+// VRIENDEN, CHAT EN DUBBELE VERZAMELING
+// ================================================================
+
+const BEZIT_AANTALLEN_SLEUTEL = 'quizAppBezitAantallen';
+const SOCIAAL_PROFIEL_PAD = 'gebruikers';
+
+// Firebase-sleutels mogen geen punt bevatten, dus die vervangen we ook.
+function naamSleutel(zoeknaam) {
+  return encodeURIComponent(zoeknaam).replace(/\./g, '%2E');
+}
+
+function normaliseerGebruikersnaam(naam) {
+  return String(naam || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function profielFirebaseGebruiker() {
+  return typeof auth !== 'undefined' ? auth.currentUser : null;
+}
+
+function huidigeBezitAantallen() {
+  let data = {};
+  try { data = JSON.parse(localStorage.getItem(BEZIT_AANTALLEN_SLEUTEL) || '{}') || {}; } catch (e) {}
+  const dieren = haalBezitDierenBasisVoorAantal();
+  const accessoires = haalBezitAccessoiresBasisVoorAantal();
+  dieren.forEach(item => { if (!Number.isInteger(data['dier:' + item]) || data['dier:' + item] < 1) data['dier:' + item] = 1; });
+  accessoires.forEach(item => { if (!Number.isInteger(data['accessoire:' + item]) || data['accessoire:' + item] < 1) data['accessoire:' + item] = 1; });
+  return data;
+}
+
+function haalBezitDierenBasisVoorAantal() {
+  const opgeslagen = JSON.parse(localStorage.getItem(BEZIT_DIEREN_SLEUTEL) || 'null');
+  return Array.isArray(opgeslagen) && opgeslagen.length ? opgeslagen : STANDAARD_DIEREN.slice();
+}
+
+function haalBezitAccessoiresBasisVoorAantal() {
+  const opgeslagen = JSON.parse(localStorage.getItem(BEZIT_ACCESSOIRES_SLEUTEL) || 'null');
+  return Array.isArray(opgeslagen) && opgeslagen.length ? opgeslagen : STANDAARD_ACCESSOIRES.slice();
+}
+
+function slaBezitAantallenOp(data) {
+  localStorage.setItem(BEZIT_AANTALLEN_SLEUTEL, JSON.stringify(data || {}));
+}
+
+function aantalVan(type, item) {
+  const data = huidigeBezitAantallen();
+  return Math.max(0, Number(data[type + ':' + item] || 0));
+}
+
+function pasAantalAan(type, item, delta) {
+  const data = huidigeBezitAantallen();
+  const sleutel = type + ':' + item;
+  const nieuw = Math.max(0, (Number(data[sleutel]) || 0) + delta);
+  if (nieuw > 0) data[sleutel] = nieuw;
+  else delete data[sleutel];
+  slaBezitAantallenOp(data);
+  return nieuw;
+}
+
+function onlineBezitObject() {
+  const data = huidigeBezitAantallen();
+  const dieren = {};
+  const accessoires = {};
+  Object.keys(data).forEach(k => {
+    const [type, ...rest] = k.split(':');
+    const item = rest.join(':');
+    if (type === 'dier') dieren[item] = data[k];
+    if (type === 'accessoire') accessoires[item] = data[k];
+  });
+  return { dieren, accessoires };
+}
+
+function syncSociaalBezit() {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker || !heeftProfiel()) return Promise.resolve();
+  return db.ref(SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid + '/bezit').set(onlineBezitObject()).catch(() => {});
+}
+
+function registreerSociaalProfiel() {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker || !heeftProfiel()) return Promise.resolve();
+  const naam = huidigeMakerNaam();
+  const zoeknaam = normaliseerGebruikersnaam(naam);
+  const dier = geldigDier(huidigProfielDier()) || '';
+  const accessoires = huidigeProfielAccessoires ? huidigeProfielAccessoires() : {};
+  const naamRef = db.ref('gebruikersnamen/' + naamSleutel(zoeknaam));
+  return naamRef.transaction(v => v || gebruiker.uid).then(result => {
+    const eigenaar = result.snapshot.val();
+    if (eigenaar && eigenaar !== gebruiker.uid) {
+      // Alleen bij gewone (anonieme) spelers: de beheerder heeft een eigen account en mag de naam niet kwijtraken.
+      if (gebruiker.isAnonymous) {
+        localStorage.removeItem(MAKER_NAAM_SLEUTEL);
+        werkProfielBadgeBij();
+        werkVakSlotjesBij();
+        alert('De naam "' + naam + '" is al van een ander profiel (bijvoorbeeld op je telefoon of laptop). Kies een andere naam.');
+        naProfielActie = null;
+        openProfielMakenScherm();
+      }
+      throw new Error('Deze gebruikersnaam is al in gebruik.');
+    }
+    return db.ref(SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid).update({
+      gebruikersnaam: naam,
+      gebruikersnaamZoek: zoeknaam,
+      dier: dier,
+      accessoires: accessoires,
+      laatstOnline: firebase.database.ServerValue.TIMESTAMP
+    });
+  }).then(() => syncSociaalBezit()).catch(err => {
+    // (de melding over een bezette naam is hierboven al getoond)
+  });
+}
+
+function laadOnlineBezitVoorEigenProfiel() {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker || !heeftProfiel()) return;
+  db.ref(SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid + '/bezit').on('value', snap => {
+    const data = snap.val();
+    if (!data) { syncSociaalBezit(); return; }
+    const aantallen = {};
+    const dieren = [];
+    const accessoires = [];
+    Object.entries(data.dieren || {}).forEach(([item, aantal]) => {
+      if (geldigDier(item) && Number(aantal) > 0) { dieren.push(item); aantallen['dier:' + item] = Number(aantal); }
+    });
+    Object.entries(data.accessoires || {}).forEach(([item, aantal]) => {
+      if (ACCESSOIRES[item] && Number(aantal) > 0) { accessoires.push(item); aantallen['accessoire:' + item] = Number(aantal); }
+    });
+    if (dieren.length) localStorage.setItem(BEZIT_DIEREN_SLEUTEL, JSON.stringify(dieren));
+    if (accessoires.length) localStorage.setItem(BEZIT_ACCESSOIRES_SLEUTEL, JSON.stringify(accessoires));
+    if (Object.keys(aantallen).length) slaBezitAantallenOp(aantallen);
+    werkMuntenWeergaveBij();
+    bouwVerzamelingKiezer();
+  }).catch(() => {});
+}
+
+function laadSocialeGegevens() {
+  if (!auth || !auth.currentUser) return;
+  if (heeftProfiel()) {
+    registreerSociaalProfiel();
+    laadOnlineBezitVoorEigenProfiel();
+    laadVriendenEnVerzoeken();
+  }
+}
+
+// Overridden inventory getters: dezelfde API als de oude code, maar nu met
+// unieke items in de lijst en aantallen apart opgeslagen.
+function haalBezitDieren() { return haalBezitDierenBasisVoorAantal(); }
+function haalBezitAccessoires() { return haalBezitAccessoiresBasisVoorAantal(); }
+
+function voegBezitToe(dieren, accessoires) {
+  const aantallen = huidigeBezitAantallen();
+  const huidigeDieren = haalBezitDierenBasisVoorAantal();
+  const huidigeAccessoires = haalBezitAccessoiresBasisVoorAantal();
+  (dieren || []).forEach(d => {
+    if (!geldigDier(d)) return;
+    if (huidigeDieren.indexOf(d) === -1) huidigeDieren.push(d);
+    const sleutel = 'dier:' + d;
+    aantallen[sleutel] = (Number(aantallen[sleutel]) || 0) + 1;
+  });
+  (accessoires || []).forEach(a => {
+    if (!ACCESSOIRES[a]) return;
+    if (huidigeAccessoires.indexOf(a) === -1) huidigeAccessoires.push(a);
+    const sleutel = 'accessoire:' + a;
+    aantallen[sleutel] = (Number(aantallen[sleutel]) || 0) + 1;
+  });
+  localStorage.setItem(BEZIT_DIEREN_SLEUTEL, JSON.stringify(huidigeDieren));
+  localStorage.setItem(BEZIT_ACCESSOIRES_SLEUTEL, JSON.stringify(huidigeAccessoires));
+  slaBezitAantallenOp(aantallen);
+  syncSociaalBezit();
+  werkMuntenWeergaveBij();
+  bouwVerzamelingKiezer();
+}
+
+function verwijderEenUitBezit(type, item) {
+  const aantallen = huidigeBezitAantallen();
+  const sleutel = type + ':' + item;
+  const nieuw = Math.max(0, (Number(aantallen[sleutel]) || 0) - 1);
+  if (nieuw > 0) aantallen[sleutel] = nieuw;
+  else delete aantallen[sleutel];
+  if (type === 'dier') {
+    const lijst = haalBezitDierenBasisVoorAantal().filter(x => x !== item);
+    if (nieuw > 0) lijst.push(item);
+    localStorage.setItem(BEZIT_DIEREN_SLEUTEL, JSON.stringify([...new Set(lijst)]));
+  } else {
+    const lijst = haalBezitAccessoiresBasisVoorAantal().filter(x => x !== item);
+    if (nieuw > 0) lijst.push(item);
+    localStorage.setItem(BEZIT_ACCESSOIRES_SLEUTEL, JSON.stringify([...new Set(lijst)]));
+  }
+  slaBezitAantallenOp(aantallen);
+  syncSociaalBezit();
+}
+
+function verkoopDier(dier) {
+  const aantal = aantalVan('dier', dier);
+  if (aantal <= 0) return;
+  if (aantal === 1 && haalBezitDieren().length <= 1) { alert('Je kunt je laatste dier niet verkopen.'); return; }
+  if (!confirm('Eén exemplaar van dit dier verkopen voor ' + VERKOOP_PRIJS + ' munten?')) return;
+  verwijderEenUitBezit('dier', dier);
+  geefMunten(VERKOOP_PRIJS);
+  bouwVerzamelingKiezer();
+}
+
+function verkoopAccessoire(emoji) {
+  const aantal = aantalVan('accessoire', emoji);
+  if (aantal <= 0) return;
+  if (aantal === 1 && haalBezitAccessoires().length <= 1) { alert('Je kunt je laatste accessoire niet verkopen.'); return; }
+  const naam = ACCESSOIRES[emoji] ? ACCESSOIRES[emoji].naam : 'dit accessoire';
+  if (!confirm('Eén exemplaar van "' + naam + '" verkopen voor ' + VERKOOP_PRIJS + ' munten?')) return;
+  verwijderEenUitBezit('accessoire', emoji);
+  geefMunten(VERKOOP_PRIJS);
+  bouwVerzamelingKiezer();
+}
+
+function openVerzamelItemActies(type, item) {
+  const aantal = aantalVan(type, item);
+  if (!aantal) return;
+  const titel = type === 'dier' ? item : ((ACCESSOIRES[item] && ACCESSOIRES[item].naam) || item);
+  const naarVriend = prompt('Wat wil je doen met ' + titel + '?\\nTyp VERKOOP om 1 exemplaar te verkopen, of typ STUUR om 1 exemplaar naar een vriend te sturen.');
+  if (!naarVriend) return;
+  if (naarVriend.trim().toLowerCase() === 'verkoop') {
+    type === 'dier' ? verkoopDier(item) : verkoopAccessoire(item);
+  } else if (naarVriend.trim().toLowerCase() === 'stuur') {
+    openVriendStuurOverlay(type, item);
+  }
+}
+
+// Vervangt de verzameling-renderer zodat dubbele exemplaren zichtbaar zijn als 2, 3, ...
+// De accessoires staan verdeeld over de tabbladen Hoeden, Brillen en Extra, net als bij "Poppetje wijzigen".
+const VERZ_TAB_NAMEN = { boven: 'Hoeden', gezicht: 'Brillen', hoek: 'Extra' };
+const VERZ_TAB_ICONEN = { dieren: '🐶', boven: '🎩', gezicht: '👓', hoek: '✨' };
+
+function bouwVerzamelingKiezer() {
+  const kiezerEl = document.getElementById('verzameling-kiezer');
+  if (!kiezerEl) return;
+  kiezerEl.innerHTML = '';
+
+  // Tabbladen
+  const tabLijst = [{ id: 'dieren', naam: 'Dieren' }].concat(
+    ACCESSOIRE_GROEPEN.map(g => ({ id: g.plek, naam: VERZ_TAB_NAMEN[g.plek] || g.titel }))
+  );
+  if (!tabLijst.some(t => t.id === kiezerTabVerzameling)) kiezerTabVerzameling = 'dieren';
+  const tabsEl = document.getElementById('verzameling-tabs');
+  if (tabsEl) {
+    tabsEl.innerHTML = '';
+    tabLijst.forEach(t => {
+      const tabKnop = document.createElement('button');
+      tabKnop.type = 'button';
+      tabKnop.className = 'pe-tab' + (t.id === kiezerTabVerzameling ? ' actief' : '');
+      tabKnop.setAttribute('role', 'tab');
+      tabKnop.setAttribute('aria-selected', String(t.id === kiezerTabVerzameling));
+      tabKnop.innerHTML = '<span class="pe-tab-icoon">' + (VERZ_TAB_ICONEN[t.id] || '✨') + '</span><span>' + t.naam + '</span>';
+      tabKnop.addEventListener('click', () => { kiezerTabVerzameling = t.id; bouwVerzamelingKiezer(); });
+      tabsEl.appendChild(tabKnop);
+    });
+  }
+
+  const opDieren = kiezerTabVerzameling === 'dieren';
+  const groep = opDieren ? null : ACCESSOIRE_GROEPEN.find(g => g.plek === kiezerTabVerzameling);
+  kiezerEl.classList.toggle('accessoires', !opDieren);
+
+  const bezit = opDieren ? haalBezitDieren() : haalBezitAccessoires();
+  const catalogus = opDieren ? DIEREN.slice() : (groep ? groep.items.slice() : []);
+
+  const telling = document.createElement('p');
+  telling.className = 'verzameling-telling';
+  const aantalInBezit = catalogus.filter(item => bezit.indexOf(item) !== -1).length;
+  telling.textContent = aantalInBezit + ' van de ' + catalogus.length + (opDieren ? ' dieren' : ' items in "' + ((groep && (VERZ_TAB_NAMEN[groep.plek] || groep.titel)) || '') + '"') + ' in bezit';
+  kiezerEl.appendChild(telling);
+
+  catalogus.forEach(item => {
+    const heeft = bezit.indexOf(item) !== -1;
+    const aantal = aantalVan(opDieren ? 'dier' : 'accessoire', item);
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'dier-knop verzameling-item' + (heeft ? ' in-bezit' : ' niet-in-bezit');
+    if (opDieren) {
+      knop.innerHTML = heeft ? poppetjeSvg(item, {}) : '<span class="verzameling-slot">🔒</span>';
+    } else {
+      const voorbeeldDier = geldigDier(huidigProfielDier()) || bezit[0] || DIEREN[0];
+      const acc = {};
+      if (groep) acc[groep.plek] = item;
+      knop.innerHTML = heeft ? poppetjeSvg(voorbeeldDier, acc) : '<span class="verzameling-slot">🔒</span>';
+    }
+    if (heeft) {
+      const badge = document.createElement('span');
+      badge.className = 'dier-knop-badge';
+      badge.textContent = String(aantal);
+      badge.title = aantal + ' exemplaar' + (aantal === 1 ? '' : 's');
+      knop.appendChild(badge);
+      knop.addEventListener('click', () => openVerzamelItemActies(opDieren ? 'dier' : 'accessoire', item));
+      knop.title = aantal > 1 ? 'Klik: 1 verkopen of 1 naar een vriend sturen' : 'Klik: verkopen of naar een vriend sturen';
+    }
+    kiezerEl.appendChild(knop);
+  });
+}
+
+// ---------------- Vrienden ----------------
+
+let socialeVrienden = {};
+let socialeVerzoeken = {};
+let socialeZoekTimer = null;
+let huidigChatUid = '';
+let huidigChatNaam = '';
+let chatBerichtenQuery = null;      // de open chat (zodat we hem netjes kunnen stoppen)
+let chatOngelezen = {};             // vriend-uid -> aantal ongelezen berichten
+let chatOngelezenQueries = {};      // vriend-uid -> luisteraar voor ongelezen berichten
+const CHAT_GELEZEN_SLEUTEL = 'quizAppChatGelezen';
+let vriendenRef = null;
+let verzoekenRef = null;
+let vriendenLuisteraarUid = '';
+
+function chatIdVoor(a, b) { return [a, b].sort().join('_'); }
+
+function veiligeChatTekst(tekst) { return String(tekst || '').trim().slice(0, 500); }
+
+function laadVriendenEnVerzoeken() {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker || !heeftProfiel()) return;
+  if (vriendenLuisteraarUid === gebruiker.uid) return; // luistert al (live)
+  // Ander account (bijv. na inloggen als beheerder): oude luisteraars netjes stoppen.
+  if (vriendenRef) vriendenRef.off();
+  if (verzoekenRef) verzoekenRef.off();
+  Object.keys(chatOngelezenQueries).forEach(fuid => { chatOngelezenQueries[fuid].off(); });
+  chatOngelezenQueries = {}; chatOngelezen = {};
+  vriendenLuisteraarUid = gebruiker.uid;
+
+  vriendenRef = db.ref('vrienden/' + gebruiker.uid);
+  vriendenRef.on('value', snap => {
+    socialeVrienden = snap.val() || {};
+    synchroniseerChatOngelezen();
+    renderVrienden();
+  });
+  verzoekenRef = db.ref('vriendschapsverzoeken/' + gebruiker.uid);
+  verzoekenRef.on('value', snap => {
+    socialeVerzoeken = snap.val() || {};
+    renderVrienden();
+  });
+}
+
+// ---------------- Ongelezen berichten (het cijfertje bij de chat) ----------------
+
+function laadChatGelezen() {
+  try { return JSON.parse(localStorage.getItem(CHAT_GELEZEN_SLEUTEL) || '{}') || {}; } catch (e) { return {}; }
+}
+
+function zetChatGelezen(chatId, tijd) {
+  if (!tijd) return;
+  const alle = laadChatGelezen();
+  if ((Number(alle[chatId]) || 0) >= tijd) return;
+  alle[chatId] = tijd;
+  try { localStorage.setItem(CHAT_GELEZEN_SLEUTEL, JSON.stringify(alle)); } catch (e) {}
+}
+
+function totaalOngelezenChatBerichten() {
+  return Object.keys(chatOngelezen).reduce((som, uid) => som + (socialeVrienden[uid] ? (chatOngelezen[uid] || 0) : 0), 0);
+}
+
+// Luistert bij elke vriend naar nieuwe berichten en telt wat je nog niet hebt gelezen.
+function synchroniseerChatOngelezen() {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker) return;
+  Object.keys(chatOngelezenQueries).forEach(fuid => {
+    if (!socialeVrienden[fuid]) {
+      chatOngelezenQueries[fuid].off();
+      delete chatOngelezenQueries[fuid];
+      delete chatOngelezen[fuid];
+    }
+  });
+  Object.keys(socialeVrienden).forEach(fuid => {
+    if (chatOngelezenQueries[fuid]) return;
+    const chatId = chatIdVoor(gebruiker.uid, fuid);
+    const query = db.ref('chats/' + chatId + '/berichten').limitToLast(50);
+    chatOngelezenQueries[fuid] = query;
+    query.on('value', snap => {
+      let nieuwste = 0;
+      let aantal = 0;
+      const gelezen = Number(laadChatGelezen()[chatId]) || 0;
+      snap.forEach(c => {
+        const b = c.val() || {};
+        const t = Number(b.tijd) || 0;
+        if (t > nieuwste) nieuwste = t;
+        if (b.uid !== gebruiker.uid && t > gelezen) aantal++;
+      });
+      const chatIsOpen = huidigChatUid === fuid && document.getElementById('chat-overlay').classList.contains('actief');
+      if (chatIsOpen) { zetChatGelezen(chatId, nieuwste); aantal = 0; }
+      chatOngelezen[fuid] = aantal;
+      renderVrienden();
+    }, err => { console.error('Ongelezen berichten tellen mislukt:', err); });
+  });
+}
+
+// Wordt aangeroepen zodra de open chat berichten binnenkrijgt: alles is dan gelezen.
+function markeerChatGelezen(snap) {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker || !huidigChatUid) return;
+  let nieuwste = 0;
+  snap.forEach(c => { const t = Number((c.val() || {}).tijd) || 0; if (t > nieuwste) nieuwste = t; });
+  zetChatGelezen(chatIdVoor(gebruiker.uid, huidigChatUid), nieuwste);
+  if (chatOngelezen[huidigChatUid]) {
+    chatOngelezen[huidigChatUid] = 0;
+    renderVrienden();
+  }
+}
+
+// Zoeken werkt net als bij quizzen: live terwijl je typt, hoofdletterongevoelig
+// en op elk deel van de naam. De lijst met namen wordt één keer opgehaald en
+// daarna in de browser gefilterd.
+let socialeNamenCache = null;
+let socialeNamenTijd = 0;
+let socialeNamenLaadt = null;
+let socialeZoekToken = 0;
+
+function laadSocialeNamen(forceer) {
+  const vers = socialeNamenCache && (Date.now() - socialeNamenTijd < 60000);
+  if (!forceer && vers) return Promise.resolve(socialeNamenCache);
+  if (socialeNamenLaadt) return socialeNamenLaadt;
+  socialeNamenLaadt = db.ref('gebruikersnamen').once('value').then(snap => {
+    const lijst = [];
+    snap.forEach(c => {
+      if (typeof c.val() !== 'string') return;
+      let zoek = c.key;
+      try { zoek = decodeURIComponent(c.key); } catch (e) {}
+      lijst.push({ zoek: zoek, uid: c.val() });
+    });
+    socialeNamenCache = lijst;
+    socialeNamenTijd = Date.now();
+    socialeNamenLaadt = null;
+    return lijst;
+  }).catch(err => { socialeNamenLaadt = null; throw err; });
+  return socialeNamenLaadt;
+}
+
+function zoekGebruikersOpNaam(zoekterm, forceer) {
+  const q = normaliseerGebruikersnaam(zoekterm);
+  const resultatenEl = document.getElementById('vrienden-zoekresultaten');
+  if (!resultatenEl) return;
+  const token = ++socialeZoekToken;
+  if (!q) { resultatenEl.innerHTML = '<p class="subtitel">Typ een naam (of een stukje van een naam) om te zoeken.</p>'; return; }
+  resultatenEl.innerHTML = '<p class="subtitel">Zoeken...</p>';
+  const eigenUid = profielFirebaseGebruiker() && profielFirebaseGebruiker().uid;
+
+  laadSocialeNamen(forceer).then(lijst => {
+    if (token !== socialeZoekToken) return null;
+    const treffers = lijst
+      .filter(n => n.uid !== eigenUid && n.zoek.includes(q))
+      .sort((x, y) => (x.zoek.startsWith(q) ? 0 : 1) - (y.zoek.startsWith(q) ? 0 : 1) || x.zoek.localeCompare(y.zoek))
+      .slice(0, 20);
+    if (!treffers.length) {
+      resultatenEl.innerHTML = '<p class="subtitel">Geen gebruiker gevonden voor "' + escapeHtml(String(zoekterm).trim()) + '".</p>';
+      return null;
+    }
+    return Promise.all(treffers.map(t => Promise.all([
+      db.ref(SOCIAAL_PROFIEL_PAD + '/' + t.uid).once('value'),
+      eigenUid ? db.ref('vriendschapsverzoeken/' + t.uid + '/' + eigenUid).once('value').catch(() => null) : Promise.resolve(null)
+    ]).then(([profielSnap, verzoekSnap]) => ({
+      uid: t.uid, p: profielSnap.val(), verstuurd: !!(verzoekSnap && verzoekSnap.exists())
+    })))).then(resultaten => {
+      if (token !== socialeZoekToken) return;
+      resultatenEl.innerHTML = '';
+      let gevonden = 0;
+      resultaten.forEach(r => {
+        const p = r.p;
+        if (!p || !p.gebruikersnaam) return;
+        gevonden++;
+        const rij = document.createElement('div');
+        rij.className = 'vriend-zoekresultaat';
+        const pop = document.createElement('div');
+        pop.className = 'vriend-mini-poppetje';
+        if (geldigDier(p.dier)) pop.innerHTML = poppetjeSvg(p.dier, geldigeAccessoires(p.accessoires));
+        const naam = document.createElement('strong');
+        naam.textContent = p.gebruikersnaam;
+        const knop = document.createElement('button');
+        knop.className = 'btn btn-secondary';
+        knop.type = 'button';
+        if (socialeVrienden[r.uid]) {
+          knop.textContent = '✓ Vriend';
+          knop.disabled = true;
+        } else if (socialeVerzoeken[r.uid]) {
+          knop.className = 'btn btn-primary';
+          knop.textContent = '✓ Accepteren';
+          knop.addEventListener('click', () => { knop.disabled = true; accepteerVriendschapsverzoek(r.uid, socialeVerzoeken[r.uid]); });
+        } else if (r.verstuurd) {
+          knop.textContent = '✓ Verzoek gestuurd';
+          knop.disabled = true;
+        } else {
+          knop.textContent = '➕ Vriendschapsverzoek';
+          knop.addEventListener('click', () => stuurVriendschapsverzoek(r.uid, p.gebruikersnaam));
+        }
+        rij.append(pop, naam, knop);
+        resultatenEl.appendChild(rij);
+      });
+      if (!gevonden) resultatenEl.innerHTML = '<p class="subtitel">Geen gebruiker gevonden voor "' + escapeHtml(String(zoekterm).trim()) + '".</p>';
+    });
+  }).catch(err => {
+    console.error('Gebruikers zoeken mislukt:', err);
+    if (token !== socialeZoekToken) return;
+    resultatenEl.innerHTML = '<p class="foutmelding">Zoeken lukt nu niet. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.</p>';
+  });
+}
+
+function stuurVriendschapsverzoek(toUid, naam) {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker) { alert('Je profiel is nog niet verbonden.'); return; }
+  db.ref('vriendschapsverzoeken/' + toUid + '/' + gebruiker.uid).set({
+    uid: gebruiker.uid,
+    gebruikersnaam: huidigeMakerNaam(),
+    naamOntvanger: naam,
+    tijd: firebase.database.ServerValue.TIMESTAMP
+  }).then(() => {
+    alert('Vriendschapsverzoek verstuurd naar ' + naam + '.');
+    zoekGebruikersOpNaam(document.getElementById('input-zoek-vrienden').value);
+  }).catch(err => {
+    console.error('Vriendschapsverzoek versturen mislukt:', err);
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    alert('Het vriendschapsverzoek kon niet worden verstuurd' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd en of Anonieme aanmelding aan staat.');
+  });
+}
+
+function accepteerVriendschapsverzoek(fromUid, verzoek) {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker) return;
+  const updates = {};
+  updates['vrienden/' + gebruiker.uid + '/' + fromUid] = { gebruikersnaam: verzoek.gebruikersnaam || 'Vriend', sinds: firebase.database.ServerValue.TIMESTAMP };
+  updates['vrienden/' + fromUid + '/' + gebruiker.uid] = { gebruikersnaam: huidigeMakerNaam(), sinds: firebase.database.ServerValue.TIMESTAMP };
+  updates['vriendschapsverzoeken/' + gebruiker.uid + '/' + fromUid] = null;
+  db.ref().update(updates).catch(err => {
+    console.error('Vriendschapsverzoek accepteren mislukt:', err);
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    alert('Accepteren is mislukt' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.');
+  });
+}
+
+function updateVriendenBadge() {
+  const badge = document.getElementById('vrienden-badge-aantal');
+  if (!badge) return;
+  const verzoeken = Object.keys(socialeVerzoeken || {}).length;
+  const berichten = totaalOngelezenChatBerichten();
+  const totaal = verzoeken + berichten;
+  badge.textContent = totaal > 99 ? '99+' : String(totaal);
+  badge.title = verzoeken + ' vriendschapsverzoek(en), ' + berichten + ' nieuw(e) bericht(en)';
+  badge.hidden = totaal === 0;
+}
+
+function renderVrienden() {
+  const lijst = document.getElementById('vrienden-lijst');
+  const verzoeken = document.getElementById('vrienden-verzoeken');
+  if (!lijst || !verzoeken) return;
+  lijst.innerHTML = '';
+  Object.entries(socialeVrienden)
+    .sort((x, y) => (chatOngelezen[y[0]] || 0) - (chatOngelezen[x[0]] || 0))
+    .forEach(([uid, info]) => {
+      const rij = document.createElement('div');
+      rij.className = 'vriend-rij';
+      const naam = document.createElement('strong');
+      naam.textContent = info.gebruikersnaam || 'Vriend';
+      const chat = document.createElement('button');
+      chat.type = 'button'; chat.className = 'btn btn-secondary chat-knop'; chat.textContent = '💬 Chat';
+      const ongelezen = chatOngelezen[uid] || 0;
+      if (ongelezen > 0) {
+        const badge = document.createElement('span');
+        badge.className = 'chat-knop-badge';
+        badge.textContent = ongelezen > 99 ? '99+' : String(ongelezen);
+        badge.title = ongelezen + ' nieuw(e) bericht(en)';
+        chat.appendChild(badge);
+      }
+      chat.addEventListener('click', () => openChat(uid, info.gebruikersnaam || 'Vriend'));
+      rij.append(maakMiniPoppetje(uid, 'vriend-mini-poppetje'), naam, chat); lijst.appendChild(rij);
+    });
+  if (!Object.keys(socialeVrienden).length) lijst.innerHTML = '<p class="subtitel">Je hebt nog geen vrienden.</p>';
+
+  verzoeken.innerHTML = '';
+  Object.entries(socialeVerzoeken).forEach(([uid, verzoek]) => {
+    const rij = document.createElement('div');
+    rij.className = 'vriend-rij';
+    const naam = document.createElement('strong');
+    naam.textContent = verzoek.gebruikersnaam || 'Gebruiker';
+    const knop = document.createElement('button');
+    knop.type = 'button'; knop.className = 'btn btn-primary'; knop.textContent = '✓ Accepteren';
+    knop.addEventListener('click', () => accepteerVriendschapsverzoek(uid, verzoek));
+    rij.append(maakMiniPoppetje(uid, 'vriend-mini-poppetje'), naam, knop); verzoeken.appendChild(rij);
+  });
+  if (!Object.keys(socialeVerzoeken).length) verzoeken.innerHTML = '<p class="subtitel">Geen nieuwe verzoeken.</p>';
+  updateVriendenBadge();
+}
+
+// ---------------- Chat (beeldvullend, met stijl en poppetjes) ----------------
+
+const CHAT_STIJL_SLEUTEL = 'quizAppChatStijl';
+
+function chatEmojiPatroon(emoji, basis) {
+  const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'>" +
+    "<text x='8' y='40' font-size='30' opacity='.28'>" + emoji + "</text>" +
+    "<text x='54' y='84' font-size='24' opacity='.22'>" + emoji + "</text></svg>";
+  return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '"), ' + basis;
+}
+
+const CHAT_ACHTERGRONDEN = [
+  { id: 'nacht',    naam: 'Nacht',       css: '#090d20' },
+  { id: 'sterren',  naam: 'Sterren',     css: 'radial-gradient(#fff 1px, transparent 1.6px) 0 0 / 64px 64px, radial-gradient(#ffe9a8 1px, transparent 1.6px) 32px 32px / 64px 64px, linear-gradient(180deg, #0b1030, #2a1a5e)' },
+  { id: 'zonsondergang', naam: 'Zonsondergang', css: 'linear-gradient(160deg, #ff9a76, #ff5f8f 50%, #6d4fc2)' },
+  { id: 'oceaan',   naam: 'Oceaan',      css: 'linear-gradient(160deg, #00c6ff, #0072ff)' },
+  { id: 'bos',      naam: 'Bos',         css: 'linear-gradient(160deg, #134e5e, #71b280)' },
+  { id: 'snoep',    naam: 'Snoep',       css: 'linear-gradient(160deg, #ff9ccf, #c471f5)' },
+  { id: 'zon',      naam: 'Zonnig',      css: 'linear-gradient(160deg, #f6d365, #fda085)' },
+  { id: 'regenboog', naam: 'Regenboog',  css: 'linear-gradient(160deg, #ff6b6b, #feca57, #48dbfb, #a06bff)' },
+  { id: 'stippen',  naam: 'Stippen',     css: 'radial-gradient(rgba(255,255,255,.28) 3px, transparent 3.5px) 0 0 / 28px 28px, linear-gradient(160deg, #ff6b6b, #feca57)' },
+  { id: 'ruit',     naam: 'Ruiten',      css: 'repeating-linear-gradient(45deg, rgba(255,255,255,.09) 0 14px, transparent 14px 28px), linear-gradient(160deg, #1e3c72, #2a5298)' },
+  { id: 'pootjes',  naam: 'Pootjes',     css: chatEmojiPatroon('🐾', 'linear-gradient(160deg, #3a2a6a, #6d4fc2)') },
+  { id: 'hartjes',  naam: 'Hartjes',     css: chatEmojiPatroon('💖', 'linear-gradient(160deg, #ff7eb3, #ff758c)') },
+  { id: 'vlinders', naam: 'Vlinders',    css: chatEmojiPatroon('🦋', 'linear-gradient(160deg, #56ccf2, #2f80ed)') }
+];
+
+const CHAT_VAK_KLEUREN = ['#6d4fc2', '#8e44ad', '#1f6feb', '#0aa5c0', '#0f9d58', '#f6c945', '#ff9800', '#e91e63', '#e53935', '#ffffff', '#2b2b45', '#111111'];
+const CHAT_VAK_STANDAARD = { eigenVak: '#6d4fc2', vriendVak: '#2b2b45' };
+
+let chatStijlPaneelOpen = false;
+let chatPoppetjeTab = 'dieren';
+let chatGekozenPoppetje = null; // { soort, item }
+
+function laadChatStijlen() {
+  try { return JSON.parse(localStorage.getItem(CHAT_STIJL_SLEUTEL) || '{}') || {}; } catch (e) { return {}; }
+}
+
+function geldigeHex(hex) {
+  return /^#[0-9a-f]{6}$/i.test(String(hex || '')) ? String(hex) : '';
+}
+
+function huidigeChatStijl() {
+  const gebruiker = profielFirebaseGebruiker();
+  const alle = laadChatStijlen();
+  const stijl = (gebruiker && huidigChatUid && alle[chatIdVoor(gebruiker.uid, huidigChatUid)]) || {};
+  return {
+    achtergrond: stijl.achtergrond || 'nacht',
+    eigenVak: geldigeHex(stijl.eigenVak) || CHAT_VAK_STANDAARD.eigenVak,
+    vriendVak: geldigeHex(stijl.vriendVak) || CHAT_VAK_STANDAARD.vriendVak
+  };
+}
+
+function slaChatStijlOp(deel) {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker || !huidigChatUid) return;
+  const alle = laadChatStijlen();
+  const id = chatIdVoor(gebruiker.uid, huidigChatUid);
+  alle[id] = Object.assign({}, huidigeChatStijl(), deel);
+  try { localStorage.setItem(CHAT_STIJL_SLEUTEL, JSON.stringify(alle)); } catch (e) {}
+  pasChatStijlToe();
+}
+
+function hexIsDonker(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+  if (!m) return false;
+  const n = parseInt(m[1], 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) < 140;
+}
+
+function hexNaarRgba(hex, alpha) {
+  const n = parseInt(String(hex).slice(1), 16);
+  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + alpha + ')';
+}
+
+function pasChatStijlToe() {
+  const scherm = document.getElementById('chat-overlay');
+  const stijl = huidigeChatStijl();
+  const achtergrond = CHAT_ACHTERGRONDEN.find(x => x.id === stijl.achtergrond) || CHAT_ACHTERGRONDEN[0];
+  scherm.style.setProperty('--chat-achtergrond', achtergrond.css);
+  // De tekst in een vakje wordt vanzelf licht of donker, zodat je hem altijd kunt lezen.
+  scherm.style.setProperty('--chat-eigen-vak', hexNaarRgba(stijl.eigenVak, 0.94));
+  scherm.style.setProperty('--chat-eigen-tekst', hexIsDonker(stijl.eigenVak) ? '#ffffff' : '#1a1a2e');
+  scherm.style.setProperty('--chat-ander-vak', hexNaarRgba(stijl.vriendVak, 0.94));
+  scherm.style.setProperty('--chat-ander-tekst', hexIsDonker(stijl.vriendVak) ? '#ffffff' : '#1a1a2e');
+  bouwChatStijlKiezers();
+}
+
+function bouwChatVakRij(container, sleutel, huidig) {
+  if (!container) return;
+  container.innerHTML = '';
+  CHAT_VAK_KLEUREN.forEach(kleur => {
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'chat-kleur-keuze' + (kleur.toLowerCase() === String(huidig).toLowerCase() ? ' actief' : '');
+    knop.style.background = kleur;
+    knop.title = kleur;
+    knop.addEventListener('click', () => slaChatStijlOp({ [sleutel]: kleur }));
+    container.appendChild(knop);
+  });
+  const eigen = document.createElement('input');
+  eigen.type = 'color';
+  eigen.className = 'chat-kleur-eigen';
+  eigen.title = 'Eigen kleur';
+  eigen.value = geldigeHex(huidig) || '#6d4fc2';
+  eigen.addEventListener('change', () => slaChatStijlOp({ [sleutel]: eigen.value }));
+  container.appendChild(eigen);
+}
+
+function bouwChatStijlKiezers() {
+  const stijl = huidigeChatStijl();
+  const bg = document.getElementById('chat-achtergronden');
+  if (!bg) return;
+  bg.innerHTML = '';
+  CHAT_ACHTERGRONDEN.forEach(x => {
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'chat-achtergrond-keuze' + (x.id === stijl.achtergrond ? ' actief' : '');
+    knop.style.background = x.css;
+    knop.title = x.naam;
+    knop.addEventListener('click', () => slaChatStijlOp({ achtergrond: x.id }));
+    bg.appendChild(knop);
+  });
+  bouwChatVakRij(document.getElementById('chat-vak-eigen'), 'eigenVak', stijl.eigenVak);
+  bouwChatVakRij(document.getElementById('chat-vak-vriend'), 'vriendVak', stijl.vriendVak);
+}
+
+function chatDierVoorAccessoire() {
+  return geldigDier(huidigProfielDier()) ? huidigProfielDier() : (haalBezitDieren()[0] || DIEREN[0]);
+}
+
+function chatPoppetjeSvgVoor(soort, item) {
+  if (soort === 'dier') return poppetjeSvg(item, {});
+  const acc = {};
+  const groep = ACCESSOIRE_GROEPEN.find(g => g.items.indexOf(item) !== -1);
+  if (groep) acc[groep.plek] = item;
+  else if (ACCESSOIRES[item] && ACCESSOIRES[item].plek) acc[ACCESSOIRES[item].plek] = item;
+  return poppetjeSvg(chatDierVoorAccessoire(), acc);
+}
+
+function chatPoppetjeNaam(soort, item) {
+  if (soort === 'dier') return item;
+  return (ACCESSOIRES[item] && ACCESSOIRES[item].naam) || item;
+}
+
+function chatPoppetjeGeldig(soort, item) {
+  return soort === 'dier' ? !!geldigDier(item) : (soort === 'accessoire' && !!ACCESSOIRES[item]);
+}
+
+// ---------------- Profielpoppetjes (bij de naam in chat en vriendenlijst) ----------------
+
+let chatProfielCache = {};      // uid -> { dier, accessoires } (van een ander)
+let chatProfielLaden = {};
+
+function poppetjeHtmlVoorUid(uid) {
+  const gebruiker = profielFirebaseGebruiker();
+  if (gebruiker && uid === gebruiker.uid) return profielPoppetjeHtml();
+  const p = chatProfielCache[uid];
+  if (p && geldigDier(p.dier)) return poppetjeSvg(p.dier, geldigeAccessoires(p.accessoires));
+  return '';
+}
+
+function maakMiniPoppetje(uid, klasse) {
+  const el = document.createElement('div');
+  el.className = klasse;
+  el.dataset.uid = uid;
+  el.innerHTML = poppetjeHtmlVoorUid(uid) || '<span class="mini-poppetje-leeg">👤</span>';
+  laadChatProfiel(uid).then(() => {
+    const html = poppetjeHtmlVoorUid(uid);
+    if (html && el.isConnected !== false) el.innerHTML = html;
+  });
+  return el;
+}
+
+function laadChatProfiel(uid) {
+  if (!uid) return Promise.resolve(null);
+  const oud = chatProfielCache[uid];
+  if (oud && oud.dier && Date.now() - (oud.tijd || 0) < 30000) return Promise.resolve(oud);
+  if (chatProfielLaden[uid]) return chatProfielLaden[uid];
+  chatProfielLaden[uid] = db.ref(SOCIAAL_PROFIEL_PAD + '/' + uid).once('value').then(snap => {
+    const p = snap.val() || {};
+    delete chatProfielLaden[uid];
+    if (geldigDier(p.dier)) chatProfielCache[uid] = { dier: p.dier, accessoires: p.accessoires || {}, tijd: Date.now() };
+    return chatProfielCache[uid] || null;
+  }).catch(() => { delete chatProfielLaden[uid]; return null; });
+  return chatProfielLaden[uid];
+}
+
+// De naam boven een bericht, met het profielpoppetje ervoor.
+function maakChatWie(eigen, b) {
+  const gebruiker = profielFirebaseGebruiker();
+  const uid = eigen ? (gebruiker && gebruiker.uid) : (b.uid || huidigChatUid);
+  const wie = document.createElement('span');
+  wie.className = 'chat-bericht-naam';
+  wie.appendChild(maakMiniPoppetje(uid, 'chat-bericht-poppetje'));
+  const t = document.createElement('span');
+  t.textContent = eigen ? 'Jij' : (b.gebruikersnaam || huidigChatNaam || 'Gebruiker');
+  wie.appendChild(t);
+  return wie;
+}
+
+function openChat(uid, naam) {
+  huidigChatUid = uid; huidigChatNaam = naam;
+  const overlay = document.getElementById('chat-overlay');
+  document.getElementById('chat-titel').textContent = naam;
+  const kopPop = document.getElementById('chat-kop-poppetje');
+  kopPop.innerHTML = poppetjeHtmlVoorUid(uid) || '<span class="mini-poppetje-leeg">👤</span>';
+  laadChatProfiel(uid).then(() => { if (huidigChatUid === uid) kopPop.innerHTML = poppetjeHtmlVoorUid(uid) || kopPop.innerHTML; });
+  chatStijlPaneelOpen = false;
+  document.getElementById('chat-stijl-paneel').hidden = true;
+  document.getElementById('chat-poppetjes-paneel').hidden = true;
+  document.getElementById('chat-quiz-paneel').hidden = true;
+  chatGekozenPoppetje = null;
+  document.getElementById('chat-poppetje-knop-plaatje').innerHTML =
+    geldigDier(huidigProfielDier()) ? poppetjeSvg(huidigProfielDier(), {}) : '👤';
+  overlay.classList.add('actief');
+  document.body.classList.add('chat-open');
+  pasChatStijlToe();
+  laadChatBerichten();
+}
+
+function sluitChat() {
+  if (chatBerichtenQuery) { chatBerichtenQuery.off(); chatBerichtenQuery = null; }
+  document.getElementById('chat-overlay').classList.remove('actief');
+  document.body.classList.remove('chat-open');
+  huidigChatUid = '';
+}
+
+function chatBerichtenRef() {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker || !huidigChatUid) return null;
+  return db.ref('chats/' + chatIdVoor(gebruiker.uid, huidigChatUid) + '/berichten');
+}
+
+function laadChatBerichten() {
+  const gebruiker = profielFirebaseGebruiker();
+  const ref = chatBerichtenRef();
+  if (!gebruiker || !ref) return;
+  const lijst = document.getElementById('chat-berichten');
+  if (chatBerichtenQuery) chatBerichtenQuery.off();
+  chatBerichtenQuery = ref.limitToLast(100);
+  chatBerichtenQuery.on('value', snap => {
+    markeerChatGelezen(snap);
+    const onderaan = lijst.scrollHeight - lijst.scrollTop - lijst.clientHeight < 80 || !lijst.childElementCount;
+    lijst.innerHTML = '';
+    snap.forEach(child => {
+      const b = child.val() || {};
+      const eigen = b.uid === gebruiker.uid;
+      if (b.type === 'poppetje') { lijst.appendChild(maakChatPoppetjeBericht(child.key, b, eigen, gebruiker)); return; }
+      if (b.type === 'quiz') { lijst.appendChild(maakChatQuizBericht(child.key, b, eigen, gebruiker)); return; }
+      const p = document.createElement('div');
+      p.className = 'chat-bericht' + (eigen ? ' eigen' : '');
+      const wie = maakChatWie(eigen, b);
+      const tekst = document.createElement('span');
+      tekst.className = 'chat-bericht-tekst';
+      tekst.textContent = b.tekst || '';
+      p.append(maakChatBerichtKop(wie, child.key, b, eigen), tekst);
+      lijst.appendChild(p);
+    });
+    if (onderaan) lijst.scrollTop = lijst.scrollHeight;
+  });
+}
+
+// Kopregel van een bericht: naam, en bij je eigen berichten een 🗑-knop om het te verwijderen.
+function maakChatBerichtKop(wie, key, b, eigen) {
+  const kop = document.createElement('div');
+  kop.className = 'chat-bericht-kop';
+  kop.appendChild(wie);
+  if (eigen && b.status !== 'bezig') {
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'chat-bericht-verwijder';
+    knop.title = 'Bericht verwijderen';
+    knop.setAttribute('aria-label', 'Bericht verwijderen');
+    knop.textContent = '🗑';
+    knop.addEventListener('click', () => verwijderChatBericht(key, b));
+    kop.appendChild(knop);
+  }
+  return kop;
+}
+
+function verwijderChatBericht(key, b) {
+  const ref = chatBerichtenRef();
+  if (!ref) return;
+  const vraag = (b.type === 'poppetje' && b.status === 'open')
+    ? 'Dit cadeau intrekken en het bericht verwijderen?'
+    : 'Dit bericht verwijderen?';
+  if (!confirm(vraag)) return;
+  ref.child(key).remove().catch(err => {
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    alert('Verwijderen is mislukt' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.');
+  });
+}
+
+function maakChatPoppetjeBericht(key, b, eigen, gebruiker) {
+  const kaart = document.createElement('div');
+  kaart.className = 'chat-bericht chat-poppetje-bericht' + (eigen ? ' eigen' : '');
+  const geldig = chatPoppetjeGeldig(b.soort, b.item);
+  const wie = maakChatWie(eigen, b);
+  const plaatje = document.createElement('div');
+  plaatje.className = 'chat-poppetje-plaatje';
+  if (geldig) plaatje.innerHTML = chatPoppetjeSvgVoor(b.soort, b.item);
+  const label = document.createElement('div');
+  label.className = 'chat-poppetje-label';
+  const naam = geldig ? chatPoppetjeNaam(b.soort, b.item) : 'onbekend poppetje';
+  label.textContent = '🎁 ' + (eigen ? 'Je stuurt ' : 'Cadeau: ') + naam;
+  kaart.append(maakChatBerichtKop(wie, key, b, eigen), plaatje, label);
+
+  const status = document.createElement('div');
+  status.className = 'chat-poppetje-status';
+  if (b.status === 'geaccepteerd') {
+    status.textContent = '✓ Geaccepteerd';
+  } else if (b.status === 'geweigerd') {
+    status.textContent = '✕ Geweigerd';
+  } else if (b.status === 'mislukt') {
+    status.textContent = 'Niet gelukt: dit poppetje is er niet meer';
+  } else if (b.status === 'bezig') {
+    status.textContent = 'Bezig...';
+  } else if (!eigen && b.aan === gebruiker.uid && geldig) {
+    const ja = document.createElement('button');
+    ja.type = 'button'; ja.className = 'btn btn-primary'; ja.textContent = '✓ Accepteren';
+    ja.addEventListener('click', () => { ja.disabled = true; accepteerChatPoppetje(key, b); });
+    const nee = document.createElement('button');
+    nee.type = 'button'; nee.className = 'btn btn-secondary'; nee.textContent = '✕ Weigeren';
+    nee.addEventListener('click', () => { nee.disabled = true; wijzigChatPoppetjeStatus(key, 'geweigerd'); });
+    status.append(ja, nee);
+  } else if (eigen) {
+    const wacht = document.createElement('span');
+    wacht.textContent = '⏳ Wacht op acceptatie';
+    const annuleer = document.createElement('button');
+    annuleer.type = 'button'; annuleer.className = 'btn btn-secondary'; annuleer.textContent = 'Terugtrekken';
+    annuleer.addEventListener('click', () => { annuleer.disabled = true; wijzigChatPoppetjeStatus(key, 'geweigerd'); });
+    status.append(wacht, annuleer);
+  }
+  kaart.appendChild(status);
+  return kaart;
+}
+
+function wijzigChatPoppetjeStatus(key, status) {
+  const ref = chatBerichtenRef();
+  if (!ref) return Promise.resolve();
+  return ref.child(key).child('status').transaction(v => (v === 'open' ? status : v)).catch(() => {});
+}
+
+// Ontvanger accepteert: de verzender heeft er dan één minder, de ontvanger één erbij.
+function accepteerChatPoppetje(key, b) {
+  const gebruiker = profielFirebaseGebruiker();
+  const ref = chatBerichtenRef();
+  if (!gebruiker || !ref) return;
+  if (b.aan !== gebruiker.uid || b.uid !== huidigChatUid || !chatPoppetjeGeldig(b.soort, b.item)) return;
+  const pad = b.soort === 'dier' ? 'dieren/' : 'accessoires/';
+  const vanRef = db.ref(SOCIAAL_PROFIEL_PAD + '/' + b.uid + '/bezit/' + pad + b.item);
+  const naarRef = db.ref(SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid + '/bezit/' + pad + b.item);
+  const statusRef = ref.child(key).child('status');
+  let geclaimd = false;
+  statusRef.transaction(v => {
+    if (v === 'open') { geclaimd = true; return 'bezig'; }
+    geclaimd = false;
+    return v;
+  }).then(res => {
+    if (!res.committed || !geclaimd) throw new Error('al-afgehandeld');
+    let genoeg = false;
+    return vanRef.transaction(v => {
+      const n = Number(v) || 0;
+      if (n > 0) { genoeg = true; return n - 1; }
+      genoeg = false;
+      return v;
+    }).then(r => {
+      if (!r.committed || !genoeg) return statusRef.set('mislukt');
+      return naarRef.transaction(v => (Number(v) || 0) + 1).then(() => statusRef.set('geaccepteerd'));
+    });
+  }).catch(err => {
+    if (err && err.message === 'al-afgehandeld') return;
+    console.error('Poppetje accepteren mislukt:', err);
+    statusRef.transaction(v => (v === 'bezig' ? 'open' : v)).catch(() => {});
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    alert('Accepteren is mislukt' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.');
+  });
+}
+
+function verstuurChatBericht() {
+  const gebruiker = profielFirebaseGebruiker();
+  const input = document.getElementById('chat-input');
+  const tekst = veiligeChatTekst(input.value);
+  if (!tekst) return;
+  const ref = chatBerichtenRef();
+  if (!gebruiker || !ref) { alert(socialeVerbindingsMelding()); zorgVoorSocialeGebruiker(); return; }
+  input.value = '';
+  ref.push().set({ uid: gebruiker.uid, gebruikersnaam: huidigeMakerNaam(), tekst: tekst, tijd: firebase.database.ServerValue.TIMESTAMP }).catch(err => {
+    input.value = tekst;
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    alert('Het bericht kon niet worden verstuurd' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd en of Anoniem aanmelden aan staat.');
+  });
+}
+
+// Aantal exemplaren dat je nog echt kunt sturen (niet al onderweg in open verzoeken).
+function chatBeschikbaarAantal(soort, item) {
+  return aantalVan(soort, item) - (chatOpenAangeboden[soort + ':' + item] || 0);
+}
+let chatOpenAangeboden = {};
+
+function bouwChatPoppetjesLijst() {
+  const lijst = document.getElementById('chat-poppetjes-lijst');
+  if (!lijst) return;
+  lijst.innerHTML = '';
+  const opDieren = chatPoppetjeTab === 'dieren';
+  const soort = opDieren ? 'dier' : 'accessoire';
+  const bezit = opDieren ? haalBezitDieren() : haalBezitAccessoires();
+  if (!bezit.length) { lijst.innerHTML = '<p class="subtitel">Je hebt hier nog niets van.</p>'; return; }
+  bezit.forEach(item => {
+    const beschikbaar = chatBeschikbaarAantal(soort, item);
+    const laatste = aantalVan(soort, item) <= 1 && bezit.length <= 1;
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    const gekozen = chatGekozenPoppetje && chatGekozenPoppetje.soort === soort && chatGekozenPoppetje.item === item;
+    knop.className = 'dier-knop verzameling-item in-bezit' + (gekozen ? ' gekozen' : '');
+    knop.innerHTML = chatPoppetjeSvgVoor(soort, item);
+    const badge = document.createElement('span');
+    badge.className = 'dier-knop-badge';
+    badge.textContent = String(Math.max(0, beschikbaar));
+    knop.appendChild(badge);
+    if (beschikbaar < 1 || laatste) {
+      knop.disabled = true;
+      knop.classList.add('niet-in-bezit');
+      knop.title = laatste ? 'Je laatste kun je niet versturen' : 'Al onderweg';
+    } else {
+      knop.title = chatPoppetjeNaam(soort, item);
+      knop.addEventListener('click', () => {
+        chatGekozenPoppetje = { soort, item };
+        bouwChatPoppetjesLijst();
+        werkChatKeuzeBij();
+      });
+    }
+    lijst.appendChild(knop);
+  });
+}
+
+function werkChatKeuzeBij() {
+  const tekst = document.getElementById('chat-poppetjes-keuze');
+  const knop = document.getElementById('btn-chat-poppetje-verzenden');
+  if (chatGekozenPoppetje) {
+    tekst.textContent = chatPoppetjeNaam(chatGekozenPoppetje.soort, chatGekozenPoppetje.item) + ' → ' + huidigChatNaam;
+    knop.disabled = false;
+  } else {
+    tekst.textContent = 'Kies een poppetje om te versturen';
+    knop.disabled = true;
+  }
+}
+
+function zetChatTab(tab) {
+  chatPoppetjeTab = tab;
+  document.getElementById('chat-tab-dieren').classList.toggle('actief', tab === 'dieren');
+  document.getElementById('chat-tab-accessoires').classList.toggle('actief', tab === 'accessoires');
+  bouwChatPoppetjesLijst();
+}
+
+function togglePoppetjesPaneel() {
+  const paneel = document.getElementById('chat-poppetjes-paneel');
+  const open = paneel.hidden;
+  paneel.hidden = !open;
+  if (open) {
+    document.getElementById('chat-stijl-paneel').hidden = true;
+    document.getElementById('chat-quiz-paneel').hidden = true;
+    chatGekozenPoppetje = null;
+    // Tel open verzoeken van mij, zodat je niet meer aanbiedt dan je hebt.
+    const gebruiker = profielFirebaseGebruiker();
+    const ref = chatBerichtenRef();
+    chatOpenAangeboden = {};
+    if (gebruiker && ref) {
+      ref.limitToLast(100).once('value').then(snap => {
+        snap.forEach(c => {
+          const m = c.val() || {};
+          if (m.type === 'poppetje' && m.uid === gebruiker.uid && m.status === 'open') {
+            const s = m.soort + ':' + m.item;
+            chatOpenAangeboden[s] = (chatOpenAangeboden[s] || 0) + 1;
+          }
+        });
+        bouwChatPoppetjesLijst(); werkChatKeuzeBij();
+      }).catch(() => { bouwChatPoppetjesLijst(); werkChatKeuzeBij(); });
+    }
+    bouwChatPoppetjesLijst(); werkChatKeuzeBij();
+  }
+}
+
+function verstuurChatPoppetje() {
+  const gebruiker = profielFirebaseGebruiker();
+  const ref = chatBerichtenRef();
+  const keuze = chatGekozenPoppetje;
+  if (!gebruiker || !ref || !keuze) return;
+  if (!socialeVrienden[huidigChatUid]) { alert('Je kunt alleen poppetjes naar vrienden sturen.'); return; }
+  if (!chatPoppetjeGeldig(keuze.soort, keuze.item) || chatBeschikbaarAantal(keuze.soort, keuze.item) < 1) {
+    alert('Je hebt dit poppetje niet (meer).'); return;
+  }
+  const tekst = '🎁 ' + chatPoppetjeNaam(keuze.soort, keuze.item);
+  ref.push().set({
+    uid: gebruiker.uid,
+    gebruikersnaam: huidigeMakerNaam(),
+    type: 'poppetje',
+    soort: keuze.soort,
+    item: keuze.item,
+    aan: huidigChatUid,
+    status: 'open',
+    tekst: tekst,
+    tijd: firebase.database.ServerValue.TIMESTAMP
+  }).then(() => {
+    chatGekozenPoppetje = null;
+    document.getElementById('chat-poppetjes-paneel').hidden = true;
+  }).catch(err => {
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    alert('Versturen is mislukt' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.');
+  });
+}
+
+// ---------------- Quiz sturen in de chat ----------------
+
+function eigenQuizLijst() {
+  try { return JSON.parse(localStorage.getItem('eigenQuizzen') || '[]') || []; } catch (e) { return []; }
+}
+
+// Zet een quiz die een vriend deelt bij "Mijn quizzen". Het is dezelfde quiz (zelfde code):
+// aanpassingen zie je allebei.
+function voegGedeeldeQuizToe(code, quizData, vanNaam) {
+  const lijst = eigenQuizLijst();
+  if (lijst.some(q => q.code === code)) return false;
+  lijst.push({
+    code: code,
+    titel: quizData.titel,
+    aantalVragen: (quizData.vragen || []).length,
+    afbeelding: quizData.afbeelding || STANDAARD_OMSLAGEN[0].url,
+    openbaar: !!quizData.openbaar,
+    gedeeldVan: vanNaam || 'een vriend'
+  });
+  localStorage.setItem('eigenQuizzen', JSON.stringify(lijst));
+  return true;
+}
+
+function gaNaarMijnQuizzen() {
+  sluitChat();
+  document.getElementById('vrienden-overlay').classList.remove('actief');
+  toonScherm('scherm-quizmaken');
+  laadEigenQuizzen();
+}
+
+function toggleQuizPaneel() {
+  const paneel = document.getElementById('chat-quiz-paneel');
+  const open = paneel.hidden;
+  paneel.hidden = !open;
+  if (!open) return;
+  document.getElementById('chat-stijl-paneel').hidden = true;
+  document.getElementById('chat-poppetjes-paneel').hidden = true;
+  chatGekozenPoppetje = null;
+  document.getElementById('chat-quiz-naam').textContent = huidigChatNaam;
+  bouwChatQuizLijst();
+}
+
+function bouwChatQuizLijst() {
+  const lijst = document.getElementById('chat-quiz-lijst');
+  lijst.innerHTML = '';
+  const quizzen = eigenQuizLijst();
+  if (!quizzen.length) {
+    lijst.innerHTML = '<p class="subtitel">Je hebt nog geen quizzen. Maak er eerst een bij "Quiz maken".</p>';
+    return;
+  }
+  quizzen.forEach(q => {
+    const rij = document.createElement('div');
+    rij.className = 'chat-quiz-rij';
+    const plaat = document.createElement('img');
+    plaat.className = 'chat-quiz-plaat';
+    plaat.src = q.afbeelding || STANDAARD_OMSLAGEN[0].url;
+    plaat.alt = '';
+    const info = document.createElement('div');
+    info.className = 'chat-quiz-info';
+    const titel = document.createElement('strong');
+    titel.textContent = q.titel || 'Quiz';
+    const sub = document.createElement('span');
+    sub.textContent = (q.aantalVragen || 0) + ' vraag/vragen';
+    info.append(titel, sub);
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'btn btn-primary';
+    knop.textContent = '📤 Sturen';
+    knop.addEventListener('click', () => { knop.disabled = true; verstuurChatQuiz(q); });
+    rij.append(plaat, info, knop);
+    lijst.appendChild(rij);
+  });
+}
+
+function verstuurChatQuiz(q) {
+  const gebruiker = profielFirebaseGebruiker();
+  const ref = chatBerichtenRef();
+  if (!gebruiker || !ref) return;
+  if (!socialeVrienden[huidigChatUid]) { alert('Je kunt alleen quizzen naar vrienden sturen.'); return; }
+  db.ref('quizzen/' + q.code + '/titel').once('value').then(snap => {
+    if (!snap.exists()) throw new Error('Deze quiz bestaat niet meer.');
+    return ref.push().set({
+      uid: gebruiker.uid,
+      gebruikersnaam: huidigeMakerNaam(),
+      type: 'quiz',
+      code: q.code,
+      titel: snap.val(),
+      aantalVragen: q.aantalVragen || 0,
+      aan: huidigChatUid,
+      status: 'open',
+      tekst: '📝 ' + snap.val(),
+      tijd: firebase.database.ServerValue.TIMESTAMP
+    });
+  }).then(() => {
+    document.getElementById('chat-quiz-paneel').hidden = true;
+  }).catch(err => {
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    alert((err && err.message && !err.code ? err.message : 'Versturen is mislukt' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.'));
+    bouwChatQuizLijst();
+  });
+}
+
+function maakChatQuizBericht(key, b, eigen, gebruiker) {
+  const kaart = document.createElement('div');
+  kaart.className = 'chat-bericht chat-poppetje-bericht chat-quiz-bericht' + (eigen ? ' eigen' : '');
+  const wie = maakChatWie(eigen, b);
+  const icoon = document.createElement('div');
+  icoon.className = 'chat-quiz-icoon';
+  icoon.textContent = '📝';
+  const label = document.createElement('div');
+  label.className = 'chat-poppetje-label';
+  label.textContent = (eigen ? 'Je stuurt de quiz ' : 'Quiz: ') + (b.titel || 'Quiz');
+  const sub = document.createElement('div');
+  sub.className = 'chat-quiz-sub';
+  sub.textContent = (b.aantalVragen || 0) + ' vraag/vragen · jullie kunnen hem allebei aanpassen';
+  kaart.append(maakChatBerichtKop(wie, key, b, eigen), icoon, label, sub);
+
+  const status = document.createElement('div');
+  status.className = 'chat-poppetje-status';
+  const bendOntvanger = !eigen && b.aan === gebruiker.uid;
+  if (b.status === 'geaccepteerd') {
+    const ok = document.createElement('span');
+    ok.textContent = '✓ Geaccepteerd';
+    status.appendChild(ok);
+    if (bendOntvanger && b.code) {
+      const naar = document.createElement('button');
+      naar.type = 'button'; naar.className = 'btn btn-primary';
+      if (isEigenQuizCode(b.code)) {
+        naar.textContent = '📝 Naar Mijn quizzen';
+        naar.addEventListener('click', gaNaarMijnQuizzen);
+      } else {
+        naar.textContent = '➕ Toevoegen aan Mijn quizzen';
+        naar.addEventListener('click', () => {
+          naar.disabled = true;
+          db.ref('quizzen/' + b.code).once('value').then(snap => {
+            const q = snap.val();
+            if (!q || !q.titel) { alert('Deze quiz bestaat niet meer.'); return; }
+            voegGedeeldeQuizToe(b.code, q, b.gebruikersnaam);
+            gaNaarMijnQuizzen();
+          }).catch(() => { naar.disabled = false; alert('Toevoegen is mislukt.'); });
+        });
+      }
+      status.appendChild(naar);
+    }
+  } else if (b.status === 'geweigerd') {
+    status.textContent = '✕ Geweigerd';
+  } else if (b.status === 'mislukt') {
+    status.textContent = 'Niet gelukt: deze quiz bestaat niet meer';
+  } else if (b.status === 'bezig') {
+    status.textContent = 'Bezig...';
+  } else if (bendOntvanger && b.code) {
+    const ja = document.createElement('button');
+    ja.type = 'button'; ja.className = 'btn btn-primary'; ja.textContent = '✓ Accepteren';
+    ja.addEventListener('click', () => { ja.disabled = true; accepteerChatQuiz(key, b); });
+    const nee = document.createElement('button');
+    nee.type = 'button'; nee.className = 'btn btn-secondary'; nee.textContent = '✕ Weigeren';
+    nee.addEventListener('click', () => { nee.disabled = true; wijzigChatPoppetjeStatus(key, 'geweigerd'); });
+    status.append(ja, nee);
+  } else if (eigen) {
+    const wacht = document.createElement('span');
+    wacht.textContent = '⏳ Wacht op acceptatie';
+    const annuleer = document.createElement('button');
+    annuleer.type = 'button'; annuleer.className = 'btn btn-secondary'; annuleer.textContent = 'Terugtrekken';
+    annuleer.addEventListener('click', () => { annuleer.disabled = true; wijzigChatPoppetjeStatus(key, 'geweigerd'); });
+    status.append(wacht, annuleer);
+  }
+  kaart.appendChild(status);
+  return kaart;
+}
+
+// Ontvanger accepteert: de quiz komt ook bij zijn eigen quizzen te staan en hij kan hem aanpassen.
+function accepteerChatQuiz(key, b) {
+  const gebruiker = profielFirebaseGebruiker();
+  const ref = chatBerichtenRef();
+  if (!gebruiker || !ref) return;
+  if (b.aan !== gebruiker.uid || b.uid !== huidigChatUid || !b.code) return;
+  const statusRef = ref.child(key).child('status');
+  let geclaimd = false;
+  statusRef.transaction(v => {
+    if (v === 'open') { geclaimd = true; return 'bezig'; }
+    geclaimd = false;
+    return v;
+  }).then(res => {
+    if (!res.committed || !geclaimd) throw new Error('al-afgehandeld');
+    return db.ref('quizzen/' + b.code).once('value');
+  }).then(snap => {
+    const q = snap.val();
+    if (!q || !q.titel) return statusRef.set('mislukt');
+    voegGedeeldeQuizToe(b.code, q, b.gebruikersnaam);
+    return statusRef.set('geaccepteerd');
+  }).catch(err => {
+    if (err && err.message === 'al-afgehandeld') return;
+    console.error('Quiz accepteren mislukt:', err);
+    statusRef.transaction(v => (v === 'bezig' ? 'open' : v)).catch(() => {});
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    alert('Accepteren is mislukt' + code + '. Probeer het opnieuw.');
+  });
+}
+
+function openVriendStuurOverlay(type, item) {
+  const lijst = document.getElementById('stuur-vriend-lijst');
+  const overlay = document.getElementById('stuur-vriend-overlay');
+  if (!lijst || !overlay) return;
+  lijst.innerHTML = '';
+  Object.entries(socialeVrienden).forEach(([uid, info]) => {
+    const knop = document.createElement('button');
+    knop.type = 'button'; knop.className = 'btn btn-secondary stuur-vriend-knop';
+    knop.textContent = '🎁 ' + (info.gebruikersnaam || 'Vriend');
+    knop.addEventListener('click', () => verstuurItemNaarVriend(uid, info.gebruikersnaam || 'Vriend', type, item));
+    lijst.appendChild(knop);
+  });
+  if (!Object.keys(socialeVrienden).length) lijst.innerHTML = '<p class="subtitel">Je moet eerst vrienden hebben.</p>';
+  overlay.dataset.type = type; overlay.dataset.item = item; overlay.classList.add('actief');
+}
+
+function verstuurItemNaarVriend(toUid, naam, type, item) {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker) return;
+  if (!socialeVrienden[toUid]) { alert('Je kunt alleen items naar vrienden sturen.'); return; }
+  if (aantalVan(type, item) < 1) { alert('Je hebt dit item niet meer.'); return; }
+  const pad = type === 'dier' ? 'dieren/' : 'accessoires/';
+  const fromRef = db.ref(SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid + '/bezit/' + pad + item);
+  const toRef = db.ref(SOCIAAL_PROFIEL_PAD + '/' + toUid + '/bezit/' + pad + item);
+  fromRef.transaction(v => { const n = Number(v) || 0; return n > 0 ? n - 1 : v; }).then(result => {
+    if (!result.committed || Number(result.snapshot.val() || 0) < 0) throw new Error('geen exemplaar');
+    return toRef.transaction(v => (Number(v) || 0) + 1);
+  }).then(() => {
+    verwijderEenUitBezit(type, item);
+    sluitStuurVriendOverlay();
+    alert('🎁 Verstuurd naar ' + naam + '!');
+  }).catch(() => alert('Versturen is mislukt. Probeer opnieuw.'));
+}
+
+function sluitStuurVriendOverlay() {
+  document.getElementById('stuur-vriend-overlay').classList.remove('actief');
+}
+
+// ---------------- Gebruikersnaam wijzigen ----------------
+
+function wijzigGebruikersnaam(nieuweNaamRaw) {
+  const gebruiker = profielFirebaseGebruiker();
+  const nieuweNaam = String(nieuweNaamRaw || '').trim().replace(/\s+/g, ' ').slice(0, 30);
+  const oudeNaam = huidigeMakerNaam() || '';
+  if (!nieuweNaam) return Promise.reject(new Error('Vul een gebruikersnaam in.'));
+  if (nieuweNaam === oudeNaam) return Promise.resolve(false);
+  if (!gebruiker) return Promise.reject(new Error('Je profiel is nog niet verbonden. Probeer het over een paar seconden opnieuw.'));
+
+  const nieuweZoek = normaliseerGebruikersnaam(nieuweNaam);
+  const oudeZoek = normaliseerGebruikersnaam(oudeNaam);
+
+  // Stap 1: de nieuwe naam reserveren (tenzij alleen hoofdletters veranderen).
+  const reserveer = nieuweZoek === oudeZoek
+    ? Promise.resolve()
+    : db.ref('gebruikersnamen/' + naamSleutel(nieuweZoek)).transaction(v => v || gebruiker.uid).then(res => {
+        if (res.snapshot.val() !== gebruiker.uid) throw new Error('Deze gebruikersnaam is al in gebruik. Kies een andere naam.');
+      });
+
+  return reserveer
+    // Stap 2: online profiel bijwerken.
+    .then(() => db.ref(SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid).update({
+      gebruikersnaam: nieuweNaam,
+      gebruikersnaamZoek: nieuweZoek
+    }))
+    // Stap 3: de oude naam vrijgeven, zodat een ander hem weer kan kiezen.
+    .then(() => {
+      if (oudeZoek && oudeZoek !== nieuweZoek) {
+        return db.ref('gebruikersnamen/' + naamSleutel(oudeZoek)).transaction(v => (v === gebruiker.uid ? null : v)).catch(() => {});
+      }
+    })
+    .then(() => {
+      localStorage.setItem(MAKER_NAAM_SLEUTEL, nieuweNaam);
+      socialeNamenCache = null;
+
+      // Stap 4: je naam in de vriendenlijsten van je vrienden bijwerken.
+      const updates = {};
+      Object.keys(socialeVrienden || {}).forEach(fuid => {
+        updates['vrienden/' + fuid + '/' + gebruiker.uid + '/gebruikersnaam'] = nieuweNaam;
+      });
+      if (Object.keys(updates).length) db.ref().update(updates).catch(() => {});
+
+      // Stap 5: de naam bij je eigen quizzen bijwerken.
+      let eigenQuizzen = [];
+      try { eigenQuizzen = JSON.parse(localStorage.getItem('eigenQuizzen') || '[]'); } catch (e) {}
+      eigenQuizzen.filter(q => !q.gedeeldVan).forEach(q => {
+        db.ref('quizzen/' + q.code).once('value').then(snap => {
+          if (!snap.child('titel').exists()) return;
+          const huidig = snap.child('makerNaam').val();
+          if (!huidig || huidig === oudeNaam) return db.ref('quizzen/' + q.code + '/makerNaam').set(nieuweNaam);
+        }).catch(() => {});
+      });
+      return true;
+    });
+}
+
+function sluitNaamWijzigenPaneel() {
+  const paneel = document.getElementById('profiel-naam-wijzigen-paneel');
+  if (paneel) paneel.hidden = true;
+  const fout = document.getElementById('profiel-naam-foutmelding');
+  if (fout) fout.textContent = '';
+}
+
+document.getElementById('btn-profiel-naam-wijzigen').addEventListener('click', () => {
+  const paneel = document.getElementById('profiel-naam-wijzigen-paneel');
+  const input = document.getElementById('input-profiel-nieuwe-naam');
+  document.getElementById('profiel-naam-foutmelding').textContent = '';
+  paneel.hidden = !paneel.hidden;
+  if (!paneel.hidden) { input.value = huidigeMakerNaam() || ''; input.focus(); input.select(); }
+});
+
+function slaNieuweGebruikersnaamOp() {
+  const input = document.getElementById('input-profiel-nieuwe-naam');
+  const fout = document.getElementById('profiel-naam-foutmelding');
+  const knop = document.getElementById('btn-profiel-naam-opslaan');
+  fout.textContent = '';
+  knop.disabled = true;
+  wijzigGebruikersnaam(input.value).then(gewijzigd => {
+    knop.disabled = false;
+    if (gewijzigd) document.getElementById('profiel-overlay-naam').textContent = 'Ingelogd als ' + huidigeMakerNaam();
+    sluitNaamWijzigenPaneel();
+  }).catch(err => {
+    knop.disabled = false;
+    fout.textContent = (err && err.message) || 'Naam wijzigen is mislukt.';
+  });
+}
+document.getElementById('btn-profiel-naam-opslaan').addEventListener('click', slaNieuweGebruikersnaamOp);
+document.getElementById('input-profiel-nieuwe-naam').addEventListener('keydown', e => { if (e.key === 'Enter') slaNieuweGebruikersnaamOp(); });
+document.getElementById('btn-profiel-badge').addEventListener('click', sluitNaamWijzigenPaneel);
+document.getElementById('btn-profiel-overlay-sluiten').addEventListener('click', sluitNaamWijzigenPaneel);
+
+// Vrienden openen vanuit de vaste balk rechtsboven.
+document.getElementById('btn-vrienden-badge').addEventListener('click', () => {
+  metProfielVereist(() => {
+    document.getElementById('vrienden-overlay').classList.add('actief');
+    zorgVoorSocialeGebruiker().then(gebruiker => {
+      const meldingEl = document.getElementById('vrienden-verbindingsmelding');
+      if (meldingEl) { meldingEl.hidden = !!gebruiker; meldingEl.textContent = gebruiker ? '' : socialeVerbindingsMelding(); }
+      if (gebruiker) { registreerSociaalProfiel(); laadVriendenEnVerzoeken(); }
+      updateVriendenBadge();
+    });
+  });
+});
+
+document.getElementById('btn-vrienden-sluiten').addEventListener('click', () => {
+  document.getElementById('vrienden-overlay').classList.remove('actief');
+});
+
+document.getElementById('btn-vrienden-toevoegen').addEventListener('click', () => {
+  const paneel = document.getElementById('vrienden-toevoegen-paneel');
+  const open = !paneel.hidden;
+  paneel.hidden = open;
+  document.getElementById('btn-vrienden-toevoegen').textContent = open ? '➕ Toevoegen' : '✕ Toevoegen sluiten';
+  if (!open) {
+    document.getElementById('input-zoek-vrienden').focus();
+    laadSocialeNamen(true).catch(() => {});
+    zoekGebruikersOpNaam(document.getElementById('input-zoek-vrienden').value);
+  }
+});
+
+document.getElementById('btn-vrienden-zoeken').addEventListener('click', () => {
+  zoekGebruikersOpNaam(document.getElementById('input-zoek-vrienden').value, true);
+});
+document.getElementById('input-zoek-vrienden').addEventListener('input', e => {
+  clearTimeout(socialeZoekTimer);
+  const waarde = e.target.value;
+  socialeZoekTimer = setTimeout(() => zoekGebruikersOpNaam(waarde), 150);
+});
+document.getElementById('input-zoek-vrienden').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { clearTimeout(socialeZoekTimer); zoekGebruikersOpNaam(e.target.value, true); }
+});
+document.getElementById('btn-chat-sluiten').addEventListener('click', sluitChat);
+document.getElementById('btn-chat-sturen').addEventListener('click', verstuurChatBericht);
+document.getElementById('btn-chat-stijl').addEventListener('click', () => {
+  const paneel = document.getElementById('chat-stijl-paneel');
+  paneel.hidden = !paneel.hidden;
+  if (!paneel.hidden) {
+    document.getElementById('chat-poppetjes-paneel').hidden = true;
+    document.getElementById('chat-quiz-paneel').hidden = true;
+  }
+});
+document.getElementById('btn-chat-poppetje').addEventListener('click', togglePoppetjesPaneel);
+document.getElementById('btn-chat-quiz').addEventListener('click', toggleQuizPaneel);
+document.getElementById('chat-tab-dieren').addEventListener('click', () => zetChatTab('dieren'));
+document.getElementById('chat-tab-accessoires').addEventListener('click', () => zetChatTab('accessoires'));
+document.getElementById('btn-chat-poppetje-verzenden').addEventListener('click', verstuurChatPoppetje);
+document.getElementById('chat-input').addEventListener('keydown', e => { if (e.key === 'Enter') verstuurChatBericht(); });
+document.getElementById('btn-stuur-vriend-sluiten').addEventListener('click', sluitStuurVriendOverlay);
+
+// Houd het online profiel gelijk aan de lokale profielkeuze.
+const _oudeWerkProfielBadgeBij = werkProfielBadgeBij;
+werkProfielBadgeBij = function() {
+  _oudeWerkProfielBadgeBij();
+  if (heeftProfiel()) registreerSociaalProfiel();
+};
+
+// Initialiseer aantallen voor bestaande spelers en publiceer het profiel zodra
+// anonieme Firebase-auth klaar is.
+huidigeBezitAantallen();
+if (heeftProfiel()) {
+  setTimeout(() => { registreerSociaalProfiel(); laadOnlineBezitVoorEigenProfiel(); }, 0);
+}
