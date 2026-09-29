@@ -2688,3 +2688,55 @@ body.chat-open { overflow: hidden; }
   max-width: 460px;
   margin: 0 auto 12px;
 }
+
+
+/* Winkel: kisten gegroepeerd in Nu te koop / Komt binnenkort / Gepland / Offline */
+.winkel-secties {
+  display: block;
+  grid-template-columns: none;
+}
+.winkel-groep {
+  background: #0c1130;
+  border: 1px solid #4a3c1a;
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin: 0 0 14px;
+}
+.winkel-groep summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 17px;
+  font-weight: 800;
+  color: #f0c04d;
+  user-select: none;
+}
+.winkel-groep summary::-webkit-details-marker { display: none; }
+.winkel-groep summary::after { content: '▸'; color: #e6cd8f; margin-left: 4px; }
+.winkel-groep[open] summary::after { content: '▾'; }
+.winkel-groep-titel { flex: 1; text-align: left; }
+.winkel-groep-aantal {
+  min-width: 26px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #f0c04d;
+  color: #10152e;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+.winkel-groep-uitleg {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #9a97a8;
+  text-align: left;
+}
+.winkel-groep-raster { margin-top: 12px; }
+.winkel-groep-online  { border-color: #2f7d4f; }
+.winkel-groep-komt    { border-color: #b8863c; }
+.winkel-groep-gepland { border-color: #5a63c9; }
+.winkel-groep-offline { border-color: #6b3a45; }
+.winkel-groep-offline .winkel-groep-aantal { background: #ff5c72; color: #fff; }
