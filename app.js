@@ -2008,38 +2008,93 @@ function toonKomendeKistenOverzicht(alleBoxen) {
   });
 }
 
+// Onthoudt welke groepen in de winkel open of dicht staan (blijft zo tot je de pagina herlaadt).
+const winkelGroepOpen = { online: true, komt: true, gepland: true, offline: false };
+
+// Deelt een kist in bij precies één groep:
+//   offline  = handmatig offline gehaald, of automatisch offline door de "tot"-datum
+//   komt     = nog niet te koop, maar spelers zien al dat hij eraan komt
+//   gepland  = nog niet te koop, nog onzichtbaar voor spelers (alleen sitebeheer ziet hem)
+//   online   = nu te koop (met of zonder datum)
+function winkelGroepVanBox(box) {
+  if (box.offline || boxIsAutomatischOffline(box)) return 'offline';
+  if (boxIsNogNietTeKoop(box)) return box.teaserZichtbaar ? 'komt' : 'gepland';
+  return 'online';
+}
+
+const WINKEL_GROEPEN = [
+  { id: 'online',  icoon: '🟢', titel: 'Nu te koop',
+    uitleg: 'Deze kisten staan online. Kisten met een datum laten zien tot wanneer je ze kunt kopen.',
+    sorteer: (a, b) => (a.totDatum || '9999').localeCompare(b.totDatum || '9999') || String(a.naam || '').localeCompare(String(b.naam || '')) },
+  { id: 'komt',    icoon: '👀', titel: 'Komt binnenkort',
+    uitleg: 'Nog niet te koop, maar spelers zien al dat deze kisten eraan komen. Op datum gesorteerd.',
+    sorteer: (a, b) => (a.vanafDatum || '').localeCompare(b.vanafDatum || '') },
+  { id: 'gepland', icoon: '📅', titel: 'Gepland met datum (nog onzichtbaar)',
+    uitleg: 'Alleen jij ziet deze kisten. Ze gaan online op de ingestelde datum. Op datum gesorteerd.',
+    sorteer: (a, b) => (a.vanafDatum || '').localeCompare(b.vanafDatum || ''), alleenBeheer: true },
+  { id: 'offline', icoon: '📴', titel: 'Offline',
+    uitleg: 'Handmatig offline gehaald of automatisch offline gegaan door de einddatum. Alleen jij ziet deze kisten.',
+    sorteer: (a, b) => String(a.naam || '').localeCompare(String(b.naam || '')), alleenBeheer: true }
+];
+
 function laadWinkelBoxen() {
   werkMuntenWeergaveBij();
   document.getElementById('btn-winkel-nieuwe-box').style.display = sitebeheerActief ? 'block' : 'none';
   const lijstEl = document.getElementById('winkel-boxen-lijst');
   const geenBoxenEl = document.getElementById('winkel-geen-boxen');
+  lijstEl.classList.add('winkel-secties');
   lijstEl.innerHTML = '<p class="subtitel">Boxen laden...</p>';
   geenBoxenEl.style.display = 'none';
 
   db.ref('mysterieboxen').once('value').then(snapshot => {
     const alleBoxen = snapshot.val() || {};
     alleMysterieboxenCache = alleBoxen;
-    toonKomendeKistenOverzicht(alleBoxen);
-    // Gewone spelers zien nooit offline of automatisch-offline kisten. Een kist die nog
-    // niet te koop is, blijft ook verborgen — tenzij sitebeheer bij die kist "teaser"
-    // heeft aangezet, dan mogen spelers alvast zien dat hij eraan komt (zonder te kunnen kopen).
-    const boxen = sitebeheerActief ? alleBoxen : Object.keys(alleBoxen).reduce((resultaat, boxId) => {
-      const box = alleBoxen[boxId];
-      if (box.offline || boxIsAutomatischOffline(box)) return resultaat;
-      if (boxIsNogNietTeKoop(box) && !box.teaserZichtbaar) return resultaat;
-      resultaat[boxId] = box;
-      return resultaat;
-    }, {});
-    const boxIds = Object.keys(boxen);
-    lijstEl.innerHTML = '';
-    geenBoxenEl.style.display = boxIds.length ? 'none' : 'block';
+    // Het oude uitklapblok "Kisten die nog komen" is vervangen door de groepen hieronder.
+    const oudOverzicht = document.getElementById('winkel-komende-kisten-overzicht');
+    if (oudOverzicht) oudOverzicht.remove();
 
-    boxIds.forEach(boxId => {
-      const box = boxen[boxId];
-      const kaart = document.createElement('div');
-      kaart.className = 'quiz-item';
-      kaart.innerHTML = bouwBoxKaartHtml(boxId, box);
-      lijstEl.appendChild(kaart);
+    // Gewone spelers zien alleen "Nu te koop" en "Komt binnenkort". Offline, automatisch
+    // offline en nog-onzichtbare kisten blijven voor hen verborgen.
+    const boxen = {};
+    const perGroep = { online: [], komt: [], gepland: [], offline: [] };
+    Object.keys(alleBoxen).forEach(boxId => {
+      const box = alleBoxen[boxId];
+      if (!box) return;
+      const groep = winkelGroepVanBox(box);
+      if (!sitebeheerActief && (groep === 'offline' || groep === 'gepland')) return;
+      boxen[boxId] = box;
+      perGroep[groep].push(Object.assign({}, box, { _id: boxId }));
+    });
+
+    lijstEl.innerHTML = '';
+    const totaal = Object.keys(boxen).length;
+    geenBoxenEl.style.display = totaal ? 'none' : 'block';
+
+    WINKEL_GROEPEN.forEach(groep => {
+      const items = perGroep[groep.id].sort(groep.sorteer);
+      if (!items.length) return;
+      const details = document.createElement('details');
+      details.className = 'winkel-groep winkel-groep-' + groep.id;
+      details.open = !!winkelGroepOpen[groep.id];
+      const summary = document.createElement('summary');
+      summary.innerHTML = '<span class="winkel-groep-titel">' + groep.icoon + ' ' + escapeHtml(groep.titel) +
+        '</span><span class="winkel-groep-aantal">' + items.length + '</span>';
+      details.appendChild(summary);
+      const uitleg = document.createElement('p');
+      uitleg.className = 'winkel-groep-uitleg';
+      uitleg.textContent = groep.uitleg;
+      details.appendChild(uitleg);
+      const raster = document.createElement('div');
+      raster.className = 'quizzen-grid winkel-groep-raster';
+      items.forEach(box => {
+        const kaart = document.createElement('div');
+        kaart.className = 'quiz-item';
+        kaart.innerHTML = bouwBoxKaartHtml(box._id, box);
+        raster.appendChild(kaart);
+      });
+      details.appendChild(raster);
+      details.addEventListener('toggle', () => { winkelGroepOpen[groep.id] = details.open; });
+      lijstEl.appendChild(details);
     });
 
     lijstEl.querySelectorAll('.btn-koop-box').forEach(knop => {
