@@ -6,7 +6,7 @@
 // ingelogd zijn automatisch, dus na een herlaadbeurt blijft de beheerder
 // ingelogd tot er bewust wordt uitgelogd.
 
-let sitebeheerActief = false;
+let sitebeheerActief = true;
 
 // Voor gewone spelers gebruiken we anonieme Firebase-authenticatie. Daardoor
 // krijgt iedere browser een eigen veilige Firebase-ID zonder dat er een wachtwoord
