@@ -3576,7 +3576,7 @@ function werkProfielBadgeBij() {
 
 const profielOverlayEl = document.getElementById('profiel-overlay');
 const PE_TAB_NAMEN = { boven: 'Hoeden', gezicht: 'Brillen', hoek: 'Extra' };
-const PE_TAB_ICONEN = { dieren: '🐾', boven: '🎩', gezicht: '👓', hoek: '✨' };
+const PE_TAB_ICONEN = { dieren: '🐶', boven: '🎩', gezicht: '👓', hoek: '✨' };
 let peTab = 'dieren';
 
 function openPoppetjeEditor() {
@@ -3833,6 +3833,15 @@ function registreerSociaalProfiel() {
   return naamRef.transaction(v => v || gebruiker.uid).then(result => {
     const eigenaar = result.snapshot.val();
     if (eigenaar && eigenaar !== gebruiker.uid) {
+      // Alleen bij gewone (anonieme) spelers: de beheerder heeft een eigen account en mag de naam niet kwijtraken.
+      if (gebruiker.isAnonymous) {
+        localStorage.removeItem(MAKER_NAAM_SLEUTEL);
+        werkProfielBadgeBij();
+        werkVakSlotjesBij();
+        alert('De naam "' + naam + '" is al van een ander profiel (bijvoorbeeld op je telefoon of laptop). Kies een andere naam.');
+        naProfielActie = null;
+        openProfielMakenScherm();
+      }
       throw new Error('Deze gebruikersnaam is al in gebruik.');
     }
     return db.ref(SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid).update({
@@ -3843,9 +3852,7 @@ function registreerSociaalProfiel() {
       laatstOnline: firebase.database.ServerValue.TIMESTAMP
     });
   }).then(() => syncSociaalBezit()).catch(err => {
-    if (err && err.message === 'Deze gebruikersnaam is al in gebruik.') {
-      alert(err.message + ' Kies een andere naam.');
-    }
+    // (de melding over een bezette naam is hierboven al getoond)
   });
 }
 
@@ -3966,7 +3973,7 @@ function openVerzamelItemActies(type, item) {
 // Vervangt de verzameling-renderer zodat dubbele exemplaren zichtbaar zijn als 2, 3, ...
 // De accessoires staan verdeeld over de tabbladen Hoeden, Brillen en Extra, net als bij "Poppetje wijzigen".
 const VERZ_TAB_NAMEN = { boven: 'Hoeden', gezicht: 'Brillen', hoek: 'Extra' };
-const VERZ_TAB_ICONEN = { dieren: '🐾', boven: '🎩', gezicht: '👓', hoek: '✨' };
+const VERZ_TAB_ICONEN = { dieren: '🐶', boven: '🎩', gezicht: '👓', hoek: '✨' };
 
 function bouwVerzamelingKiezer() {
   const kiezerEl = document.getElementById('verzameling-kiezer');
@@ -4489,7 +4496,7 @@ function maakMiniPoppetje(uid, klasse) {
   const el = document.createElement('div');
   el.className = klasse;
   el.dataset.uid = uid;
-  el.innerHTML = poppetjeHtmlVoorUid(uid) || '<span class="mini-poppetje-leeg">🐾</span>';
+  el.innerHTML = poppetjeHtmlVoorUid(uid) || '<span class="mini-poppetje-leeg">👤</span>';
   laadChatProfiel(uid).then(() => {
     const html = poppetjeHtmlVoorUid(uid);
     if (html && el.isConnected !== false) el.innerHTML = html;
@@ -4499,13 +4506,14 @@ function maakMiniPoppetje(uid, klasse) {
 
 function laadChatProfiel(uid) {
   if (!uid) return Promise.resolve(null);
-  if (chatProfielCache[uid]) return Promise.resolve(chatProfielCache[uid]);
+  const oud = chatProfielCache[uid];
+  if (oud && oud.dier && Date.now() - (oud.tijd || 0) < 30000) return Promise.resolve(oud);
   if (chatProfielLaden[uid]) return chatProfielLaden[uid];
   chatProfielLaden[uid] = db.ref(SOCIAAL_PROFIEL_PAD + '/' + uid).once('value').then(snap => {
     const p = snap.val() || {};
-    chatProfielCache[uid] = { dier: p.dier || '', accessoires: p.accessoires || {} };
     delete chatProfielLaden[uid];
-    return chatProfielCache[uid];
+    if (geldigDier(p.dier)) chatProfielCache[uid] = { dier: p.dier, accessoires: p.accessoires || {}, tijd: Date.now() };
+    return chatProfielCache[uid] || null;
   }).catch(() => { delete chatProfielLaden[uid]; return null; });
   return chatProfielLaden[uid];
 }
@@ -4528,7 +4536,7 @@ function openChat(uid, naam) {
   const overlay = document.getElementById('chat-overlay');
   document.getElementById('chat-titel').textContent = naam;
   const kopPop = document.getElementById('chat-kop-poppetje');
-  kopPop.innerHTML = poppetjeHtmlVoorUid(uid) || '<span class="mini-poppetje-leeg">🐾</span>';
+  kopPop.innerHTML = poppetjeHtmlVoorUid(uid) || '<span class="mini-poppetje-leeg">👤</span>';
   laadChatProfiel(uid).then(() => { if (huidigChatUid === uid) kopPop.innerHTML = poppetjeHtmlVoorUid(uid) || kopPop.innerHTML; });
   chatStijlPaneelOpen = false;
   document.getElementById('chat-stijl-paneel').hidden = true;
@@ -4536,7 +4544,7 @@ function openChat(uid, naam) {
   document.getElementById('chat-quiz-paneel').hidden = true;
   chatGekozenPoppetje = null;
   document.getElementById('chat-poppetje-knop-plaatje').innerHTML =
-    geldigDier(huidigProfielDier()) ? poppetjeSvg(huidigProfielDier(), {}) : '🐾';
+    geldigDier(huidigProfielDier()) ? poppetjeSvg(huidigProfielDier(), {}) : '👤';
   overlay.classList.add('actief');
   document.body.classList.add('chat-open');
   pasChatStijlToe();
