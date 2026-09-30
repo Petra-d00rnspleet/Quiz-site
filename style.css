@@ -1094,8 +1094,12 @@ label {
   overflow: visible;
 }
 
-#profiel-badge-tekst {
+#profiel-badge-tekst:empty {
   display: none;
+}
+#profiel-badge-tekst {
+  font-size: 22px;
+  line-height: 1;
 }
 
 .profiel-overlay {
@@ -2206,7 +2210,9 @@ h2.titel-regenboog.host-resultaat-vraag {
   background: #1c1a33;
   box-shadow: 0 0 0 2px rgba(240, 192, 77, 0.4);
 }
-\n\n/* ---------- Vrienden, chat en dubbele verzameling ---------- */
+
+
+/* ---------- Vrienden, chat en dubbele verzameling ---------- */
 .vak-vrienden {
   border-color: #6d4fc2;
 }
@@ -2740,3 +2746,14 @@ body.chat-open { overflow: hidden; }
 .winkel-groep-gepland { border-color: #5a63c9; }
 .winkel-groep-offline { border-color: #6b3a45; }
 .winkel-groep-offline .winkel-groep-aantal { background: #ff5c72; color: #fff; }
+
+
+/* ---------- Vriend verwijderen ---------- */
+.vriend-knoppen { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.vriend-verwijder-knop { padding-left: 12px; padding-right: 12px; }
+.vriend-verwijder-knop:hover { border-color: #ff5c72; }
+@media (max-width: 520px) {
+  .vriend-rij .vriend-knoppen { width: 100%; }
+  .vriend-rij .vriend-knoppen .chat-knop { flex: 1; }
+  .vriend-rij .vriend-knoppen .vriend-verwijder-knop { width: auto; flex: 0 0 auto; }
+}
