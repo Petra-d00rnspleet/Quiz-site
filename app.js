@@ -155,7 +155,13 @@ function huidigeMakerNaam() {
 }
 
 function huidigProfielDier() {
-  return localStorage.getItem(PROFIEL_DIER_SLEUTEL) || '';
+  const opgeslagen = localStorage.getItem(PROFIEL_DIER_SLEUTEL) || '';
+  if (opgeslagen || !localStorage.getItem(MAKER_NAAM_SLEUTEL)) return opgeslagen;
+  // Wel een profiel maar nog geen poppetje opgeslagen (bijv. een ouder profiel): pak je eerste dier
+  // en onthoud dat meteen, zodat je profielpoppetje nooit leeg blijft.
+  const eerste = (haalBezitDieren().filter(d => geldigDier(d))[0]) || '';
+  if (eerste) localStorage.setItem(PROFIEL_DIER_SLEUTEL, eerste);
+  return eerste;
 }
 
 // Een profiel bestaat zodra er een gebruikersnaam is. Het poppetje komt er
@@ -3625,7 +3631,7 @@ function werkProfielBadgeBij() {
     werkProfielPoppetjeWeergaveBij();
   } else {
     poppetjeEl.innerHTML = '';
-    tekstEl.textContent = '👤 Profiel maken';
+    tekstEl.textContent = '👤';
   }
 }
 
@@ -3633,9 +3639,11 @@ const profielOverlayEl = document.getElementById('profiel-overlay');
 const PE_TAB_NAMEN = { boven: 'Hoeden', gezicht: 'Brillen', hoek: 'Extra' };
 const PE_TAB_ICONEN = { dieren: '🐶', boven: '🎩', gezicht: '👓', hoek: '✨' };
 let peTab = 'dieren';
+let peLaatsteGetoondeTab = '';
 
 function openPoppetjeEditor() {
   peTab = 'dieren';
+  peLaatsteGetoondeTab = '';
   document.getElementById('poppetje-editor').classList.add('actief');
   document.body.classList.add('chat-open');
   bouwPoppetjeEditor();
@@ -3674,10 +3682,23 @@ function peKaart(svg, label, gekozen, onKlik) {
   return knop;
 }
 
+// Zet je gekozen poppetje + accessoires ook online, zodat je vrienden het zien
+// (vriendenlijst, chat, zoekresultaten).
+function syncProfielPoppetje() {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker || !heeftProfiel()) return Promise.resolve();
+  return db.ref(SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid).update({
+    dier: geldigDier(huidigProfielDier()) || '',
+    accessoires: huidigeProfielAccessoires(),
+    laatstOnline: firebase.database.ServerValue.TIMESTAMP
+  }).catch(err => { console.error('Profielpoppetje opslaan online mislukt:', err); });
+}
+
 function peNaLetter() {
   werkProfielBadgeBij();
   werkProfielPoppetjeWeergaveBij();
   bouwPoppetjeEditor();
+  syncProfielPoppetje();
 }
 
 function bouwPoppetjeEditor() {
@@ -3730,6 +3751,8 @@ function bouwPoppetjeEditor() {
 
   // Inhoud van het gekozen tabblad
   const inhoud = document.getElementById('pe-inhoud');
+  const oudeScroll = (peLaatsteGetoondeTab === peTab) ? inhoud.scrollTop : 0;
+  peLaatsteGetoondeTab = peTab;
   inhoud.innerHTML = '';
   const raster = document.createElement('div');
   raster.className = 'pe-raster';
@@ -3771,6 +3794,7 @@ function bouwPoppetjeEditor() {
   }
   inhoud.appendChild(raster);
   inhoud.appendChild(hint);
+  inhoud.scrollTop = oudeScroll;
 }
 
 document.getElementById('btn-profiel-poppetje-wijzigen').addEventListener('click', openPoppetjeEditor);
@@ -4016,7 +4040,7 @@ function openVerzamelItemActies(type, item) {
   const aantal = aantalVan(type, item);
   if (!aantal) return;
   const titel = type === 'dier' ? item : ((ACCESSOIRES[item] && ACCESSOIRES[item].naam) || item);
-  const naarVriend = prompt('Wat wil je doen met ' + titel + '?\\nTyp VERKOOP om 1 exemplaar te verkopen, of typ STUUR om 1 exemplaar naar een vriend te sturen.');
+  const naarVriend = prompt('Wat wil je doen met ' + titel + '?\nTyp VERKOOP om 1 exemplaar te verkopen, of typ STUUR om 1 exemplaar naar een vriend te sturen.');
   if (!naarVriend) return;
   if (naarVriend.trim().toLowerCase() === 'verkoop') {
     type === 'dier' ? verkoopDier(item) : verkoopAccessoire(item);
@@ -4128,6 +4152,8 @@ function laadVriendenEnVerzoeken() {
   vriendenRef = db.ref('vrienden/' + gebruiker.uid);
   vriendenRef.on('value', snap => {
     socialeVrienden = snap.val() || {};
+    // Is de vriend met wie je net chat weggehaald (ook door de ander)? Dan sluit de chat.
+    if (huidigChatUid && !socialeVrienden[huidigChatUid]) sluitChat();
     synchroniseerChatOngelezen();
     renderVrienden();
   });
@@ -4331,6 +4357,24 @@ function accepteerVriendschapsverzoek(fromUid, verzoek) {
   });
 }
 
+// Haalt een vriend uit je lijst. Bij de ander verdwijn jij dan ook uit de lijst.
+// (De regels staan dat toe: je mag jezelf uit de lijst van een vriend halen.)
+function verwijderVriend(fuid, naam) {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker) { alert('Je profiel is nog niet verbonden. Probeer het zo nog eens.'); return; }
+  if (!confirm(naam + ' uit je vrienden halen?\n\nJullie staan dan niet meer in elkaars lijst. Wil je later weer vrienden zijn, dan stuur je opnieuw een vriendschapsverzoek.')) return;
+  const updates = {};
+  updates['vrienden/' + gebruiker.uid + '/' + fuid] = null;
+  updates['vrienden/' + fuid + '/' + gebruiker.uid] = null;
+  db.ref().update(updates).then(() => {
+    if (huidigChatUid === fuid) sluitChat();
+  }).catch(err => {
+    console.error('Vriend verwijderen mislukt:', err);
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    alert(naam + ' kon niet worden verwijderd' + code + '. Controleer je internet en of de nieuwste Firebase-regels zijn gepubliceerd.');
+  });
+}
+
 function updateVriendenBadge() {
   const badge = document.getElementById('vrienden-badge-aantal');
   if (!badge) return;
@@ -4365,7 +4409,15 @@ function renderVrienden() {
         chat.appendChild(badge);
       }
       chat.addEventListener('click', () => openChat(uid, info.gebruikersnaam || 'Vriend'));
-      rij.append(maakMiniPoppetje(uid, 'vriend-mini-poppetje'), naam, chat); lijst.appendChild(rij);
+      const weg = document.createElement('button');
+      weg.type = 'button'; weg.className = 'btn btn-secondary vriend-verwijder-knop';
+      weg.textContent = '🗑'; weg.title = 'Uit mijn vrienden halen';
+      weg.setAttribute('aria-label', (info.gebruikersnaam || 'Vriend') + ' uit mijn vrienden halen');
+      weg.addEventListener('click', () => verwijderVriend(uid, info.gebruikersnaam || 'Vriend'));
+      const knoppen = document.createElement('div');
+      knoppen.className = 'vriend-knoppen';
+      knoppen.append(chat, weg);
+      rij.append(maakMiniPoppetje(uid, 'vriend-mini-poppetje'), naam, knoppen); lijst.appendChild(rij);
     });
   if (!Object.keys(socialeVrienden).length) lijst.innerHTML = '<p class="subtitel">Je hebt nog geen vrienden.</p>';
 
