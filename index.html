@@ -2,9 +2,22 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a1130">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <script>
+    // Herkent een telefoon (smal scherm of aanraakscherm) en zet daarvoor de telefoon-indeling aan.
+    (function () {
+      var mq = window.matchMedia('(max-width: 700px), (pointer: coarse) and (max-width: 900px)');
+      function zet() { document.documentElement.classList.toggle('telefoon', mq.matches); }
+      zet();
+      if (mq.addEventListener) mq.addEventListener('change', zet); else if (mq.addListener) mq.addListener(zet);
+    })();
+  </script>
   <title>Quiz Maker</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="telefoon.css">
 </head>
 <body>
 
@@ -39,6 +52,13 @@
       <button class="btn btn-secondary" id="btn-profiel-overlay-sluiten" type="button">Sluiten</button>
     </div>
   </div>
+
+  <!-- ONDERBALK (alleen op de telefoon) -->
+  <nav id="telefoon-nav" class="telefoon-nav" aria-label="Hoofdmenu">
+    <button type="button" data-nav="start"><span class="nav-icoon">🏠</span><small>Start</small></button>
+    <button type="button" data-nav="vrienden"><span class="nav-icoon">👥<i id="nav-vrienden-aantal" class="nav-aantal" hidden>0</i></span><small>Vrienden</small></button>
+    <button type="button" data-nav="profiel"><span id="nav-profiel-poppetje" class="nav-icoon nav-poppetje">👤</span><small>Profiel</small></button>
+  </nav>
 
   <div class="container">
 
@@ -666,5 +686,6 @@
   <script src="firebase-config.js"></script>
   <script src="poppetjes.js"></script>
   <script src="app.js"></script>
+  <script src="telefoon.js"></script>
 </body>
 </html>
