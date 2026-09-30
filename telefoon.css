@@ -1,0 +1,164 @@
+/* ============================================================================
+   telefoon.css — aparte indeling voor de telefoon
+   Alles hier werkt alleen als <html class="telefoon"> staat (smal scherm of
+   aanraakscherm, zie het scriptje in index.html). Op de laptop verandert er
+   niets. De functies zijn precies hetzelfde; alleen de indeling is anders:
+   onderbalk, tegels, uitschuifvensters van onderen, grote knoppen en
+   invoervelden die niet inzoomen.
+   ============================================================================ */
+
+html.telefoon { -webkit-text-size-adjust: 100%; }
+html.telefoon body { display: block; min-height: 100dvh; -webkit-tap-highlight-color: transparent; }
+html.telefoon button, html.telefoon .vak, html.telefoon input { touch-action: manipulation; }
+
+/* Lichter voor de batterij en soepeler scrollen: geen twinkelende sterrenhemel */
+html.telefoon body::before, html.telefoon body::after, html.telefoon .container::before { animation: none !important; }
+html.telefoon .btn-primary { animation: none; background-size: 100% 100%; }
+
+/* ---------- Basis ---------- */
+html.telefoon .container {
+  max-width: none; min-height: 100dvh;
+  padding: calc(14px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));
+}
+html.telefoon body[data-scherm="scherm-algemeen"] .container,
+html.telefoon body[data-scherm="scherm-dierenverzameling"] .container,
+html.telefoon body[data-scherm="scherm-speelbare-quizzen"] .container,
+html.telefoon body[data-scherm="scherm-meedoen"] .container,
+html.telefoon body[data-scherm="scherm-quizmaken"] .container,
+html.telefoon body[data-scherm="scherm-winkel"] .container,
+html.telefoon body[data-scherm="scherm-wiel"] .container {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}
+html.telefoon .scherm { gap: 12px; overflow-wrap: anywhere; }
+html.telefoon h1 { font-size: 2rem; margin: 4px 0 0; text-align: center; }
+html.telefoon h2 { font-size: 1.45rem; margin: 0; }
+html.telefoon img, html.telefoon svg { max-width: 100%; }
+
+/* Grotere knoppen en velden (16px voorkomt dat iPhones inzoomen) */
+html.telefoon .btn { min-height: 50px; font-size: 1rem; border-radius: 14px; }
+html.telefoon .btn-terug { font-size: 1rem; padding: 10px 12px 10px 0; margin: -6px 0 0; min-height: 44px; }
+html.telefoon input[type="text"], html.telefoon input[type="number"], html.telefoon input[type="search"],
+html.telefoon select, html.telefoon textarea { font-size: 16px; min-height: 50px; border-radius: 14px; }
+html.telefoon .zoekbalk { font-size: 16px; }
+html.telefoon label { font-size: .95rem; }
+
+/* ---------- Bovenbalk weg, onderbalk erbij ---------- */
+html.telefoon .bovenbalk-knoppen { display: none; }
+.telefoon-nav { display: none; }
+html.telefoon .telefoon-nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 800;
+  display: none; align-items: stretch; justify-content: space-around;
+  padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
+  background: rgba(10, 14, 38, .97);
+  border-top: 1px solid #4a3c1a;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, .35);
+}
+html.telefoon body[data-scherm="scherm-algemeen"]:not(.chat-open) .telefoon-nav,
+html.telefoon body[data-scherm="scherm-dierenverzameling"]:not(.chat-open) .telefoon-nav,
+html.telefoon body[data-scherm="scherm-speelbare-quizzen"]:not(.chat-open) .telefoon-nav,
+html.telefoon body[data-scherm="scherm-meedoen"]:not(.chat-open) .telefoon-nav,
+html.telefoon body[data-scherm="scherm-quizmaken"]:not(.chat-open) .telefoon-nav,
+html.telefoon body[data-scherm="scherm-winkel"]:not(.chat-open) .telefoon-nav,
+html.telefoon body[data-scherm="scherm-wiel"]:not(.chat-open) .telefoon-nav { display: flex; }
+.telefoon-nav button {
+  flex: 1; min-height: 56px; border: 0; background: none; color: #9a97a8; font: inherit;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border-radius: 14px; cursor: pointer;
+}
+.telefoon-nav button:active { background: rgba(240, 192, 77, .14); color: #f0c04d; }
+.telefoon-nav small { font-size: 12px; font-weight: 700; }
+.telefoon-nav .nav-icoon { position: relative; font-size: 24px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+.telefoon-nav .nav-poppetje { width: 30px; height: 30px; }
+.telefoon-nav .nav-poppetje svg { width: 30px; height: 30px; overflow: visible; }
+.telefoon-nav .nav-aantal {
+  position: absolute; top: -6px; right: -12px; font-style: normal;
+  min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; box-sizing: border-box;
+  background: #ff5c72; color: #fff; font: 800 12px/20px system-ui, sans-serif; text-align: center;
+}
+.telefoon-nav .nav-aantal[hidden] { display: none; }
+
+/* ---------- Startscherm: tegels ---------- */
+html.telefoon .munten-weergave { align-self: center; padding: 8px 16px; border-radius: 999px; background: rgba(16, 21, 46, .9); border: 1px solid #4a3c1a; }
+html.telefoon .vakken-rij { grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; flex: 0 0 auto; }
+html.telefoon .vakken-rij > .vak { grid-column: auto !important; grid-row: auto !important; }
+html.telefoon .vak {
+  flex-direction: column; gap: 8px; min-height: 124px; padding: 14px 8px;
+  border-radius: 22px; font-size: .98rem; line-height: 1.2;
+}
+html.telefoon .vak:hover { transform: none; box-shadow: none; }
+html.telefoon .vak:active { transform: scale(.97); border-color: #f0c04d; }
+html.telefoon .vak .vak-emoji { font-size: 2.4rem; line-height: 1; }
+html.telefoon .vak-slotje { top: 8px; right: 10px; }
+html.telefoon .vak-maken, html.telefoon .vak-speelbaar { min-height: 132px; }
+html.telefoon #profiel-vereist-hint { font-size: .85rem; }
+
+/* ---------- Uitschuifvensters van onderen (i.p.v. een klein venster in het midden) ---------- */
+html.telefoon .sitebeheer-overlay,
+html.telefoon .sitebeheer-overlay.profiel-overlay {
+  align-items: flex-end; justify-content: center; padding: 0;
+}
+html.telefoon .sitebeheer-venster,
+html.telefoon .sociaal-venster,
+html.telefoon .profiel-venster {
+  width: 100%; max-width: none; max-height: 92dvh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  border-radius: 24px 24px 0 0; border-bottom: 0;
+  padding: 22px 18px calc(20px + env(safe-area-inset-bottom));
+  animation: telefoon-omhoog .22s ease-out;
+}
+html.telefoon .sitebeheer-venster::before {
+  content: ""; align-self: center; width: 42px; height: 5px; border-radius: 3px;
+  background: rgba(255, 255, 255, .25); margin: -10px 0 4px; flex: 0 0 auto;
+}
+@keyframes telefoon-omhoog { from { transform: translateY(40px); opacity: .4; } to { transform: none; opacity: 1; } }
+html.telefoon .profiel-overlay-poppetje { width: 120px; height: 120px; }
+html.telefoon .profiel-overlay-poppetje svg { width: 120px; height: 120px; }
+
+/* ---------- Vrienden ---------- */
+html.telefoon .vriend-rij, html.telefoon .vriend-zoekresultaat {
+  flex-wrap: wrap; align-items: center; padding: 12px; gap: 10px 12px; border-radius: 16px;
+}
+html.telefoon .vriend-rij strong, html.telefoon .vriend-zoekresultaat strong { font-size: 1.05rem; }
+html.telefoon .vriend-mini-poppetje, html.telefoon .vriend-mini-poppetje svg { width: 48px; height: 48px; }
+html.telefoon .vriend-rij .vriend-knoppen { width: 100%; }
+html.telefoon .vriend-rij .vriend-knoppen .chat-knop { flex: 1; }
+html.telefoon .vriend-rij .vriend-knoppen .vriend-verwijder-knop { width: 56px; flex: 0 0 56px; }
+html.telefoon .vriend-zoekresultaat .btn, html.telefoon .vriend-rij > .btn { width: 100%; }
+html.telefoon .vrienden-zoekrij { flex-direction: column; }
+html.telefoon .vrienden-zoekrij .btn { width: 100%; }
+
+/* ---------- Chat ---------- */
+html.telefoon .chat-kop { padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
+html.telefoon .chat-scherm .chat-berichten { padding: 12px 10px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+html.telefoon .chat-scherm .chat-bericht { max-width: 88%; font-size: 1rem; }
+html.telefoon .chat-bericht-verwijder { font-size: 1.15rem; padding: 8px 10px; margin: -6px -8px; }
+html.telefoon .chat-scherm .chat-invoer {
+  flex-direction: row; align-items: center; gap: 6px;
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+}
+html.telefoon .chat-scherm .chat-invoer input { font-size: 16px; height: 48px; min-height: 48px; border-radius: 24px; padding: 0 16px; }
+html.telefoon .chat-scherm .chat-invoer .btn { width: auto; height: 48px; min-height: 48px; padding: 0 16px; border-radius: 24px; }
+html.telefoon .chat-paneel { max-height: 55dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+/* ---------- Poppetje wijzigen ---------- */
+html.telefoon .poppetje-editor .chat-kop { padding-top: max(10px, env(safe-area-inset-top)); }
+html.telefoon .pe-voorbeeld { padding: 8px 12px 6px; }
+html.telefoon .pe-voorbeeld-poppetje { width: min(24dvh, 150px); height: min(24dvh, 150px); }
+html.telefoon .pe-tab { padding: 10px 2px; min-height: 60px; }
+html.telefoon .pe-raster { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+html.telefoon .pe-inhoud { padding-bottom: calc(24px + env(safe-area-inset-bottom)); -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+html.telefoon .pe-kaart { padding: 8px 4px 6px; }
+
+/* ---------- Kiezers, tabs, rasters ---------- */
+html.telefoon .dieren-kiezer { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+html.telefoon .verzameling-tabs, html.telefoon .kiezer-tabs { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+html.telefoon .verzameling-tabs::-webkit-scrollbar, html.telefoon .kiezer-tabs::-webkit-scrollbar { display: none; }
+html.telefoon .verzameling-tabs > *, html.telefoon .kiezer-tabs > * { flex: 0 0 auto; min-height: 44px; }
+html.telefoon .quizzen-grid { grid-template-columns: 1fr; }
+
+/* ---------- Liggend telefoon: minder hoog ---------- */
+@media (orientation: landscape) and (max-height: 500px) {
+  html.telefoon .telefoon-nav button { min-height: 44px; flex-direction: row; gap: 8px; justify-content: center; }
+  html.telefoon .vakken-rij { grid-template-columns: repeat(3, 1fr); }
+  html.telefoon .vak { min-height: 96px; }
+  html.telefoon .pe-voorbeeld-poppetje { width: 90px; height: 90px; }
+}
