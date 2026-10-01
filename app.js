@@ -1,4 +1,4 @@
-console.log('Quiz-site app.js versie 2026-10-01-c (accounts)');
+console.log('Quiz-site app.js versie 2026-10-01-d (blijf ingelogd)');
 // ---------- Accounts (gebruikersnaam + wachtwoord) ----------
 //
 // Een profiel is nu een echt account. Onder water is dat een Firebase-account met
@@ -75,9 +75,24 @@ let sitebeheerActief = false;
 // nodig is. Die ID koppelen we aan de gekozen gebruikersnaam voor vrienden/chat.
 let socialeAuthFout = '';
 let socialeAuthPogingen = 0;
+// Firebase herstelt een bewaarde login pas een moment NA het laden van de pagina. Tot die tijd is
+// auth.currentUser leeg. Meldden we ons dan meteen anoniem aan, dan werd je echte account
+// vervangen door een nieuw anoniem account en werd je bij elke herlaadbeurt uitgelogd.
+// Daarom wachten we eerst tot Firebase heeft laten weten wie er is ingelogd.
+const authKlaar = new Promise(klaar => {
+  let gedaan = false;
+  const stop = auth.onAuthStateChanged(() => { if (!gedaan) { gedaan = true; klaar(); } });
+  setTimeout(() => { if (!gedaan) { gedaan = true; klaar(); } }, 8000);
+  void stop;
+});
 function zorgVoorSocialeGebruiker() {
   if (typeof auth === 'undefined') return Promise.resolve(null);
-  if (auth.currentUser) return Promise.resolve(auth.currentUser);
+  return authKlaar.then(() => {
+    if (auth.currentUser) return auth.currentUser;
+    return meldAnoniemAan();
+  });
+}
+function meldAnoniemAan() {
   return auth.signInAnonymously().then(res => {
     socialeAuthFout = '';
     return res && res.user ? res.user : auth.currentUser;
