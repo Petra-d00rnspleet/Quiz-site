@@ -22,9 +22,10 @@
     })();
   </script>
   <title>Quiz Maker</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="telefoon.css">
-  <link rel="stylesheet" href="breed.css">
+  <link rel="stylesheet" href="style.css?v=20261001c">
+  <link rel="stylesheet" href="telefoon.css?v=20261001c">
+  <link rel="stylesheet" href="breed.css?v=20261001c">
+  <link rel="stylesheet" href="account.css?v=20261001c">
 </head>
 <body>
 
@@ -39,7 +40,7 @@
     </button>
     <button id="btn-profiel-badge" class="profiel-badge" type="button">
       <span id="profiel-badge-poppetje" class="profiel-badge-poppetje" aria-hidden="true"></span>
-      <span id="profiel-badge-tekst">👤 Profiel maken</span>
+      <span id="profiel-badge-tekst">🔑 Inloggen</span>
     </button>
   </div>
 
@@ -56,6 +57,14 @@
         <p id="profiel-naam-foutmelding" class="foutmelding"></p>
       </div>
       <button class="btn btn-secondary" id="btn-profiel-poppetje-wijzigen" type="button">🔁 Poppetje wijzigen</button>
+      <button class="btn btn-secondary" id="btn-profiel-uitloggen" type="button">🚪 Uitloggen</button>
+      <button class="btn btn-secondary" id="btn-profiel-verwijderen" type="button">🗑 Account verwijderen</button>
+      <div id="profiel-verwijder-paneel" class="profiel-naam-paneel" hidden>
+        <p>Je account, vrienden en alles wat je hebt wordt voorgoed verwijderd. Vul je wachtwoord in om door te gaan.</p>
+        <input type="password" id="input-profiel-verwijder-ww" placeholder="Wachtwoord" autocomplete="current-password">
+        <button class="btn btn-primary" id="btn-profiel-verwijder-bevestig" type="button">Definitief verwijderen</button>
+        <p id="profiel-verwijder-fout" class="foutmelding"></p>
+      </div>
       <button class="btn btn-secondary" id="btn-profiel-overlay-sluiten" type="button">Sluiten</button>
     </div>
   </div>
@@ -82,7 +91,7 @@
         <button class="vak vak-dierentuin" id="btn-naar-dierentuin">🐾 Dierenverzameling<span class="vak-slotje" aria-hidden="true">🔒</span></button>
         <button class="vak vak-wiel" id="btn-naar-wiel">🎡 Geluksrad<span class="vak-slotje" aria-hidden="true">🔒</span></button>
       </div>
-      <p id="profiel-vereist-hint" class="subtitel" style="margin-top:14px;">🔒 Maak eerst een profiel aan (gebruikersnaam + poppetje) om quizzen te maken, de winkel, de dierenverzameling en het geluksrad te gebruiken. Meedoen aan een quiz en speelbare quizzen spelen kan altijd, ook zonder profiel.</p>
+      <p id="profiel-vereist-hint" class="subtitel" style="margin-top:14px;">🔒 Log eerst in (of registreer een account met gebruikersnaam + wachtwoord) om quizzen te maken, de winkel, de dierenverzameling en het geluksrad te gebruiken. Meedoen aan een quiz en speelbare quizzen spelen kan altijd, ook zonder profiel.</p>
     </section>
 
     <!-- SCHERM: DIERENVERZAMELING (alle dieren en accessoires bekijken, ook buiten een quiz om) -->
@@ -179,14 +188,47 @@
     <!-- SCHERM: PROFIEL MAKEN (verplicht vóór quiz maken, winkel, dierenverzameling, geluksrad) -->
     <section id="scherm-naam-invullen" class="scherm">
       <button class="btn-terug" data-terug-naar="scherm-algemeen">&larr; Terug</button>
-      <h2 class="titel-regenboog">Maak je profiel</h2>
-      <p class="subtitel">Bedenk een gebruikersnaam en kies een poppetje als profielfoto. Dit wordt lokaal in je browser onthouden (geen wachtwoord nodig). Gewone bezoekers zien je naam niet; alleen sitebeheer kan zien wie een quiz heeft gemaakt. Je gebruikersnaam en je poppetje kun je later nog wijzigen via de knop rechtsboven.</p>
-      <label for="input-maker-naam">Gebruikersnaam</label>
-      <input type="text" id="input-maker-naam" placeholder="Bijv. Sam" maxlength="30">
-      <label>Kies je poppetje (profielfoto)</label>
-      <div id="profiel-dieren-kiezer" class="dieren-kiezer"></div>
-      <button class="btn btn-primary" id="btn-naam-bevestigen">Profiel aanmaken</button>
-      <p id="naam-invullen-foutmelding" class="foutmelding"></p>
+      <h2 class="titel-regenboog" id="account-kop">Inloggen</h2>
+
+      <div id="account-keuze" class="account-tabs">
+        <button type="button" class="btn btn-secondary actief" id="tab-account-inloggen">Inloggen</button>
+        <button type="button" class="btn btn-secondary" id="tab-account-registreren">Registreren</button>
+      </div>
+      <p id="account-apparaat-melding" class="foutmelding" hidden></p>
+
+      <!-- INLOGGEN -->
+      <div id="account-inloggen-blok" class="account-blok">
+        <p class="subtitel">Log in met je gebruikersnaam en wachtwoord. Heb je nog geen account? Klik op Registreren.</p>
+        <label for="input-login-naam">Gebruikersnaam</label>
+        <input type="text" id="input-login-naam" maxlength="30" autocomplete="username" autocapitalize="off">
+        <label for="input-login-wachtwoord">Wachtwoord</label>
+        <input type="password" id="input-login-wachtwoord" autocomplete="current-password">
+        <button class="btn btn-primary" id="btn-inloggen" type="button">Inloggen</button>
+        <p id="login-foutmelding" class="foutmelding"></p>
+      </div>
+
+      <!-- REGISTREREN -->
+      <div id="account-registreren-blok" class="account-blok" hidden>
+        <p class="subtitel">Bedenk een gebruikersnaam en een wachtwoord (minstens 6 tekens). Daarna kies je een poppetje. Je kunt maar één account per apparaat maken. Gewone bezoekers zien je naam niet; alleen sitebeheer kan zien wie een quiz heeft gemaakt.</p>
+        <label for="input-maker-naam">Gebruikersnaam</label>
+        <input type="text" id="input-maker-naam" placeholder="Bijv. Sam" maxlength="30" autocomplete="username" autocapitalize="off">
+        <div id="reg-wachtwoord-velden" class="account-blok">
+          <label for="input-reg-wachtwoord">Wachtwoord</label>
+          <input type="password" id="input-reg-wachtwoord" autocomplete="new-password">
+          <label for="input-reg-wachtwoord2">Wachtwoord nog een keer</label>
+          <input type="password" id="input-reg-wachtwoord2" autocomplete="new-password">
+        </div>
+        <button class="btn btn-primary" id="btn-naam-bevestigen" type="button">Account maken</button>
+        <p id="naam-invullen-foutmelding" class="foutmelding"></p>
+      </div>
+
+      <!-- POPPETJE KIEZEN (na het registreren) -->
+      <div id="account-poppetje-blok" class="account-blok" hidden>
+        <p class="subtitel">Je account is gemaakt! Kies nu een poppetje als profielfoto. Je kunt het later altijd nog wijzigen.</p>
+        <div id="profiel-dieren-kiezer" class="dieren-kiezer"></div>
+        <button class="btn btn-primary" id="btn-poppetje-klaar" type="button">Klaar</button>
+        <p id="poppetje-foutmelding" class="foutmelding"></p>
+      </div>
     </section>
 
     <!-- SCHERM: QUIZ MAKEN (overzicht) -->
@@ -690,9 +732,9 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 
-  <script src="firebase-config.js"></script>
-  <script src="poppetjes.js"></script>
-  <script src="app.js"></script>
-  <script src="telefoon.js"></script>
+  <script src="firebase-config.js?v=20261001c"></script>
+  <script src="poppetjes.js?v=20261001c"></script>
+  <script src="app.js?v=20261001c"></script>
+  <script src="telefoon.js?v=20261001c"></script>
 </body>
 </html>
