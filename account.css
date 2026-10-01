@@ -1,0 +1,38 @@
+/* account.css — opmaak voor inloggen, registreren en het profiel (wachtwoordvelden) */
+
+/* Wachtwoordvelden zien er precies uit als de andere invoervelden */
+input[type="password"] {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #4a3c1a;
+  background: #10152e;
+  color: #f2f2f5;
+  font-size: 15px;
+  width: 100%;
+  box-sizing: border-box;
+}
+input[type="password"]::placeholder { color: #6b6580; }
+input[type="password"]:focus {
+  outline: none;
+  border-color: #f0c04d;
+  box-shadow: 0 0 0 1px #f0c04d;
+}
+
+/* Blokken onder elkaar, en [hidden] blijft altijd verborgen */
+.account-blok { display: flex; flex-direction: column; gap: 8px; }
+.account-blok[hidden], .account-tabs[hidden] { display: none; }
+.account-tabs { display: flex; gap: 8px; }
+.account-tabs .btn { flex: 1; }
+.account-tabs .btn.actief {
+  border-color: #f0c04d; color: #f0c04d; background: rgba(240, 192, 77, .12);
+}
+.account-blok .btn { align-self: stretch; }
+
+/* Profielvenster: wachtwoordveld bij account verwijderen */
+.profiel-naam-paneel { display: flex; flex-direction: column; gap: 8px; }
+.profiel-naam-paneel[hidden] { display: none; }
+
+/* iPhones zoomen niet in bij 16px */
+html.telefoon input[type="password"], html.tablet input[type="password"] {
+  font-size: 16px; min-height: 50px; border-radius: 14px;
+}
