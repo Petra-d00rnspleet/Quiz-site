@@ -4328,6 +4328,8 @@ function zoekGebruikersOpNaam(zoekterm, forceer) {
 function stuurVriendschapsverzoek(toUid, naam) {
   const gebruiker = profielFirebaseGebruiker();
   if (!gebruiker) { alert('Je profiel is nog niet verbonden.'); return; }
+  // Jezelf toevoegen kan niet. (Een ander apparaat met een andere naam is een ander profiel: dat mag wel.)
+  if (toUid === gebruiker.uid) { alert('Je kunt jezelf niet als vriend toevoegen.'); return; }
   db.ref('vriendschapsverzoeken/' + toUid + '/' + gebruiker.uid).set({
     uid: gebruiker.uid,
     gebruikersnaam: huidigeMakerNaam(),
@@ -4346,6 +4348,7 @@ function stuurVriendschapsverzoek(toUid, naam) {
 function accepteerVriendschapsverzoek(fromUid, verzoek) {
   const gebruiker = profielFirebaseGebruiker();
   if (!gebruiker) return;
+  if (fromUid === gebruiker.uid) return; // jezelf kun je niet accepteren
   const updates = {};
   updates['vrienden/' + gebruiker.uid + '/' + fromUid] = { gebruikersnaam: verzoek.gebruikersnaam || 'Vriend', sinds: firebase.database.ServerValue.TIMESTAMP };
   updates['vrienden/' + fromUid + '/' + gebruiker.uid] = { gebruikersnaam: huidigeMakerNaam(), sinds: firebase.database.ServerValue.TIMESTAMP };
