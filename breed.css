@@ -1,0 +1,91 @@
+/* ============================================================================
+   breed.css — indeling voor laptop en tablet (het tegenstuk van telefoon.css)
+   Werkt alleen als <html class="breed"> staat (alles wat geen telefoon is).
+   Op een tablet (aanraakscherm) staat ook <html class="tablet"> aan: grotere
+   knoppen en velden. De functies zijn precies hetzelfde; alleen de indeling
+   is anders: zijbalk links, grote tegels, bredere pagina.
+   ============================================================================ */
+
+/* ---------- Basis ---------- */
+html.breed { -webkit-text-size-adjust: 100%; }
+html.breed .container { max-width: 1040px; padding: 36px 32px 56px; }
+html.breed h1 { font-size: 3rem; }
+html.breed .scherm { gap: 16px; }
+html.breed .quizzen-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+html.breed .btn { border-radius: 14px; }
+html.breed .munten-weergave { padding: 10px 22px; background: rgba(16, 21, 46, .9); }
+
+/* ---------- Zijbalk links (i.p.v. de knoppen rechtsboven) ---------- */
+html.breed .telefoon-nav { display: none; }
+html.breed body:is(
+  [data-scherm="scherm-algemeen"], [data-scherm="scherm-dierenverzameling"],
+  [data-scherm="scherm-speelbare-quizzen"], [data-scherm="scherm-meedoen"],
+  [data-scherm="scherm-quizmaken"], [data-scherm="scherm-winkel"], [data-scherm="scherm-wiel"]
+):not(.chat-open) { padding-left: 92px; }
+html.breed body:is(
+  [data-scherm="scherm-algemeen"], [data-scherm="scherm-dierenverzameling"],
+  [data-scherm="scherm-speelbare-quizzen"], [data-scherm="scherm-meedoen"],
+  [data-scherm="scherm-quizmaken"], [data-scherm="scherm-winkel"], [data-scherm="scherm-wiel"]
+):not(.chat-open) .bovenbalk-knoppen { display: none; }
+html.breed body:is(
+  [data-scherm="scherm-algemeen"], [data-scherm="scherm-dierenverzameling"],
+  [data-scherm="scherm-speelbare-quizzen"], [data-scherm="scherm-meedoen"],
+  [data-scherm="scherm-quizmaken"], [data-scherm="scherm-winkel"], [data-scherm="scherm-wiel"]
+):not(.chat-open) .telefoon-nav {
+  position: fixed; left: 0; top: 0; bottom: 0; width: 92px; z-index: 800;
+  display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 8px;
+  padding: 24px 8px;
+  background: rgba(10, 14, 38, .97);
+  border-right: 1px solid #4a3c1a;
+  box-shadow: 8px 0 24px rgba(0, 0, 0, .3);
+}
+html.breed .telefoon-nav button {
+  flex: 0 0 auto; min-height: 72px; border: 0; background: none; color: #9a97a8; font: inherit;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  border-radius: 16px; cursor: pointer; transition: background .15s ease, color .15s ease;
+}
+html.breed .telefoon-nav button:hover { background: rgba(240, 192, 77, .12); color: #f0c04d; }
+html.breed .telefoon-nav button:active { background: rgba(240, 192, 77, .22); color: #f0c04d; }
+html.breed .telefoon-nav small { font-size: 12px; font-weight: 700; }
+html.breed .telefoon-nav .nav-icoon { position: relative; font-size: 28px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+html.breed .telefoon-nav .nav-poppetje, html.breed .telefoon-nav .nav-poppetje svg { width: 36px; height: 36px; }
+html.breed .telefoon-nav .nav-poppetje svg { overflow: visible; }
+html.breed .telefoon-nav .nav-aantal {
+  position: absolute; top: -6px; right: -14px; font-style: normal;
+  min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; box-sizing: border-box;
+  background: #ff5c72; color: #fff; font: 800 12px/20px system-ui, sans-serif; text-align: center;
+}
+html.breed .telefoon-nav .nav-aantal[hidden] { display: none; }
+
+/* ---------- Startscherm: grote tegels met de emoji erboven ---------- */
+html.breed .vakken-rij { gap: 18px; margin-top: 12px; flex: 0 0 auto; }
+html.breed .vak {
+  flex-direction: column; gap: 10px; min-height: 170px; padding: 20px 12px;
+  border-radius: 24px; font-size: 1.1rem; line-height: 1.25;
+}
+html.breed .vak .vak-emoji { font-size: 3.2rem; line-height: 1; }
+html.breed .vak-slotje { top: 10px; right: 14px; }
+html.breed .vak:active { transform: scale(.98); }
+
+/* ---------- Vensters: netjes in het midden, nooit hoger dan het scherm ---------- */
+html.breed .sitebeheer-venster { max-height: 90vh; overflow-y: auto; }
+html.breed .sociaal-venster { max-height: 90vh; }
+
+/* ---------- Tablet (aanraakscherm): grotere knoppen en velden ---------- */
+html.tablet .btn { min-height: 52px; font-size: 1.05rem; }
+html.tablet input[type="text"], html.tablet input[type="number"], html.tablet input[type="search"],
+html.tablet select, html.tablet textarea { font-size: 16px; min-height: 50px; border-radius: 14px; }
+html.tablet button, html.tablet .vak, html.tablet input { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+html.tablet .vak { min-height: 190px; }
+html.tablet .vak:hover { transform: none; box-shadow: none; }
+html.tablet .vak:active { border-color: #f0c04d; }
+html.tablet .telefoon-nav button { min-height: 80px; }
+/* Lichter voor de batterij: geen twinkelende sterrenhemel op een tablet */
+html.tablet body::before, html.tablet body::after, html.tablet .container::before { animation: none !important; }
+
+/* ---------- Tablet rechtop: iets smaller ---------- */
+@media (max-width: 860px) {
+  html.breed .container { padding: 28px 20px 48px; }
+  html.breed .vak { min-height: 150px; }
+  html.tablet .vak { min-height: 170px; }
+}
