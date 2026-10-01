@@ -1,3 +1,4 @@
+console.log('Quiz-site app.js versie 2026-10-01-c (accounts)');
 // ---------- Accounts (gebruikersnaam + wachtwoord) ----------
 //
 // Een profiel is nu een echt account. Onder water is dat een Firebase-account met
@@ -405,6 +406,9 @@ function zetAccountTab(welke) {
 
 function accountFoutTekst(err) {
   const c = err && err.code;
+  if (/permission_denied/i.test(String((err && (err.code || err.message)) || ''))) {
+    return 'Firebase weigert dit (PERMISSION_DENIED). Plak de nieuwste regels uit firebase-rules.json in Firebase bij Realtime Database > Regels en klik op Publiceren.';
+  }
   if (c === 'auth/weak-password') return 'Dat wachtwoord is te zwak. Gebruik minstens 6 tekens.';
   if (c === 'auth/operation-not-allowed') return 'Inloggen met wachtwoord staat nog niet aan in Firebase (Authentication > Sign-in method > E-mail/wachtwoord).';
   if (c === 'auth/network-request-failed') return 'Geen internet. Probeer het opnieuw.';
@@ -446,23 +450,32 @@ function bevestigMakerNaam() {
 
   const knop = document.getElementById('btn-naam-bevestigen');
   knop.disabled = true;
-  let gebruiker = null;
+  let gebruiker = null, naamVastgelegd = false, gekoppeld = false;
   controleerGebruikersnaamVrij(naam).then(vrij => {
     if (!vrij) throw new Error('Deze naam is al in gebruik. Kies een andere naam.');
     return zorgVoorSocialeGebruiker();
   }).then(user => {
     if (!user) throw new Error('Geen verbinding met de server. Probeer het zo nog eens.');
-    if (!user.isAnonymous) throw new Error('Je bent al ingelogd.');
+    // Hangt er nog een half gemaakt account aan deze browser (eerdere poging die halverwege mislukte)?
+    // Dan loggen we daar netjes uit en beginnen we opnieuw.
+    if (!user.isAnonymous) {
+      if (isBeheerAccount(user)) throw new Error('Je bent als sitebeheer ingelogd. Log eerst uit bij Sitebeheer.');
+      return auth.signOut().then(() => zorgVoorSocialeGebruiker());
+    }
+    return user;
+  }).then(user => {
+    if (!user) throw new Error('Geen verbinding met de server. Probeer het zo nog eens.');
     gebruiker = user;
-    // Het bestaande (anonieme) account wordt een echt account: je uid blijft hetzelfde.
-    const bewijs = firebase.auth.EmailAuthProvider.credential(maakAccountEmail(user.uid), ww);
-    return user.linkWithCredential(bewijs);
-  }).then(() => gebruiker.getIdToken(true))
-    .then(() => db.ref('gebruikersnamen/' + naamSleutel(normaliseerGebruikersnaam(naam))).transaction(v => v || gebruiker.uid))
-    .then(res => {
-      if (res.snapshot.val() !== gebruiker.uid) {
-        return gebruiker.delete().catch(() => {}).then(() => { throw new Error('Deze naam is net door iemand anders gekozen. Kies een andere naam.'); });
-      }
+    // Stap 1: de naam vastleggen (nog als anoniem account, met dezelfde uid).
+    return db.ref('gebruikersnamen/' + naamSleutel(normaliseerGebruikersnaam(naam))).transaction(v => v || user.uid);
+  }).then(res => {
+    if (res.snapshot.val() !== gebruiker.uid) throw new Error('Deze naam is al in gebruik. Kies een andere naam.');
+    naamVastgelegd = true;
+    // Stap 2: het anonieme account wordt een echt account: je uid blijft hetzelfde.
+    const bewijs = firebase.auth.EmailAuthProvider.credential(maakAccountEmail(gebruiker.uid), ww);
+    return gebruiker.linkWithCredential(bewijs);
+  }).then(() => { gekoppeld = true; return gebruiker.getIdToken(true); })
+    .then(() => {
       localStorage.setItem(ACCOUNT_APPARAAT_SLEUTEL, '1');
       localStorage.setItem(ACCOUNT_UID_SLEUTEL, gebruiker.uid);
       localStorage.setItem(MAKER_NAAM_SLEUTEL, naam);
@@ -477,7 +490,13 @@ function bevestigMakerNaam() {
       bouwProfielDierenKiezer();
       zetAccountTab('poppetje');
     })
-    .catch(err => { fout.textContent = accountFoutTekst(err); })
+    .catch(err => {
+      fout.textContent = accountFoutTekst(err);
+      // Mislukt het koppelen, dan geven we de naam weer vrij zodat je het opnieuw kunt proberen.
+      if (naamVastgelegd && !gekoppeld && gebruiker) {
+        db.ref('gebruikersnamen/' + naamSleutel(normaliseerGebruikersnaam(naam))).transaction(v => (v === gebruiker.uid ? null : v)).catch(() => {});
+      }
+    })
     .then(() => { knop.disabled = false; });
 }
 
