@@ -1,3 +1,64 @@
+// ---------- Accounts (gebruikersnaam + wachtwoord) ----------
+//
+// Een profiel is nu een echt account. Onder water is dat een Firebase-account met
+// e-mail/wachtwoord; het e-mailadres is intern (uid@quizzzzz.app) en je ziet het nooit.
+// Inloggen gaat met je gebruikersnaam: we zoeken je uid op en loggen daarmee in.
+// Registreren kan maar één keer per apparaat (tot je het account verwijdert).
+const ACCOUNT_DOMEIN = '@quizzzzz.app';
+const ACCOUNT_UID_SLEUTEL = 'quizAccountUid';
+const ACCOUNT_APPARAAT_SLEUTEL = 'quizAccountOpDitApparaat';
+// Deze gegevens horen bij je account en worden online bewaard (accountData/<uid>).
+const ACCOUNT_DATA_SLEUTELS = ['quizAppMunten', 'eigenQuizzen', 'quizAppGekochteBoxen', 'quizAppWielLaatsteDraai', 'quizAppWielLaatsteResultaat'];
+// Alles wat bij uitloggen van dit apparaat verdwijnt (staat online veilig bij je account).
+const ACCOUNT_LOKALE_SLEUTELS = ['makerNaam', 'profielDier', 'profielAccessoires', 'quizAppBezitDieren', 'quizAppBezitAccessoires',
+  'quizAppBezitAantallen', 'quizAppChatGelezen', 'quizAppChatStijl', ACCOUNT_UID_SLEUTEL].concat(ACCOUNT_DATA_SLEUTELS);
+
+function maakAccountEmail(uid) { return String(uid).toLowerCase() + ACCOUNT_DOMEIN; }
+function isSpelerAccount(u) { return !!u && !u.isAnonymous && typeof u.email === 'string' && u.email.slice(-ACCOUNT_DOMEIN.length) === ACCOUNT_DOMEIN; }
+function isBeheerAccount(u) { return !!u && !u.isAnonymous && !isSpelerAccount(u); }
+function accountUid() { return localStorage.getItem(ACCOUNT_UID_SLEUTEL); }
+function wisLokaalAccount() { ACCOUNT_LOKALE_SLEUTELS.forEach(k => localStorage.removeItem(k)); }
+
+// Wijzigingen in munten, quizzen enz. gaan automatisch (na een korte pauze) naar je account.
+const origineleSetItem = Storage.prototype.setItem;
+let accountSyncTimer = null;
+Storage.prototype.setItem = function (sleutel, waarde) {
+  origineleSetItem.call(this, sleutel, waarde);
+  if (this === window.localStorage && ACCOUNT_DATA_SLEUTELS.indexOf(sleutel) !== -1) {
+    clearTimeout(accountSyncTimer);
+    accountSyncTimer = setTimeout(syncAccountData, 1500);
+  }
+};
+
+function syncAccountData() {
+  clearTimeout(accountSyncTimer);
+  const u = auth.currentUser;
+  if (!isSpelerAccount(u) || u.uid !== accountUid()) return Promise.resolve();
+  const data = {};
+  ACCOUNT_DATA_SLEUTELS.forEach(k => {
+    const v = localStorage.getItem(k);
+    if (v !== null && v.length <= 100000) data[k] = v;
+  });
+  return db.ref('accountData/' + u.uid).update(data).catch(() => {});
+}
+
+// Haalt je online gegevens op. Geeft true als er iets op dit apparaat is veranderd.
+function haalAccountData(uid, vervangAlles) {
+  return db.ref('accountData/' + uid).once('value').then(snap => {
+    const d = snap.val() || {};
+    let veranderd = false;
+    ACCOUNT_DATA_SLEUTELS.forEach(k => {
+      if (typeof d[k] === 'string') {
+        if (localStorage.getItem(k) !== d[k]) { origineleSetItem.call(localStorage, k, d[k]); veranderd = true; }
+      } else if (vervangAlles) {
+        localStorage.removeItem(k);
+      }
+    });
+    return veranderd;
+  });
+}
+let accountDataGehaald = false;
+
 // ---------- Sitebeheer (echt inloggen via Firebase Authentication) ----------
 //
 // De beheerder logt in met een e-mailadres + wachtwoord dat in de Firebase
@@ -119,8 +180,24 @@ btnSitebeheerBevestigenEl.addEventListener('click', probeerSitebeheerInloggen);
 });
 
 auth.onAuthStateChanged(gebruiker => {
-  sitebeheerActief = !!gebruiker && !gebruiker.isAnonymous;
+  sitebeheerActief = isBeheerAccount(gebruiker);
   werkSitebeheerKnopBij();
+  // Is de online sessie een ander account dan wat dit apparaat denkt (bijv. uitgelogd of
+  // beheerder ingelogd)? Dan loggen we lokaal netjes uit: je gegevens staan veilig online.
+  const lokaalUid = accountUid();
+  if (lokaalUid && gebruiker && gebruiker.uid !== lokaalUid) {
+    wisLokaalAccount();
+    accountDataGehaald = false;
+    if (typeof werkProfielBadgeBij === 'function') { werkProfielBadgeBij(); werkVakSlotjesBij(); werkMuntenWeergaveBij(); }
+  }
+  // Ingelogd account: haal de nieuwste munten/quizzen op en stuur lokale gegevens door.
+  if (isSpelerAccount(gebruiker) && gebruiker.uid === accountUid() && !accountDataGehaald) {
+    accountDataGehaald = true;
+    haalAccountData(gebruiker.uid, false).then(veranderd => {
+      if (veranderd && typeof werkMuntenWeergaveBij === 'function') werkMuntenWeergaveBij();
+      return syncAccountData();
+    }).catch(() => {});
+  }
   if (gebruiker && !gebruiker.isAnonymous) {
     // Beheerder-account: niets extra's nodig.
   } else if (!gebruiker) {
@@ -170,7 +247,9 @@ function huidigProfielDier() {
 // nog steeds een profiel hebben en later alsnog een poppetje kiezen zodra je
 // er weer een hebt.
 function heeftProfiel() {
-  return !!huidigeMakerNaam();
+  // Je hebt een profiel als je een naam hebt EN bent ingelogd met een account
+  // (de beheerder heeft een eigen inlog en hoeft geen speler-account).
+  return !!huidigeMakerNaam() && (!!accountUid() || sitebeheerActief);
 }
 
 // Onthoudt welk poppetje net gekozen is op het profiel-maken-scherm, vóórdat
@@ -232,7 +311,7 @@ function werkProfielBadgeBij() {
     tekstEl.textContent = huidigeMakerNaam();
   } else {
     poppetjeEl.textContent = '';
-    tekstEl.textContent = '👤 Profiel maken';
+    tekstEl.textContent = '🔑 Inloggen';
   }
 }
 
@@ -242,8 +321,14 @@ function werkProfielBadgeBij() {
 function openProfielMakenScherm() {
   inputMakerNaamEl.value = huidigeMakerNaam() || '';
   naamInvullenFoutmeldingEl.textContent = '';
+  ['input-login-naam', 'input-login-wachtwoord', 'input-reg-wachtwoord', 'input-reg-wachtwoord2'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('login-foutmelding').textContent = '';
+  document.getElementById('poppetje-foutmelding').textContent = '';
+  document.getElementById('account-apparaat-melding').hidden = true;
+  document.getElementById('reg-wachtwoord-velden').hidden = !!sitebeheerActief;
   profielGekozenDier = geldigDier(huidigProfielDier());
   bouwProfielDierenKiezer();
+  zetAccountTab(sitebeheerActief ? 'registreren' : 'inloggen');
   toonScherm('scherm-naam-invullen');
 }
 
@@ -307,29 +392,178 @@ function koppelMakerNaamAanEigenQuizzen() {
 const inputMakerNaamEl = document.getElementById('input-maker-naam');
 const naamInvullenFoutmeldingEl = document.getElementById('naam-invullen-foutmelding');
 
+// Welke tab (inloggen / registreren / poppetje kiezen) zie je op het account-scherm?
+function zetAccountTab(welke) {
+  document.getElementById('account-inloggen-blok').hidden = welke !== 'inloggen';
+  document.getElementById('account-registreren-blok').hidden = welke !== 'registreren';
+  document.getElementById('account-poppetje-blok').hidden = welke !== 'poppetje';
+  document.getElementById('account-keuze').hidden = welke === 'poppetje';
+  document.getElementById('tab-account-inloggen').classList.toggle('actief', welke === 'inloggen');
+  document.getElementById('tab-account-registreren').classList.toggle('actief', welke === 'registreren');
+  document.getElementById('account-kop').textContent = welke === 'poppetje' ? 'Kies je poppetje' : (welke === 'registreren' ? 'Registreren' : 'Inloggen');
+}
+
+function accountFoutTekst(err) {
+  const c = err && err.code;
+  if (c === 'auth/weak-password') return 'Dat wachtwoord is te zwak. Gebruik minstens 6 tekens.';
+  if (c === 'auth/operation-not-allowed') return 'Inloggen met wachtwoord staat nog niet aan in Firebase (Authentication > Sign-in method > E-mail/wachtwoord).';
+  if (c === 'auth/network-request-failed') return 'Geen internet. Probeer het opnieuw.';
+  if (c === 'auth/too-many-requests') return 'Je hebt het te vaak geprobeerd. Wacht even en probeer het opnieuw.';
+  if (c === 'auth/email-already-in-use' || c === 'auth/credential-already-in-use') return 'Er bestaat al een account voor dit apparaat. Probeer in te loggen.';
+  if (err && err.message && !c) return err.message;
+  return 'Het is niet gelukt' + (c ? ' (' + c + ')' : '') + '. Probeer het opnieuw.';
+}
+
+let registratieNaam = '';
+
+// Stap 1 van registreren: gebruikersnaam + wachtwoord. Daarna kies je een poppetje.
 function bevestigMakerNaam() {
   const naam = inputMakerNaamEl.value.trim();
-  if (!naam) {
-    naamInvullenFoutmeldingEl.textContent = 'Vul je naam in.';
+  const fout = naamInvullenFoutmeldingEl;
+  fout.textContent = '';
+  if (!naam) { fout.textContent = 'Vul een gebruikersnaam in.'; return; }
+
+  // De beheerder heeft een eigen inlog: alleen een naam kiezen, geen wachtwoord.
+  if (sitebeheerActief) {
+    controleerGebruikersnaamVrij(naam).then(vrij => {
+      if (!vrij) { fout.textContent = 'Deze naam is al in gebruik. Kies een andere naam.'; return; }
+      registratieNaam = naam;
+      profielGekozenDier = geldigDier(huidigProfielDier());
+      bouwProfielDierenKiezer();
+      zetAccountTab('poppetje');
+    });
     return;
   }
-  // Een poppetje kiezen is alleen verplicht als er ook echt iets te kiezen
-  // valt; heb je (nog) geen enkel poppetje, dan kun je zonder verder.
-  if (haalBezitDieren().length && !profielGekozenDier) {
-    naamInvullenFoutmeldingEl.textContent = 'Kies ook een poppetje als profielfoto.';
+
+  const ww = document.getElementById('input-reg-wachtwoord').value;
+  const ww2 = document.getElementById('input-reg-wachtwoord2').value;
+  if (ww.length < 6) { fout.textContent = 'Het wachtwoord moet minstens 6 tekens hebben.'; return; }
+  if (ww !== ww2) { fout.textContent = 'De twee wachtwoorden zijn niet hetzelfde.'; return; }
+  if (localStorage.getItem(ACCOUNT_APPARAAT_SLEUTEL)) {
+    fout.textContent = 'Op dit apparaat is al een account gemaakt. Log in met je gebruikersnaam en wachtwoord.';
     return;
   }
-  // Is deze naam al van iemand anders (bijvoorbeeld van je laptop terwijl je nu op je telefoon
-  // bent)? Dan maak je hier geen profiel met dezelfde naam: elk apparaat heeft zijn eigen profiel.
-  naamInvullenFoutmeldingEl.textContent = '';
+
+  const knop = document.getElementById('btn-naam-bevestigen');
+  knop.disabled = true;
+  let gebruiker = null;
   controleerGebruikersnaamVrij(naam).then(vrij => {
-    if (!vrij) {
-      naamInvullenFoutmeldingEl.textContent = 'Deze naam is al in gebruik (misschien door jezelf op een ander apparaat). Kies een andere naam.';
-      return;
-    }
-    rondProfielAanmakenAf(naam);
+    if (!vrij) throw new Error('Deze naam is al in gebruik. Kies een andere naam.');
+    return zorgVoorSocialeGebruiker();
+  }).then(user => {
+    if (!user) throw new Error('Geen verbinding met de server. Probeer het zo nog eens.');
+    if (!user.isAnonymous) throw new Error('Je bent al ingelogd.');
+    gebruiker = user;
+    // Het bestaande (anonieme) account wordt een echt account: je uid blijft hetzelfde.
+    const bewijs = firebase.auth.EmailAuthProvider.credential(maakAccountEmail(user.uid), ww);
+    return user.linkWithCredential(bewijs);
+  }).then(() => gebruiker.getIdToken(true))
+    .then(() => db.ref('gebruikersnamen/' + naamSleutel(normaliseerGebruikersnaam(naam))).transaction(v => v || gebruiker.uid))
+    .then(res => {
+      if (res.snapshot.val() !== gebruiker.uid) {
+        return gebruiker.delete().catch(() => {}).then(() => { throw new Error('Deze naam is net door iemand anders gekozen. Kies een andere naam.'); });
+      }
+      localStorage.setItem(ACCOUNT_APPARAAT_SLEUTEL, '1');
+      localStorage.setItem(ACCOUNT_UID_SLEUTEL, gebruiker.uid);
+      localStorage.setItem(MAKER_NAAM_SLEUTEL, naam);
+      registratieNaam = naam;
+      return registreerSociaalProfiel();
+    })
+    .then(() => {
+      syncAccountData();
+      werkProfielBadgeBij();
+      werkVakSlotjesBij();
+      profielGekozenDier = geldigDier(huidigProfielDier());
+      bouwProfielDierenKiezer();
+      zetAccountTab('poppetje');
+    })
+    .catch(err => { fout.textContent = accountFoutTekst(err); })
+    .then(() => { knop.disabled = false; });
+}
+
+// Stap 2: poppetje gekozen -> profiel klaar.
+document.getElementById('btn-poppetje-klaar').addEventListener('click', () => {
+  const fout = document.getElementById('poppetje-foutmelding');
+  fout.textContent = '';
+  if (haalBezitDieren().length && !profielGekozenDier) { fout.textContent = 'Kies een poppetje als profielfoto.'; return; }
+  rondProfielAanmakenAf(registratieNaam || huidigeMakerNaam());
+});
+
+document.getElementById('tab-account-inloggen').addEventListener('click', () => {
+  document.getElementById('account-apparaat-melding').hidden = true;
+  zetAccountTab('inloggen');
+});
+document.getElementById('tab-account-registreren').addEventListener('click', () => {
+  const melding = document.getElementById('account-apparaat-melding');
+  if (localStorage.getItem(ACCOUNT_APPARAAT_SLEUTEL) && !sitebeheerActief) {
+    melding.textContent = 'Op dit apparaat is al een account gemaakt. Je kunt hier geen tweede account registreren. Log in met je gebruikersnaam en wachtwoord.';
+    melding.hidden = false;
+    zetAccountTab('inloggen');
+    return;
+  }
+  melding.hidden = true;
+  zetAccountTab('registreren');
+});
+
+// ---- Inloggen ----
+// Zet profiel, bezit en munten van het account op dit apparaat.
+function zetLokaalAccountVanOnline(user) {
+  return Promise.all([db.ref('gebruikers/' + user.uid).once('value'), haalAccountData(user.uid, true).catch(() => false)]).then(([snap]) => {
+    const p = snap.val();
+    if (!p || !p.gebruikersnaam) throw new Error('Dit account heeft geen profiel meer.');
+    const data = {};
+    ACCOUNT_DATA_SLEUTELS.forEach(k => { data[k] = localStorage.getItem(k); });
+    wisLokaalAccount();
+    ACCOUNT_DATA_SLEUTELS.forEach(k => { if (data[k] !== null) origineleSetItem.call(localStorage, k, data[k]); });
+    localStorage.setItem(MAKER_NAAM_SLEUTEL, p.gebruikersnaam);
+    if (p.dier) localStorage.setItem(PROFIEL_DIER_SLEUTEL, p.dier);
+    if (p.accessoires) localStorage.setItem(PROFIEL_ACCESSOIRES_SLEUTEL, JSON.stringify(p.accessoires));
+    const b = p.bezit || {};
+    const dieren = [], accessoires = [], aantallen = {};
+    Object.entries(b.dieren || {}).forEach(([item, n]) => { if (geldigDier(item) && Number(n) > 0) { dieren.push(item); aantallen['dier:' + item] = Number(n); } });
+    Object.entries(b.accessoires || {}).forEach(([item, n]) => { if (ACCESSOIRES[item] && Number(n) > 0) { accessoires.push(item); aantallen['accessoire:' + item] = Number(n); } });
+    if (dieren.length) localStorage.setItem(BEZIT_DIEREN_SLEUTEL, JSON.stringify(dieren));
+    if (accessoires.length) localStorage.setItem(BEZIT_ACCESSOIRES_SLEUTEL, JSON.stringify(accessoires));
+    if (Object.keys(aantallen).length) slaBezitAantallenOp(aantallen);
+    localStorage.setItem(ACCOUNT_UID_SLEUTEL, user.uid);
+    localStorage.setItem(ACCOUNT_APPARAAT_SLEUTEL, '1');
   });
 }
+
+function probeerAccountInloggen() {
+  const naam = document.getElementById('input-login-naam').value.trim();
+  const ww = document.getElementById('input-login-wachtwoord').value;
+  const fout = document.getElementById('login-foutmelding');
+  const knop = document.getElementById('btn-inloggen');
+  fout.textContent = '';
+  if (!naam || !ww) { fout.textContent = 'Vul je gebruikersnaam en wachtwoord in.'; return; }
+  knop.disabled = true;
+  zorgVoorSocialeGebruiker().then(user => {
+    if (!user) throw new Error('Geen verbinding met de server. Probeer het zo nog eens.');
+    return db.ref('gebruikersnamen/' + naamSleutel(normaliseerGebruikersnaam(naam))).once('value');
+  }).then(snap => {
+    const uid = snap.val();
+    if (typeof uid !== 'string') throw { code: 'geen-account' };
+    return auth.signInWithEmailAndPassword(maakAccountEmail(uid), ww).then(res => res.user);
+  }).then(user => zetLokaalAccountVanOnline(user).catch(err => auth.signOut().then(() => { throw err; })))
+    .then(() => location.reload())
+    .catch(err => {
+      knop.disabled = false;
+      const c = err && err.code;
+      if (c === 'geen-account' || c === 'auth/invalid-credential' || c === 'auth/wrong-password' || c === 'auth/user-not-found' || c === 'auth/invalid-login-credentials') {
+        fout.textContent = 'Onjuiste gebruikersnaam of wachtwoord.';
+      } else {
+        fout.textContent = accountFoutTekst(err);
+      }
+    });
+}
+document.getElementById('btn-inloggen').addEventListener('click', probeerAccountInloggen);
+['input-login-naam', 'input-login-wachtwoord'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') probeerAccountInloggen(); });
+});
+['input-reg-wachtwoord', 'input-reg-wachtwoord2'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') bevestigMakerNaam(); });
+});
 
 // Geeft true als de naam nog vrij is of van dit account is. Lukt de controle niet
 // (geen internet of nog niet verbonden), dan blokkeren we niet en gaat het zoals eerder.
@@ -3913,7 +4147,7 @@ function registreerSociaalProfiel() {
     const eigenaar = result.snapshot.val();
     if (eigenaar && eigenaar !== gebruiker.uid) {
       // Alleen bij gewone (anonieme) spelers: de beheerder heeft een eigen account en mag de naam niet kwijtraken.
-      if (gebruiker.isAnonymous) {
+      if (!isBeheerAccount(gebruiker)) {
         localStorage.removeItem(MAKER_NAAM_SLEUTEL);
         werkProfielBadgeBij();
         werkVakSlotjesBij();
@@ -3955,7 +4189,7 @@ function laadOnlineBezitVoorEigenProfiel() {
     if (Object.keys(aantallen).length) slaBezitAantallenOp(aantallen);
     werkMuntenWeergaveBij();
     bouwVerzamelingKiezer();
-  }).catch(() => {});
+  }, () => {});
 }
 
 function laadSocialeGegevens() {
@@ -5353,3 +5587,66 @@ huidigeBezitAantallen();
 if (heeftProfiel()) {
   setTimeout(() => { registreerSociaalProfiel(); laadOnlineBezitVoorEigenProfiel(); }, 0);
 }
+
+
+// ================================================================
+// ACCOUNT: UITLOGGEN EN VERWIJDEREN (knoppen in "Jouw profiel")
+// ================================================================
+
+// Uitloggen/verwijderen zijn er alleen voor een gewoon speler-account (niet voor de beheerder).
+document.getElementById('btn-profiel-badge').addEventListener('click', () => {
+  const isSpeler = isSpelerAccount(auth.currentUser);
+  document.getElementById('btn-profiel-uitloggen').hidden = !isSpeler;
+  document.getElementById('btn-profiel-verwijderen').hidden = !isSpeler;
+  document.getElementById('profiel-verwijder-paneel').hidden = true;
+  document.getElementById('profiel-verwijder-fout').textContent = '';
+  document.getElementById('input-profiel-verwijder-ww').value = '';
+});
+
+document.getElementById('btn-profiel-uitloggen').addEventListener('click', () => {
+  if (!confirm('Uitloggen? Je gegevens blijven veilig bewaard. Log later weer in met je gebruikersnaam en wachtwoord.')) return;
+  syncAccountData().then(() => auth.signOut()).then(() => {
+    wisLokaalAccount();   // het apparaat onthoudt wel dat er al een account is gemaakt
+    location.reload();
+  }).catch(() => alert('Uitloggen is niet gelukt. Probeer het opnieuw.'));
+});
+
+document.getElementById('btn-profiel-verwijderen').addEventListener('click', () => {
+  const paneel = document.getElementById('profiel-verwijder-paneel');
+  paneel.hidden = !paneel.hidden;
+  document.getElementById('profiel-verwijder-fout').textContent = '';
+});
+
+document.getElementById('btn-profiel-verwijder-bevestig').addEventListener('click', () => {
+  const user = auth.currentUser;
+  const fout = document.getElementById('profiel-verwijder-fout');
+  const knop = document.getElementById('btn-profiel-verwijder-bevestig');
+  const ww = document.getElementById('input-profiel-verwijder-ww').value;
+  fout.textContent = '';
+  if (!isSpelerAccount(user)) return;
+  if (!ww) { fout.textContent = 'Vul je wachtwoord in.'; return; }
+  if (!confirm('Weet je het zeker? Je account, vrienden en alles wat je hebt wordt voorgoed verwijderd. Dit kan niet ongedaan worden gemaakt.')) return;
+  knop.disabled = true;
+  const uid = user.uid;
+  const naam = huidigeMakerNaam() || '';
+  const vrienden = Object.keys(socialeVrienden || {});
+  const verzoeken = Object.keys(socialeVerzoeken || {});
+  user.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(user.email, ww)).then(() => {
+    const updates = {};
+    vrienden.forEach(f => { updates['vrienden/' + f + '/' + uid] = null; updates['vrienden/' + uid + '/' + f] = null; });
+    verzoeken.forEach(f => { updates['vriendschapsverzoeken/' + uid + '/' + f] = null; });
+    updates['accountData/' + uid] = null;
+    updates['gebruikers/' + uid] = null;
+    if (naam) updates['gebruikersnamen/' + naamSleutel(normaliseerGebruikersnaam(naam))] = null;
+    return db.ref().update(updates);
+  }).then(() => user.delete()).then(() => {
+    wisLokaalAccount();
+    localStorage.removeItem(ACCOUNT_APPARAAT_SLEUTEL);   // alleen na verwijderen kun je opnieuw registreren
+    location.reload();
+  }).catch(err => {
+    knop.disabled = false;
+    const c = err && err.code;
+    fout.textContent = (c === 'auth/wrong-password' || c === 'auth/invalid-credential' || c === 'auth/invalid-login-credentials')
+      ? 'Verkeerd wachtwoord.' : accountFoutTekst(err);
+  });
+});
