@@ -1,6 +1,6 @@
 // ============================================================================
-// telefoon.js — hulpjes voor de telefoon-indeling (zie telefoon.css).
-// Doet niets op de laptop. Verandert geen gegevens: de onderbalk klikt gewoon
+// telefoon.js — hulpjes voor de telefoon-indeling (telefoon.css) en de
+// laptop/tablet-indeling (breed.css): tegels met emoji erboven en de navigatiebalk. Verandert geen gegevens: de onderbalk klikt gewoon
 // op de bestaande knoppen (Vrienden, Profiel) en gaat naar het startscherm.
 // ============================================================================
 (function () {
@@ -20,7 +20,7 @@
 
   // 2. Emoji boven de tekst in de tegels op het startscherm
   function splitsTegels() {
-    if (!html.classList.contains('telefoon')) return;
+    if (!html.classList.contains('telefoon') && !html.classList.contains('breed')) return;
     document.querySelectorAll('.vak').forEach(function (vak) {
       if (vak.getAttribute('data-gesplitst')) return;
       var t = vak.firstChild;
