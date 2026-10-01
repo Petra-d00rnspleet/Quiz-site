@@ -365,6 +365,15 @@ Plak dit in Realtime Database → Regels → Publiceren. Dezelfde tekst staat in
           }
         }
       }
+    },
+    "accountData": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "$sleutel": {
+          ".validate": "newData.isString() && newData.val().length <= 100000"
+        }
+      }
     }
   }
 }
@@ -377,6 +386,7 @@ Wat de regels doen (kort)
 - vrienden/<uid>: alleen jijzelf leest je lijst. Jij schrijft in je eigen lijst. Een ander mag alleen jou toevoegen aan zijn lijst als er een vriendschapsverzoek van jou is (dit gebeurt bij accepteren), of een bestaande vriendschap bijwerken (naamswijziging).
 - vriendschapsverzoeken/<ontvanger>/<afzender>: de ontvanger leest en verwijdert; de afzender schrijft en leest zijn eigen verzoek (voor "Verzoek gestuurd").
 - chats/<chatId>/berichten: alleen de twee deelnemers (hun uid staat in de chatId) lezen en schrijven. Een nieuw bericht moet je eigen uid dragen. Bij een bestaand bericht mag alleen het veld status veranderen. Je mag je eigen bericht verwijderen, behalve tijdens "bezig" (het accepteren van een cadeau of quiz). Tekst maximaal 500 tekens.
+- accountData/<uid>: je munten, quizzen en kistenaankopen die bij je account horen. Alleen jijzelf leest en schrijft dit (maximaal 100000 tekens per onderdeel). Zonder deze regel kan je account niet verwijderd worden en komen je munten en quizzen niet mee naar een ander apparaat.
 - Alles wat niet genoemd wordt is dicht.
 
 Bekende beperkingen (bewust zo gelaten)
@@ -387,3 +397,4 @@ Wijzigingslogboek
 - 2026-09-28: regels volledig in de readme gezet. Vrienden en chat werken nu voor iedereen met een anoniem account (niet alleen sitebeheer). Het profielpoppetje wordt gelezen uit gebruikers/<uid>; die regel bestond al. Nieuwe of aangescherpte regels: chats-validatie (status, tekstlengte), vrienden (toevoegen alleen bij een verzoek), gebruikersnamen (alleen eigen naam vrijgeven).
 - 2026-09-28 (app): profielpoppetje voor de naam in de chat, vriendenlijst en verzoeken; duidelijke melding als anoniem aanmelden mislukt; foutmelding bij een chatbericht dat niet verstuurd kan worden. Bestanden: app.js, index.html, style.css.
 - 2026-09-30 (app): vrienden verwijderen (🗑 bij elke vriend; je verdwijnt ook uit de lijst van de ander, met de bestaande regels; geen nieuwe regels nodig). Profielpoppetje: keuze wordt nu ook online opgeslagen (vrienden zien het), een profiel zonder opgeslagen dier krijgt automatisch je eerste dier, en de lijst springt niet meer naar boven bij het kiezen. Telefoonversie: nieuwe bestanden telefoon.css en telefoon.js (samen met index.html, style.css en app.js op de site zetten). Op de telefoon: onderbalk (Start, Vrienden, Profiel), tegels op het startscherm, vensters die van onderen omhoogschuiven, grotere knoppen; de laptop blijft ongewijzigd. Elk apparaat houdt zijn eigen profiel.
+- 2026-10-01: regel voor accountData/<uid> toegevoegd (nodig voor account verwijderen en voor het meenemen van munten/quizzen naar een ander apparaat bij inloggen). Publiceer de nieuwe firebase-rules.json.
