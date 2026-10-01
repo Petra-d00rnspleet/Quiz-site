@@ -7,10 +7,16 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <script>
-    // Herkent een telefoon (smal scherm of aanraakscherm) en zet daarvoor de telefoon-indeling aan.
+    // Herkent telefoon, tablet of laptop en zet de juiste indeling aan.
     (function () {
       var mq = window.matchMedia('(max-width: 700px), (pointer: coarse) and (max-width: 900px)');
-      function zet() { document.documentElement.classList.toggle('telefoon', mq.matches); }
+      var aanraak = window.matchMedia('(pointer: coarse)');
+      function zet() {
+        var h = document.documentElement.classList;
+        h.toggle('telefoon', mq.matches);       // telefoon: onderbalk + tegels
+        h.toggle('breed', !mq.matches);         // laptop en tablet: zijbalk + tegels
+        h.toggle('tablet', !mq.matches && aanraak.matches); // tablet: grotere knoppen
+      }
       zet();
       if (mq.addEventListener) mq.addEventListener('change', zet); else if (mq.addListener) mq.addListener(zet);
     })();
@@ -18,6 +24,7 @@
   <title>Quiz Maker</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="telefoon.css">
+  <link rel="stylesheet" href="breed.css">
 </head>
 <body>
 
@@ -53,7 +60,7 @@
     </div>
   </div>
 
-  <!-- ONDERBALK (alleen op de telefoon) -->
+  <!-- ONDERBALK op de telefoon, ZIJBALK links op laptop en tablet -->
   <nav id="telefoon-nav" class="telefoon-nav" aria-label="Hoofdmenu">
     <button type="button" data-nav="start"><span class="nav-icoon">🏠</span><small>Start</small></button>
     <button type="button" data-nav="vrienden"><span class="nav-icoon">👥<i id="nav-vrienden-aantal" class="nav-aantal" hidden>0</i></span><small>Vrienden</small></button>
