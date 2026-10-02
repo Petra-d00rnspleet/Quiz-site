@@ -5829,6 +5829,7 @@ function verwijderProfielAlsBeheer(uid) {
 function openBeheerProfielen() {
   if (!sitebeheerActief) return;
   document.getElementById('input-beheer-zoek').value = '';
+  if (typeof kiesBeheerTab === 'function') kiesBeheerTab('profielen');
   document.getElementById('beheer-profielen-overlay').classList.add('actief');
   laadBeheerProfielen();
 }
@@ -6013,3 +6014,168 @@ function laadBezoekQuizzen() {
     wrap.appendChild(knop);
   });
 })();
+
+
+// ================================================================
+// SITEBEHEER: LIJST MET ALLE DIEREN EN ACCESSOIRES (emoji met de naam eronder)
+// De volgorde en namen zijn vastgelegd zoals sitebeheer ze wil zien.
+// ================================================================
+const BEHEER_LIJST_POPPETJES = [
+  "🐭 Muis",
+  "🐹 Hamster",
+  "🐰 Konijn",
+  "🦊 Vos",
+  "🐻 Beer",
+  "🐼 Panda",
+  "🐨 Koala",
+  "🐯 Tijger",
+  "🦁 Leeuw",
+  "🐮 Koe",
+  "🐷 Varken",
+  "🐸 Kikker",
+  "🐵 Aap",
+  "🐔 Kip",
+  "🐧 Pinguïn",
+  "🦄 Eenhoorn",
+  "🦊 Vos",
+  "🐲 Draak",
+  "🦡 Das",
+  "🦔 Egel",
+  "🐘 Olifant",
+  "⛄ Sneeuwpop",
+  "🦒 Giraf",
+  "🦓 Zebra",
+  "🦛 Nijlpaard",
+  "🦏 Neushoorn",
+  "🐑 Schaap",
+  "🐐 Geit",
+  "🐎 Paard",
+  "🫏 Ezel",
+  "🐥 Kuiken",
+  "🦉 Uil",
+  "🦇 Vleermuis",
+  "🐬 Dolfijn",
+  "🐳 Walvis",
+  "🐟 Vis",
+  "🐙 Octopus",
+  "🦀 Krab",
+  "🐢 Schildpad",
+  "🐍 Slang",
+  "🐊 Krokodil",
+  "🦋 Vlinder",
+  "🐝 Bij",
+  "🐞 Lieveheersbeestje",
+  "🐌 Slak",
+  "🕷️ Spin",
+  "🐿️ Eekhoorn",
+  "🐫 Kameel",
+  "🦙 Lama",
+  "🦌 Hert",
+  "🦝 Wasbeer",
+  "🦨 Stinkdier",
+  "🦥 Luiaard",
+  "🦦 Otter",
+  "🦘 Kangaroe",
+  "🦩 Flamingo",
+  "🦚 Pauw",
+  "🦜 Papegaai",
+  "🦢 Zwaan",
+  "🦈 Haai",
+  "🦭 Zeehond",
+  "🐻‍❄️ IJsbeer",
+  "🦃 Kalkoen",
+  "🦍 Gorilla",
+  "🦣 Mammoet",
+  "🦖 Dino",
+  "🤖 Robot",
+  "👻 Spook",
+  "👽 Alien"
+];
+const BEHEER_LIJST_ACCESSOIRES = [
+  "🎩 Goochelhoed",
+  "👑 Kroon",
+  "🎓 Afstudeerhoed",
+  "🧢 Pet",
+  "🤠 Cowboyhoed",
+  "👒 Strandhoed",
+  "🧑‍🎄 Kerstmuts",
+  "🎀 Strikje",
+  "🧙 Toverhoed",
+  "👷 Helm",
+  "🥳 Feesthoedje",
+  "🐈‍⬛ Kattenoren",
+  "👿 Duivelsoren",
+  "😇 Engelenring",
+  "🍄 Paddenstoelhoed",
+  "🎂 Taarthoed",
+  "🧑‍🍳 Koksmuts",
+  "🏴‍☠️ Piratenhoed",
+  "⛑️ Mijnwerkershelm",
+  "🎧 Oorwarmers",
+  "👽 Aliensprieten",
+  "🕶️ Zonnebril",
+  "👓 Bril",
+  "🤿 Duikbril",
+  "🥸 Snorbril",
+  "🧐 Monocle",
+  "🤡 Rode neus",
+  "😍 Hartjesbril",
+  "🤩 Sterrenogen",
+  "👁️‍🗨️ Piratenlapje",
+  "🎭 Masker",
+  "❤️ Hartje",
+  "🩷 Hartje",
+  "💙 Hartje",
+  "💚 Hartje",
+  "💛 Hartje",
+  "💜 Hartje",
+  "⭐ Sterretje",
+  "✨ Sprankels",
+  "🌸 Bloem",
+  "🔥 Vlam",
+  "💎 Diamant",
+  "🍀 Klavertje",
+  "🎈 Ballon",
+  "🍭 Lolly",
+  "🌈 Regenboog",
+  "☀️ Zon",
+  "🌛 Maan",
+  "⚡ Bliksem",
+  "🎶 Muzieknoot",
+  "🍓 Aardbei",
+  "🦋 Vlinder",
+  "❄️ Sneeuwvlokje",
+  "🎁 Cadeautje",
+  "🏆 Trofee",
+  "🍩 Donut",
+  "⚽ Voetbal",
+  "🎂 Taart"
+];
+
+function bouwBeheerTegels(lijst) {
+  return lijst.map(t => {
+    const i = t.indexOf(' ');
+    return '<div class="beheer-tegel"><span class="beheer-tegel-emoji">' + escapeHtml(t.slice(0, i)) + '</span>' +
+      '<span class="beheer-tegel-naam">' + escapeHtml(t.slice(i + 1)) + '</span></div>';
+  }).join('');
+}
+
+function vulBeheerDieren() {
+  document.getElementById('beheer-dieren-aantal').textContent = BEHEER_LIJST_POPPETJES.length;
+  document.getElementById('beheer-accessoires-aantal').textContent = BEHEER_LIJST_ACCESSOIRES.length;
+  document.getElementById('beheer-dieren-raster').innerHTML = bouwBeheerTegels(BEHEER_LIJST_POPPETJES);
+  document.getElementById('beheer-accessoires-raster').innerHTML = bouwBeheerTegels(BEHEER_LIJST_ACCESSOIRES);
+}
+vulBeheerDieren();
+
+function kiesBeheerTab(tab) {
+  const dieren = tab === 'dieren';
+  document.getElementById('beheer-pane-profielen').hidden = dieren;
+  document.getElementById('beheer-pane-dieren').hidden = !dieren;
+  document.getElementById('beheer-tab-profielen').classList.toggle('actief', !dieren);
+  document.getElementById('beheer-tab-dieren').classList.toggle('actief', dieren);
+  const o = document.querySelector('#beheer-profielen-overlay .sitebeheer-venster');
+  if (o) o.scrollTop = 0;
+}
+document.getElementById('beheer-tab-profielen').addEventListener('click', () => kiesBeheerTab('profielen'));
+document.getElementById('beheer-tab-dieren').addEventListener('click', () => kiesBeheerTab('dieren'));
