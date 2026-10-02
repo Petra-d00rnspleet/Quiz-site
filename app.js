@@ -1,4 +1,4 @@
-console.log('Quiz-site app.js versie 2026-10-01-f (sitebeheer + volledig verwijderen)');
+console.log('Quiz-site app.js versie 2026-10-01-g (statuskaart)');
 // ---------- Accounts (gebruikersnaam + wachtwoord) ----------
 //
 // Een profiel is nu een echt account. Onder water is dat een Firebase-account met
@@ -105,11 +105,11 @@ function herlaadBeheerSchermen() {
 }
 function zetBeheerGekoppeld(uid) {
   beheerGekoppeldUid = uid; sitebeheerActief = true;
-  werkSitebeheerKnopBij(); herlaadBeheerSchermen();
+  werkSitebeheerKnopBij(); werkAccountStatusBij(); herlaadBeheerSchermen();
 }
 function zetBeheerLosgekoppeld() {
   beheerGekoppeldUid = null; sitebeheerActief = isBeheerAccount(auth.currentUser);
-  werkSitebeheerKnopBij(); herlaadBeheerSchermen();
+  werkSitebeheerKnopBij(); werkAccountStatusBij(); herlaadBeheerSchermen();
 }
 function controleerBeheerKoppeling(gebruiker) {
   if (!isSpelerAccount(gebruiker) || beheerGekoppeldUid === gebruiker.uid) return;
@@ -273,6 +273,7 @@ auth.onAuthStateChanged(gebruiker => {
   sitebeheerActief = isBeheerAccount(gebruiker) || (isSpelerAccount(gebruiker) && beheerGekoppeldUid === gebruiker.uid);
   werkSitebeheerKnopBij();
   controleerBeheerKoppeling(gebruiker);
+  if (typeof werkVakSlotjesBij === 'function') werkVakSlotjesBij();
   // Is de online sessie een ander account dan wat dit apparaat denkt (bijv. uitgelogd of
   // beheerder ingelogd)? Dan loggen we lokaal netjes uit: je gegevens staan veilig online.
   const lokaalUid = accountUid();
@@ -570,7 +571,7 @@ function bevestigMakerNaam() {
     // Stap 1: de naam vastleggen (nog als anoniem account, met dezelfde uid).
     return db.ref('gebruikersnamen/' + naamSleutel(normaliseerGebruikersnaam(naam))).transaction(v => v || user.uid);
   }).then(res => {
-    if (res.snapshot.val() !== gebruiker.uid) throw new Error('Deze naam is al in gebruik. Kies een andere naam.');
+    if (res.snapshot.val() !== gebruiker.uid) throw new Error('Deze naam is al in gebruik. Kies een andere naam. (Was dit je oude naam van vóór de accounts? Dan hoort hij bij een profiel dat niet meer te openen is: kies dan een nieuwe naam.)');
     naamVastgelegd = true;
     // Stap 2: het anonieme account wordt een echt account: je uid blijft hetzelfde.
     const bewijs = firebase.auth.EmailAuthProvider.credential(maakAccountEmail(gebruiker.uid), ww);
@@ -3947,6 +3948,29 @@ function werkVakSlotjesBij() {
     document.getElementById(id).classList.toggle('vak-op-slot', opSlot);
   });
   document.getElementById('profiel-vereist-hint').style.display = opSlot ? '' : 'none';
+  werkAccountStatusBij();
+}
+
+// Duidelijke statuskaart op het startscherm: ben je ingelogd of niet, en waar zijn Uitloggen / Verwijderen.
+function werkAccountStatusBij() {
+  const uit = document.getElementById('account-status-uit');
+  const inn = document.getElementById('account-status-in');
+  if (!uit || !inn) return;
+  const ingelogd = heeftProfiel();
+  uit.hidden = ingelogd;
+  inn.hidden = !ingelogd;
+  if (ingelogd) {
+    const speler = !!accountUid();
+    const beheer = sitebeheerActief ? ' · 🔓 sitebeheer' : '';
+    document.getElementById('account-status-naam').textContent = '👤 Ingelogd als ' + huidigeMakerNaam() + beheer;
+    document.getElementById('btn-status-uitloggen').hidden = false;
+    document.getElementById('btn-status-verwijderen').hidden = !speler;
+  } else {
+    const oud = huidigeMakerNaam();
+    document.getElementById('account-status-oud').textContent = oud
+      ? 'Je profiel "' + oud + '" is van vóór de accounts en heeft nog geen wachtwoord. Klik op Registreren en maak er een account van.'
+      : '';
+  }
 }
 
 const PROFIEL_ACCESSOIRES_SLEUTEL = 'profielAccessoires';
@@ -4184,7 +4208,21 @@ document.getElementById('btn-profiel-overlay-sluiten').addEventListener('click',
 werkProfielBadgeBij();
 werkVakSlotjesBij();
 
-
+document.getElementById('btn-status-inloggen').addEventListener('click', () => {
+  naProfielActie = null; openProfielMakenScherm(); zetAccountTab('inloggen');
+});
+document.getElementById('btn-status-registreren').addEventListener('click', () => {
+  naProfielActie = null; openProfielMakenScherm(); zetAccountTab('registreren');
+});
+document.getElementById('btn-status-uitloggen').addEventListener('click', () => {
+  // Gewoon account: dezelfde uitlogknop als in "Jouw profiel". Direct als beheerder ingelogd: de sitebeheer-knop.
+  if (accountUid()) document.getElementById('btn-profiel-uitloggen').click();
+  else document.getElementById('btn-sitebeheer').click();
+});
+document.getElementById('btn-status-verwijderen').addEventListener('click', () => {
+  document.getElementById('btn-profiel-badge').click();
+  document.getElementById('profiel-verwijder-paneel').hidden = false;
+});
 
 // ================================================================
 // VRIENDEN, CHAT EN DUBBELE VERZAMELING
@@ -5724,8 +5762,9 @@ if (heeftProfiel()) {
 
 // Uitloggen/verwijderen zijn er alleen voor een gewoon speler-account (niet voor de beheerder).
 document.getElementById('btn-profiel-badge').addEventListener('click', () => {
-  const isSpeler = isSpelerAccount(auth.currentUser);
-  document.getElementById('btn-profiel-uitloggen').hidden = !isSpeler;
+  // Gebaseerd op dit apparaat (niet op Firebase, dat je login pas een moment na het laden herstelt).
+  const isSpeler = !!accountUid();
+  document.getElementById('btn-profiel-uitloggen').hidden = !(isSpeler || isBeheerAccount(auth.currentUser));
   document.getElementById('btn-profiel-verwijderen').hidden = !isSpeler;
   document.getElementById('profiel-verwijder-paneel').hidden = true;
   document.getElementById('profiel-verwijder-fout').textContent = '';
@@ -5733,6 +5772,7 @@ document.getElementById('btn-profiel-badge').addEventListener('click', () => {
 });
 
 document.getElementById('btn-profiel-uitloggen').addEventListener('click', () => {
+  if (!accountUid() && isBeheerAccount(auth.currentUser)) { auth.signOut().then(() => location.reload()); return; }
   if (!confirm('Uitloggen? Je gegevens blijven veilig bewaard. Log later weer in met je gebruikersnaam en wachtwoord.')) return;
   syncAccountData().then(() => auth.signOut()).then(() => {
     wisLokaalAccount();   // het apparaat onthoudt wel dat er al een account is gemaakt
@@ -5752,7 +5792,7 @@ document.getElementById('btn-profiel-verwijder-bevestig').addEventListener('clic
   const knop = document.getElementById('btn-profiel-verwijder-bevestig');
   const ww = document.getElementById('input-profiel-verwijder-ww').value;
   fout.textContent = '';
-  if (!isSpelerAccount(user)) return;
+  if (!isSpelerAccount(user)) { fout.textContent = 'Je login wordt nog hersteld. Probeer het over een paar seconden opnieuw.'; return; }
   if (!ww) { fout.textContent = 'Vul je wachtwoord in.'; return; }
   if (!confirm('Weet je het zeker? Je account, je vrienden, je chats en de quizzen die je zelf hebt gemaakt worden voorgoed verwijderd, ook uit Firebase. Dit kan niet ongedaan worden gemaakt.')) return;
   knop.disabled = true;
