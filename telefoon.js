@@ -54,6 +54,7 @@
     } else if (soort === 'profiel') {
       var p = document.getElementById('btn-profiel-badge'); if (p) p.click();
     }
+    // (het vakje "Sitebeheer" wordt in app.js afgehandeld)
   });
 
   var bronAantal = document.getElementById('vrienden-badge-aantal');
