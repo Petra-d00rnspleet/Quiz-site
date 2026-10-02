@@ -147,6 +147,7 @@ html.telefoon .vriend-rij .beheer-knoppen { width: 100%; margin-left: 0; }
   padding: 12px 4px 10px; border-radius: 14px; text-align: center;
   background: rgba(16, 21, 46, .9); border: 1px solid #4a3c1a;
 }
-.beheer-tegel-emoji { font-size: 2.2rem; line-height: 1; }
+.beheer-tegel-poppetje { width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; line-height: 1; }
+.beheer-tegel-poppetje svg { width: 64px; height: 64px; overflow: visible; }
 .beheer-tegel-naam { font-size: .82rem; font-weight: 700; color: #f2f2f5; line-height: 1.15; overflow-wrap: anywhere; }
 html.telefoon .beheer-raster { grid-template-columns: repeat(3, minmax(0, 1fr)); }
