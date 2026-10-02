@@ -22,10 +22,10 @@
     })();
   </script>
   <title>Quiz Maker</title>
-  <link rel="stylesheet" href="style.css?v=20261001i">
-  <link rel="stylesheet" href="telefoon.css?v=20261001i">
-  <link rel="stylesheet" href="breed.css?v=20261001i">
-  <link rel="stylesheet" href="account.css?v=20261001i">
+  <link rel="stylesheet" href="style.css?v=20261002a">
+  <link rel="stylesheet" href="telefoon.css?v=20261002a">
+  <link rel="stylesheet" href="breed.css?v=20261002a">
+  <link rel="stylesheet" href="account.css?v=20261002a">
 </head>
 <body>
 
@@ -74,6 +74,7 @@
     <button type="button" data-nav="start"><span class="nav-icoon">🏠</span><small>Start</small></button>
     <button type="button" data-nav="vrienden"><span class="nav-icoon">👥<i id="nav-vrienden-aantal" class="nav-aantal" hidden>0</i></span><small>Vrienden</small></button>
     <button type="button" data-nav="profiel"><span id="nav-profiel-poppetje" class="nav-icoon nav-poppetje">👤</span><small>Profiel</small></button>
+    <button type="button" id="nav-sitebeheer" data-nav="sitebeheer" hidden><span class="nav-icoon">⚙️</span><small>Sitebeheer</small></button>
   </nav>
 
   <div class="container">
@@ -670,6 +671,19 @@
     </div>
   </div>
 
+  <!-- SITEBEHEER: alle profielen (alleen zichtbaar voor sitebeheer) -->
+  <div id="beheer-profielen-overlay" class="sitebeheer-overlay sociaal-overlay">
+    <div class="sitebeheer-venster sociaal-venster">
+      <div class="sitebeheer-icoon">⚙️</div>
+      <h3>Sitebeheer</h3>
+      <p class="subtitel">Alle profielen (<span id="beheer-profielen-aantal">0</span>). Een profiel dat je verwijdert gaat ook uit Firebase en is dan ook bij die persoon weg.</p>
+      <input type="text" id="input-beheer-zoek" class="zoekbalk" placeholder="🔍 Zoek op naam..." autocomplete="off">
+      <p id="beheer-profielen-fout" class="foutmelding"></p>
+      <div id="beheer-profielen-lijst" class="vrienden-lijst"></div>
+      <button id="beheer-profielen-sluiten" class="btn btn-secondary" type="button">Sluiten</button>
+    </div>
+  </div>
+
   <!-- POPPETJE WIJZIGEN (beeldvullend) -->
   <div id="poppetje-editor" class="poppetje-editor">
     <div class="chat-kop">
@@ -753,9 +767,9 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 
-  <script src="firebase-config.js?v=20261001i"></script>
-  <script src="poppetjes.js?v=20261001i"></script>
-  <script src="app.js?v=20261001i"></script>
-  <script src="telefoon.js?v=20261001i"></script>
+  <script src="firebase-config.js?v=20261002a"></script>
+  <script src="poppetjes.js?v=20261002a"></script>
+  <script src="app.js?v=20261002a"></script>
+  <script src="telefoon.js?v=20261002a"></script>
 </body>
 </html>
