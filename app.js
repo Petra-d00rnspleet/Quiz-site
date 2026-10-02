@@ -4,10 +4,41 @@ console.log('Quiz-site app.js versie 2026-10-01-i (weg is weg)');
 // Een profiel is nu een echt account. Onder water is dat een Firebase-account met
 // e-mail/wachtwoord; het e-mailadres is intern (uid@quizzzzz.app) en je ziet het nooit.
 // Inloggen gaat met je gebruikersnaam: we zoeken je uid op en loggen daarmee in.
-// Registreren kan maar één keer per apparaat (tot je het account verwijdert).
+// Je kunt per apparaat maximaal 2 accounts registreren (een verwijderd account telt weer niet mee).
 const ACCOUNT_DOMEIN = '@quizzzzz.app';
 const ACCOUNT_UID_SLEUTEL = 'quizAccountUid';
 const ACCOUNT_APPARAAT_SLEUTEL = 'quizAccountOpDitApparaat';
+const MAX_ACCOUNTS_PER_APPARAAT = 2;
+
+// Op dit apparaat bewaren we een lijstje met de accounts die hier zijn gemaakt of gebruikt.
+// (Vroeger stond hier alleen '1'; dat tellen we als één account.)
+function apparaatAccounts() {
+  const w = localStorage.getItem(ACCOUNT_APPARAAT_SLEUTEL);
+  if (!w) return [];
+  try {
+    const lijst = JSON.parse(w);
+    if (Array.isArray(lijst)) return lijst.filter(Boolean).map(String);
+  } catch (e) {}
+  return ['?'];
+}
+function bewaarApparaatAccounts(lijst) {
+  if (lijst.length) localStorage.setItem(ACCOUNT_APPARAAT_SLEUTEL, JSON.stringify(lijst));
+  else localStorage.removeItem(ACCOUNT_APPARAAT_SLEUTEL);
+}
+function apparaatIsVol() { return apparaatAccounts().length >= MAX_ACCOUNTS_PER_APPARAAT; }
+function voegApparaatAccountToe(uid) {
+  const lijst = apparaatAccounts();
+  if (lijst.indexOf(uid) !== -1) return;
+  const q = lijst.indexOf('?');
+  if (q !== -1) lijst[q] = uid; else lijst.push(uid);
+  bewaarApparaatAccounts(lijst);
+}
+function verwijderApparaatAccount(uid) {
+  let lijst = apparaatAccounts();
+  if (lijst.indexOf(uid) !== -1) lijst = lijst.filter(x => x !== uid);
+  else if (lijst.indexOf('?') !== -1) lijst.splice(lijst.indexOf('?'), 1);
+  bewaarApparaatAccounts(lijst);
+}
 // Deze gegevens horen bij je account en worden online bewaard (accountData/<uid>).
 const ACCOUNT_DATA_SLEUTELS = ['quizAppMunten', 'eigenQuizzen', 'quizAppGekochteBoxen', 'quizAppWielLaatsteDraai', 'quizAppWielLaatsteResultaat'];
 // Alles wat bij uitloggen van dit apparaat verdwijnt (staat online veilig bij je account).
@@ -545,8 +576,8 @@ function bevestigMakerNaam() {
   const ww2 = document.getElementById('input-reg-wachtwoord2').value;
   if (ww.length < 6) { fout.textContent = 'Het wachtwoord moet minstens 6 tekens hebben.'; return; }
   if (ww !== ww2) { fout.textContent = 'De twee wachtwoorden zijn niet hetzelfde.'; return; }
-  if (localStorage.getItem(ACCOUNT_APPARAAT_SLEUTEL)) {
-    fout.textContent = 'Op dit apparaat is al een account gemaakt. Log in met je gebruikersnaam en wachtwoord.';
+  if (apparaatIsVol()) {
+    fout.textContent = 'Op dit apparaat zijn al ' + MAX_ACCOUNTS_PER_APPARAAT + ' accounts gemaakt. Log in met je gebruikersnaam en wachtwoord, of verwijder eerst een account.';
     return;
   }
 
@@ -585,7 +616,7 @@ function bevestigMakerNaam() {
     return gebruiker.linkWithCredential(bewijs);
   }).then(() => { gekoppeld = true; return gebruiker.getIdToken(true); })
     .then(() => {
-      localStorage.setItem(ACCOUNT_APPARAAT_SLEUTEL, '1');
+      voegApparaatAccountToe(gebruiker.uid);
       localStorage.setItem(ACCOUNT_UID_SLEUTEL, gebruiker.uid);
       localStorage.setItem(MAKER_NAAM_SLEUTEL, naam);
       registratieNaam = naam;
@@ -629,8 +660,8 @@ document.getElementById('tab-account-inloggen').addEventListener('click', () => 
 });
 document.getElementById('tab-account-registreren').addEventListener('click', () => {
   const melding = document.getElementById('account-apparaat-melding');
-  if (localStorage.getItem(ACCOUNT_APPARAAT_SLEUTEL) && !sitebeheerActief) {
-    melding.textContent = 'Op dit apparaat is al een account gemaakt. Je kunt hier geen tweede account registreren. Log in met je gebruikersnaam en wachtwoord.';
+  if (apparaatIsVol() && !sitebeheerActief) {
+    melding.textContent = 'Op dit apparaat zijn al ' + MAX_ACCOUNTS_PER_APPARAAT + ' accounts gemaakt. Je kunt hier geen derde account registreren. Log in met je gebruikersnaam en wachtwoord, of verwijder eerst een account.';
     melding.hidden = false;
     zetAccountTab('inloggen');
     return;
@@ -660,7 +691,8 @@ function zetLokaalAccountVanOnline(user) {
     if (accessoires.length) localStorage.setItem(BEZIT_ACCESSOIRES_SLEUTEL, JSON.stringify(accessoires));
     if (Object.keys(aantallen).length) slaBezitAantallenOp(aantallen);
     localStorage.setItem(ACCOUNT_UID_SLEUTEL, user.uid);
-    localStorage.setItem(ACCOUNT_APPARAAT_SLEUTEL, '1');
+    // Inloggen telt als account op dit apparaat, maar blokkeert nooit het inloggen zelf.
+    voegApparaatAccountToe(user.uid);
   });
 }
 
@@ -4199,7 +4231,7 @@ function verwijderdAccountOpruimen() {
   clearTimeout(accountSyncTimer);
   const uid = accountUid();
   const naam = huidigeMakerNaam();
-  localStorage.removeItem(ACCOUNT_APPARAAT_SLEUTEL);   // je mag dan weer een nieuw account maken
+  verwijderApparaatAccount(uid);   // dit account telt niet meer mee: je mag weer een nieuw account maken
   // Wat er in de database nog van dit account over is, ruimen we op (maximaal 5 seconden proberen),
   // zodat je gebruikersnaam niet voor altijd bezet blijft.
   const opgeruimd = Promise.race([ruimOverblijfselsOp(uid, naam), new Promise(klaar => setTimeout(klaar, 5000))]);
@@ -5655,7 +5687,7 @@ document.getElementById('btn-profiel-uitloggen').addEventListener('click', () =>
   if (!accountUid() && isBeheerAccount(auth.currentUser)) { auth.signOut().then(() => location.reload()); return; }
   if (!confirm('Uitloggen? Je gegevens blijven veilig bewaard. Log later weer in met je gebruikersnaam en wachtwoord.')) return;
   syncAccountData().then(() => auth.signOut()).then(() => {
-    wisLokaalAccount();   // het apparaat onthoudt wel dat er al een account is gemaakt
+    wisLokaalAccount();   // het apparaat onthoudt wel welke accounts hier zijn gemaakt
     location.reload();
   }).catch(() => alert('Uitloggen is niet gelukt. Probeer het opnieuw.'));
 });
@@ -5705,7 +5737,7 @@ document.getElementById('btn-profiel-verwijder-bevestig').addEventListener('clic
   }).then(() => user.delete()).then(() => {
     beheerUitloggenLos();
     wisLokaalAccount();
-    localStorage.removeItem(ACCOUNT_APPARAAT_SLEUTEL);   // alleen na verwijderen kun je opnieuw registreren
+    verwijderApparaatAccount(uid);   // alleen na verwijderen is er weer ruimte voor een nieuw account
     location.reload();
   }).catch(err => {
     knop.disabled = false;
