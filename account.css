@@ -136,3 +136,17 @@ html.telefoon .vriend-rij .beheer-knoppen { width: 100%; margin-left: 0; }
   cursor: pointer; border-radius: 0 10px 10px 0;
 }
 .ww-oog:hover { color: #f0c04d; }
+
+/* Sitebeheer: lijst met alle dieren en accessoires */
+.beheer-pane { display: flex; flex-direction: column; gap: 10px; }
+.beheer-pane[hidden] { display: none; }
+.beheer-pane h4 { margin: 14px 0 0; color: #f0c04d; font-size: 1.1rem; }
+.beheer-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 10px; }
+.beheer-tegel {
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 6px;
+  padding: 12px 4px 10px; border-radius: 14px; text-align: center;
+  background: rgba(16, 21, 46, .9); border: 1px solid #4a3c1a;
+}
+.beheer-tegel-emoji { font-size: 2.2rem; line-height: 1; }
+.beheer-tegel-naam { font-size: .82rem; font-weight: 700; color: #f2f2f5; line-height: 1.15; overflow-wrap: anywhere; }
+html.telefoon .beheer-raster { grid-template-columns: repeat(3, minmax(0, 1fr)); }
