@@ -1,4 +1,4 @@
-console.log('Quiz-site app.js versie 2026-10-01-h (beeldvullend)');
+console.log('Quiz-site app.js versie 2026-10-01-i (weg is weg)');
 // ---------- Accounts (gebruikersnaam + wachtwoord) ----------
 //
 // Een profiel is nu een echt account. Onder water is dat een Firebase-account met
@@ -285,9 +285,12 @@ auth.onAuthStateChanged(gebruiker => {
   // Ingelogd account: haal de nieuwste munten/quizzen op en stuur lokale gegevens door.
   if (isSpelerAccount(gebruiker) && gebruiker.uid === accountUid() && !accountDataGehaald) {
     accountDataGehaald = true;
-    haalAccountData(gebruiker.uid, false).then(veranderd => {
-      if (veranderd && typeof werkMuntenWeergaveBij === 'function') werkMuntenWeergaveBij();
-      return syncAccountData();
+    accountIsVerdwenen().then(weg => {
+      if (weg) { verwijderdAccountOpruimen(); return null; }
+      return haalAccountData(gebruiker.uid, false).then(veranderd => {
+        if (veranderd && typeof werkMuntenWeergaveBij === 'function') werkMuntenWeergaveBij();
+        return syncAccountData();
+      });
     }).catch(() => {});
   }
   if (gebruiker && !gebruiker.isAnonymous) {
@@ -4344,8 +4347,89 @@ function laadOnlineBezitVoorEigenProfiel() {
   }, () => {});
 }
 
+// ---------- Bestaat het account nog in Firebase? ----------
+// Is het account uit Firebase gehaald (Authentication of de database), dan moet het ook van de site
+// verdwijnen: je wordt uitgelogd en er wordt niets meer teruggeschreven.
+let accountWeg = false;
+let accountGecontroleerdUid = null;
+let accountControleBezig = false;
+
+function accountIsVerdwenen() {   // geeft een belofte: true = het account bestaat niet meer
+  const lokaal = accountUid();
+  const u = auth.currentUser;
+  const naam = huidigeMakerNaam();
+  if (!lokaal || !naam || !u || u.uid !== lokaal || u.isAnonymous) return Promise.resolve(false);
+  return u.reload().then(() => Promise.all([
+    db.ref('gebruikers/' + lokaal + '/gebruikersnaam').once('value'),
+    db.ref('gebruikersnamen/' + naamSleutel(normaliseerGebruikersnaam(naam))).once('value')
+  ])).then(res => !res[0].exists() && res[1].val() !== lokaal).catch(err => {
+    const c = err && err.code;
+    return c === 'auth/user-not-found' || c === 'auth/user-token-expired' || c === 'auth/invalid-user-token' || c === 'auth/user-disabled';
+  });
+}
+
+function ruimOverblijfselsOp(uid, naam) {
+  if (!uid) return Promise.resolve();
+  const sleutel = naam ? naamSleutel(normaliseerGebruikersnaam(naam)) : null;
+  return Promise.all([
+    db.ref('vrienden/' + uid).once('value').catch(() => null),
+    sleutel ? db.ref('gebruikersnamen/' + sleutel).once('value').catch(() => null) : null
+  ]).then(res => {
+    const kern = {};
+    kern['gebruikers/' + uid] = null; kern['accountData/' + uid] = null; kern['beheerders/' + uid] = null;
+    if (res[1] && res[1].val() === uid) kern['gebruikersnamen/' + sleutel] = null;
+    const vrienden = {};
+    const lijst = res[0] && res[0].val() ? Object.keys(res[0].val()) : [];
+    lijst.forEach(f => { vrienden['vrienden/' + f + '/' + uid] = null; vrienden['vrienden/' + uid + '/' + f] = null; vrienden['chats/' + chatIdVoor(uid, f)] = null; });
+    return db.ref().update(kern).catch(() => {}).then(() => (lijst.length ? db.ref().update(vrienden).catch(() => {}) : null));
+  }).catch(() => {});
+}
+
+function verwijderdAccountOpruimen() {
+  if (accountWeg) return;
+  accountWeg = true;
+  accountWordtVerwijderd = true;   // vanaf nu schrijft de site niets meer terug
+  clearTimeout(accountSyncTimer);
+  const uid = accountUid();
+  const naam = huidigeMakerNaam();
+  localStorage.removeItem(ACCOUNT_APPARAAT_SLEUTEL);   // je mag dan weer een nieuw account maken
+  // Wat er in de database nog van dit account over is, ruimen we op (maximaal 5 seconden proberen),
+  // zodat je gebruikersnaam niet voor altijd bezet blijft.
+  const opgeruimd = Promise.race([ruimOverblijfselsOp(uid, naam), new Promise(klaar => setTimeout(klaar, 5000))]);
+  wisLokaalAccount();
+  opgeruimd.then(() => auth.signOut()).catch(() => {}).then(() => {
+    alert('Dit account bestaat niet meer (het is uit Firebase verwijderd). Je bent uitgelogd.');
+    location.reload();
+  });
+}
+
+function controleerAccountBestaat() {
+  if (accountWeg || accountWordtVerwijderd || accountControleBezig || !accountUid()) return;
+  const scherm = document.getElementById('scherm-naam-invullen');
+  if (scherm && scherm.classList.contains('actief')) return;   // je bent net aan het inloggen of registreren
+  accountControleBezig = true;
+  accountIsVerdwenen().then(weg => { if (weg) verwijderdAccountOpruimen(); }).catch(() => {}).then(() => { accountControleBezig = false; });
+}
+setInterval(controleerAccountBestaat, 20000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) controleerAccountBestaat(); });
+window.addEventListener('focus', controleerAccountBestaat);
+
 function laadSocialeGegevens() {
   if (!auth || !auth.currentUser) return;
+  const lokaal = accountUid();
+  if (lokaal && accountGecontroleerdUid !== lokaal && !accountWeg) {
+    // Eerst kijken of het account nog bestaat; anders zou het hieronder weer worden teruggeschreven.
+    if (accountControleBezig) return;
+    accountControleBezig = true;
+    accountIsVerdwenen().then(weg => {
+      accountControleBezig = false;
+      if (weg) { verwijderdAccountOpruimen(); return; }
+      accountGecontroleerdUid = lokaal;
+      laadSocialeGegevens();
+    }).catch(() => { accountControleBezig = false; });
+    return;
+  }
+  if (accountWeg) return;
   if (heeftProfiel()) {
     registreerSociaalProfiel();
     laadOnlineBezitVoorEigenProfiel();
