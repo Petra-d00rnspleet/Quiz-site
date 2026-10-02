@@ -22,10 +22,10 @@
     })();
   </script>
   <title>Quiz Maker</title>
-  <link rel="stylesheet" href="style.css?v=20261002d">
-  <link rel="stylesheet" href="telefoon.css?v=20261002d">
-  <link rel="stylesheet" href="breed.css?v=20261002d">
-  <link rel="stylesheet" href="account.css?v=20261002d">
+  <link rel="stylesheet" href="style.css?v=20261002e">
+  <link rel="stylesheet" href="telefoon.css?v=20261002e">
+  <link rel="stylesheet" href="breed.css?v=20261002e">
+  <link rel="stylesheet" href="account.css?v=20261002e">
 </head>
 <body>
 
@@ -683,10 +683,25 @@
     <div class="sitebeheer-venster sociaal-venster">
       <div class="sitebeheer-icoon">⚙️</div>
       <h3>Sitebeheer</h3>
-      <p class="subtitel">Alle profielen (<span id="beheer-profielen-aantal">0</span>). Een profiel dat je verwijdert gaat ook uit Firebase en is dan ook bij die persoon weg.</p>
-      <input type="text" id="input-beheer-zoek" class="zoekbalk" placeholder="🔍 Zoek op naam..." autocomplete="off">
-      <p id="beheer-profielen-fout" class="foutmelding"></p>
-      <div id="beheer-profielen-lijst" class="vrienden-lijst"></div>
+      <div class="account-tabs">
+        <button type="button" id="beheer-tab-profielen" class="btn btn-secondary actief">👥 Profielen</button>
+        <button type="button" id="beheer-tab-dieren" class="btn btn-secondary">🐾 Dieren</button>
+      </div>
+
+      <div id="beheer-pane-profielen" class="beheer-pane">
+        <p class="subtitel">Alle profielen (<span id="beheer-profielen-aantal">0</span>). Een profiel dat je verwijdert gaat ook uit Firebase en is dan ook bij die persoon weg.</p>
+        <input type="text" id="input-beheer-zoek" class="zoekbalk" placeholder="🔍 Zoek op naam..." autocomplete="off">
+        <p id="beheer-profielen-fout" class="foutmelding"></p>
+        <div id="beheer-profielen-lijst" class="vrienden-lijst"></div>
+      </div>
+
+      <div id="beheer-pane-dieren" class="beheer-pane" hidden>
+        <h4>Poppetjes (<span id="beheer-dieren-aantal">0</span>)</h4>
+        <div id="beheer-dieren-raster" class="beheer-raster"></div>
+        <h4>Accessoires (<span id="beheer-accessoires-aantal">0</span>)</h4>
+        <div id="beheer-accessoires-raster" class="beheer-raster"></div>
+      </div>
+
       <button id="beheer-profielen-sluiten" class="btn btn-secondary" type="button">Sluiten</button>
     </div>
   </div>
@@ -774,9 +789,9 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 
-  <script src="firebase-config.js?v=20261002d"></script>
-  <script src="poppetjes.js?v=20261002d"></script>
-  <script src="app.js?v=20261002d"></script>
-  <script src="telefoon.js?v=20261002d"></script>
+  <script src="firebase-config.js?v=20261002e"></script>
+  <script src="poppetjes.js?v=20261002e"></script>
+  <script src="app.js?v=20261002e"></script>
+  <script src="telefoon.js?v=20261002e"></script>
 </body>
 </html>
