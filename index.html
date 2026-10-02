@@ -22,10 +22,10 @@
     })();
   </script>
   <title>Quiz Maker</title>
-  <link rel="stylesheet" href="style.css?v=20261001d">
-  <link rel="stylesheet" href="telefoon.css?v=20261001d">
-  <link rel="stylesheet" href="breed.css?v=20261001d">
-  <link rel="stylesheet" href="account.css?v=20261001d">
+  <link rel="stylesheet" href="style.css?v=20261001f">
+  <link rel="stylesheet" href="telefoon.css?v=20261001f">
+  <link rel="stylesheet" href="breed.css?v=20261001f">
+  <link rel="stylesheet" href="account.css?v=20261001f">
 </head>
 <body>
 
@@ -217,6 +217,16 @@
           <input type="password" id="input-reg-wachtwoord" autocomplete="new-password">
           <label for="input-reg-wachtwoord2">Wachtwoord nog een keer</label>
           <input type="password" id="input-reg-wachtwoord2" autocomplete="new-password">
+        </div>
+        <div id="reg-beheer-keuze" class="account-blok">
+          <label class="openbaar-optie"><input type="checkbox" id="reg-is-beheer"> Sitebeheer account</label>
+          <div id="reg-beheer-velden" class="account-blok" hidden>
+            <p class="subtitel">Vul het e-mailadres en wachtwoord van sitebeheer in. Is dat goed, dan wordt dit account automatisch aan sitebeheer gekoppeld.</p>
+            <label for="input-reg-beheer-email">E-mailadres sitebeheer</label>
+            <input type="text" id="input-reg-beheer-email" placeholder="naam@voorbeeld.nl" autocomplete="off" autocapitalize="off">
+            <label for="input-reg-beheer-ww">Wachtwoord sitebeheer</label>
+            <input type="password" id="input-reg-beheer-ww" autocomplete="off">
+          </div>
         </div>
         <button class="btn btn-primary" id="btn-naam-bevestigen" type="button">Account maken</button>
         <p id="naam-invullen-foutmelding" class="foutmelding"></p>
@@ -475,7 +485,7 @@
     <div class="sitebeheer-venster">
       <div class="sitebeheer-icoon">🔐</div>
       <h3>Sitebeheer</h3>
-      <p class="subtitel">Log in met het beheerdersaccount. Daarna kun je bij "Speelbare quizzen" quizzen uit die lijst verwijderen.</p>
+      <p class="subtitel" id="sitebeheer-uitleg">Log in met het beheerdersaccount. Daarna kun je bij "Speelbare quizzen" quizzen uit die lijst verwijderen.</p>
 
       <label for="input-sitebeheer-email">E-mailadres</label>
       <input type="email" id="input-sitebeheer-email" placeholder="naam@voorbeeld.nl" autocomplete="username">
@@ -732,9 +742,9 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 
-  <script src="firebase-config.js?v=20261001d"></script>
-  <script src="poppetjes.js?v=20261001d"></script>
-  <script src="app.js?v=20261001d"></script>
-  <script src="telefoon.js?v=20261001d"></script>
+  <script src="firebase-config.js?v=20261001f"></script>
+  <script src="poppetjes.js?v=20261001f"></script>
+  <script src="app.js?v=20261001f"></script>
+  <script src="telefoon.js?v=20261001f"></script>
 </body>
 </html>
