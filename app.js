@@ -5979,3 +5979,37 @@ function laadBezoekQuizzen() {
     lijstEl.innerHTML = '<p class="foutmelding">Laden mislukt: ' + escapeHtml(accountFoutTekst(err)) + '</p>';
   });
 }
+
+
+// ================================================================
+// WACHTWOORD ZICHTBAAR MAKEN: een oogje bij elk wachtwoordveld
+// ================================================================
+(function oogjesBijWachtwoorden() {
+  document.querySelectorAll('input[type="password"]').forEach(veld => {
+    if (veld.parentNode.classList.contains('ww-wrap')) return;
+    const wrap = document.createElement('span');
+    wrap.className = 'ww-wrap';
+    veld.parentNode.insertBefore(wrap, veld);
+    wrap.appendChild(veld);
+
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'ww-oog';
+    knop.textContent = '👁';
+    knop.setAttribute('aria-label', 'Wachtwoord tonen');
+    knop.setAttribute('aria-pressed', 'false');
+    knop.tabIndex = -1;
+    // Niet het veld laten loslaten (anders verdwijnt op de telefoon het toetsenbord).
+    knop.addEventListener('mousedown', e => e.preventDefault());
+    knop.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+    knop.addEventListener('click', () => {
+      const zichtbaar = veld.type === 'password';
+      veld.type = zichtbaar ? 'text' : 'password';
+      knop.textContent = zichtbaar ? '🙈' : '👁';
+      knop.setAttribute('aria-label', zichtbaar ? 'Wachtwoord verbergen' : 'Wachtwoord tonen');
+      knop.setAttribute('aria-pressed', zichtbaar ? 'true' : 'false');
+      veld.focus();
+    });
+    wrap.appendChild(knop);
+  });
+})();
