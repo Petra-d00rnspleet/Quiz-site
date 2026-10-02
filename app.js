@@ -480,8 +480,12 @@ function koppelMakerNaamAanEigenQuizzen() {
       db.ref('quizzen/' + q.code).once('value').then(snapshot => {
         // Alleen bijwerken als de quiz nog bestaat en nog geen naam heeft
         // (anders zouden we een verwijderde quiz per ongeluk opnieuw aanmaken).
-        if (snapshot.child('titel').exists() && !snapshot.child('makerNaam').val()) {
-          return db.ref('quizzen/' + q.code + '/makerNaam').set(naam);
+        if (snapshot.child('titel').exists()) {
+          const uid = accountUid();
+          const stappen = [];
+          if (!snapshot.child('makerNaam').val()) stappen.push(db.ref('quizzen/' + q.code + '/makerNaam').set(naam));
+          if (uid && !snapshot.child('makerUid').val()) stappen.push(db.ref('quizzen/' + q.code + '/makerUid').set(uid));
+          return Promise.all(stappen);
         }
       }).catch(() => {})
     )
@@ -1338,6 +1342,7 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
     tijdslimiet: tijdslimiet,
     geblokkeerd: false,
     makerNaam: huidigeMakerNaam() || '',
+    makerUid: accountUid() || (auth.currentUser ? auth.currentUser.uid : ''),
     aangemaaktOp: Date.now()
   };
 
@@ -5903,7 +5908,16 @@ function laadBezoekQuizzen() {
   const uitAccount = db.ref('accountData/' + uid + '/eigenQuizzen').once('value').then(sn => {
     try { return (JSON.parse(sn.val() || '[]') || []).filter(q => q && q.code && !q.gedeeldVan).map(q => q.code); } catch (e) { return []; }
   }).catch(() => []);
-  const opNaam = db.ref('quizzen').orderByChild('makerNaam').equalTo(naam).once('value').then(sn => Object.keys(sn.val() || {})).catch(() => []);
+  // Alle quizzen doorlopen (ook niet-openbare): van deze persoon als de maker-uid klopt of de makernaam
+  // (hoofdletters maken niet uit) overeenkomt. Zo vind je ook oudere quizzen zonder uid.
+  const zoekNaam = normaliseerGebruikersnaam(naam);
+  const opNaam = db.ref('quizzen').once('value').then(sn => {
+    const alle = sn.val() || {};
+    return Object.keys(alle).filter(c => {
+      const q = alle[c] || {};
+      return q.makerUid === uid || (q.makerNaam && normaliseerGebruikersnaam(q.makerNaam) === zoekNaam);
+    });
+  }).catch(() => []);
 
   Promise.all([uitAccount, opNaam]).then(([a, b]) => {
     const codes = Array.from(new Set(a.concat(b)));
