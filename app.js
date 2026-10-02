@@ -791,7 +791,9 @@ document.getElementById('btn-nieuwe-quiz-terug').addEventListener('click', () =>
   huidigeBewerkCode = null;
   huidigeBewerkTerugScherm = 'scherm-quizmaken';
   toonScherm(bestemming);
-  if (bestemming === 'scherm-speelbare-quizzen') {
+  if (bestemming === 'scherm-beheer-bezoek') {
+    laadBezoekQuizzen();
+  } else if (bestemming === 'scherm-speelbare-quizzen') {
     laadOpenbareQuizzen();
   } else {
     laadEigenQuizzen();
@@ -1311,7 +1313,9 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
         huidigeBewerkCode = null;
         huidigeBewerkTerugScherm = 'scherm-quizmaken';
         toonScherm(terugScherm);
-        if (terugScherm === 'scherm-speelbare-quizzen') {
+        if (terugScherm === 'scherm-beheer-bezoek') {
+          laadBezoekQuizzen();
+        } else if (terugScherm === 'scherm-speelbare-quizzen') {
           laadOpenbareQuizzen();
         } else {
           laadEigenQuizzen();
@@ -5735,8 +5739,10 @@ function bouwBeheerProfielenHtml(zoek) {
     return '<div class="vriend-rij">' +
       '<span class="vriend-mini-poppetje" aria-hidden="true">' + (p.dier ? escapeHtml(p.dier) : '👤') + '</span>' +
       '<strong>' + escapeHtml(p.naam) + '</strong>' +
-      (isIk ? '<span class="subtitel">Dit ben jij</span>'
-            : '<button type="button" class="btn btn-secondary beheer-profiel-verwijder" data-uid="' + escapeHtml(p.uid) + '">🗑 Verwijderen</button>') +
+      '<div class="beheer-knoppen">' +
+      '<button type="button" class="btn btn-secondary beheer-profiel-bezoek" data-uid="' + escapeHtml(p.uid) + '">👀 Bezoeken</button>' +
+      (isIk ? '' : '<button type="button" class="btn btn-secondary beheer-profiel-verwijder" data-uid="' + escapeHtml(p.uid) + '">🗑 Verwijderen</button>') +
+      '</div>' +
       '</div>';
   }).join('');
 }
@@ -5827,6 +5833,8 @@ document.getElementById('beheer-profielen-sluiten').addEventListener('click', ()
 });
 document.getElementById('input-beheer-zoek').addEventListener('input', toonBeheerProfielen);
 document.getElementById('beheer-profielen-lijst').addEventListener('click', e => {
+  const bezoek = e.target.closest('.beheer-profiel-bezoek');
+  if (bezoek) { bezoekProfiel(bezoek.dataset.uid); return; }
   const knop = e.target.closest('.beheer-profiel-verwijder');
   if (!knop) return;
   knop.disabled = true;
@@ -5859,3 +5867,101 @@ werkBeheerNavBij();
     }, () => {});
   }, 2000);
 })();
+
+
+// ================================================================
+// SITEBEHEER: EEN PROFIEL BEZOEKEN (quizzen van die persoon bekijken, aanpassen en verwijderen)
+// ================================================================
+
+let bezoekProfiel_ = null;   // {uid, naam}
+
+function bezoekProfiel(uid) {
+  const p = beheerProfielen.find(x => x.uid === uid);
+  if (!p || !sitebeheerActief) return;
+  bezoekProfiel_ = { uid: p.uid, naam: p.naam };
+  document.getElementById('beheer-profielen-overlay').classList.remove('actief');
+  toonScherm('scherm-beheer-bezoek');
+  window.scrollTo(0, 0);
+  laadBezoekQuizzen();
+}
+
+document.getElementById('btn-beheer-bezoek-terug').addEventListener('click', () => {
+  bezoekProfiel_ = null;
+  toonScherm('scherm-algemeen');
+  openBeheerProfielen();
+});
+
+function laadBezoekQuizzen() {
+  const lijstEl = document.getElementById('lijst-bezoek-quizzen');
+  const kopEl = document.getElementById('beheer-bezoek-kop');
+  if (!bezoekProfiel_) { lijstEl.innerHTML = ''; return; }
+  const { uid, naam } = bezoekProfiel_;
+  kopEl.textContent = 'Quizzen van ' + naam;
+  lijstEl.innerHTML = '<p class="voortgang">Quizzen laden...</p>';
+
+  // Codes uit het account van die persoon + quizzen waar zijn/haar naam als maker bij staat.
+  const uitAccount = db.ref('accountData/' + uid + '/eigenQuizzen').once('value').then(sn => {
+    try { return (JSON.parse(sn.val() || '[]') || []).filter(q => q && q.code && !q.gedeeldVan).map(q => q.code); } catch (e) { return []; }
+  }).catch(() => []);
+  const opNaam = db.ref('quizzen').orderByChild('makerNaam').equalTo(naam).once('value').then(sn => Object.keys(sn.val() || {})).catch(() => []);
+
+  Promise.all([uitAccount, opNaam]).then(([a, b]) => {
+    const codes = Array.from(new Set(a.concat(b)));
+    return Promise.all(codes.map(code => db.ref('quizzen/' + code).once('value').then(sn => (sn.val() ? { code: code, quiz: sn.val() } : null)).catch(() => null)));
+  }).then(lijst => {
+    if (!bezoekProfiel_ || bezoekProfiel_.uid !== uid) return;
+    const quizzen = lijst.filter(Boolean);
+    lijstEl.innerHTML = '';
+    if (quizzen.length === 0) {
+      lijstEl.innerHTML = '<p class="voortgang">' + escapeHtml(naam) + ' heeft nog geen quizzen gemaakt.</p>';
+      return;
+    }
+    quizzen.forEach(({ code, quiz }) => {
+      const item = document.createElement('div');
+      item.className = 'quiz-item';
+
+      const img = document.createElement('img');
+      img.className = 'quiz-item-afbeelding';
+      img.src = quiz.afbeelding || STANDAARD_OMSLAGEN[0].url;
+      img.alt = quiz.titel || '';
+
+      const body = document.createElement('div');
+      body.className = 'quiz-item-body';
+      const info = document.createElement('div');
+      info.className = 'quiz-item-info';
+      const aantal = Array.isArray(quiz.vragen) ? quiz.vragen.length : 0;
+      info.innerHTML = '<strong>' + escapeHtml(quiz.titel || 'Zonder titel') + '</strong><span>' + aantal + ' vraag/vragen · ' + escapeHtml(code) +
+        (quiz.openbaar ? ' · Openbaar' : '') + (quiz.geblokkeerd ? ' · Geblokkeerd' : '') + '</span>';
+
+      const knoppen = document.createElement('div');
+      knoppen.className = 'quiz-item-knoppen';
+
+      const aanpassen = document.createElement('button');
+      aanpassen.className = 'btn-aanpassen-quiz';
+      aanpassen.textContent = 'Aanpassen';
+      aanpassen.addEventListener('click', () => startBewerkenVanQuiz(code, 'scherm-beheer-bezoek'));
+
+      const verwijder = document.createElement('button');
+      verwijder.className = 'btn-verwijderen-quiz';
+      verwijder.textContent = 'Verwijderen';
+      verwijder.addEventListener('click', () => {
+        if (!confirm('Quiz "' + (quiz.titel || code) + '" van ' + naam + ' voorgoed verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
+        verwijder.disabled = true;
+        db.ref('quizzen/' + code).remove()
+          .then(() => db.ref('sessies/' + code).remove().catch(() => {}))
+          .then(() => laadBezoekQuizzen())
+          .catch(err => { verwijder.disabled = false; alert('Verwijderen mislukt: ' + accountFoutTekst(err)); });
+      });
+
+      knoppen.appendChild(aanpassen);
+      knoppen.appendChild(verwijder);
+      body.appendChild(info);
+      body.appendChild(knoppen);
+      item.appendChild(img);
+      item.appendChild(body);
+      lijstEl.appendChild(item);
+    });
+  }).catch(err => {
+    lijstEl.innerHTML = '<p class="foutmelding">Laden mislukt: ' + escapeHtml(accountFoutTekst(err)) + '</p>';
+  });
+}
