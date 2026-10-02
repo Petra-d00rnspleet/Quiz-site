@@ -1,4 +1,4 @@
-console.log('Quiz-site app.js versie 2026-10-01-g (statuskaart)');
+console.log('Quiz-site app.js versie 2026-10-01-h (beeldvullend)');
 // ---------- Accounts (gebruikersnaam + wachtwoord) ----------
 //
 // Een profiel is nu een echt account. Onder water is dat een Firebase-account met
@@ -3954,21 +3954,15 @@ function werkVakSlotjesBij() {
 // Duidelijke statuskaart op het startscherm: ben je ingelogd of niet, en waar zijn Uitloggen / Verwijderen.
 function werkAccountStatusBij() {
   const uit = document.getElementById('account-status-uit');
-  const inn = document.getElementById('account-status-in');
-  if (!uit || !inn) return;
+  if (!uit) return;
   const ingelogd = heeftProfiel();
-  uit.hidden = ingelogd;
-  inn.hidden = !ingelogd;
-  if (ingelogd) {
-    const speler = !!accountUid();
-    const beheer = sitebeheerActief ? ' · 🔓 sitebeheer' : '';
-    document.getElementById('account-status-naam').textContent = '👤 Ingelogd als ' + huidigeMakerNaam() + beheer;
-    document.getElementById('btn-status-uitloggen').hidden = false;
-    document.getElementById('btn-status-verwijderen').hidden = !speler;
-  } else {
+  uit.hidden = ingelogd;   // alleen zichtbaar als je NIET bent ingelogd
+  const kaart = document.getElementById('account-status');
+  if (kaart) kaart.hidden = ingelogd;
+  if (!ingelogd) {
     const oud = huidigeMakerNaam();
     document.getElementById('account-status-oud').textContent = oud
-      ? 'Je profiel "' + oud + '" is van vóór de accounts en heeft nog geen wachtwoord. Klik op Registreren en maak er een account van.'
+      ? 'Je profiel \"' + oud + '\" is van vóór de accounts en heeft nog geen wachtwoord. Klik op Registreren en maak er een account van.'
       : '';
   }
 }
@@ -4213,15 +4207,6 @@ document.getElementById('btn-status-inloggen').addEventListener('click', () => {
 });
 document.getElementById('btn-status-registreren').addEventListener('click', () => {
   naProfielActie = null; openProfielMakenScherm(); zetAccountTab('registreren');
-});
-document.getElementById('btn-status-uitloggen').addEventListener('click', () => {
-  // Gewoon account: dezelfde uitlogknop als in "Jouw profiel". Direct als beheerder ingelogd: de sitebeheer-knop.
-  if (accountUid()) document.getElementById('btn-profiel-uitloggen').click();
-  else document.getElementById('btn-sitebeheer').click();
-});
-document.getElementById('btn-status-verwijderen').addEventListener('click', () => {
-  document.getElementById('btn-profiel-badge').click();
-  document.getElementById('profiel-verwijder-paneel').hidden = false;
 });
 
 // ================================================================
