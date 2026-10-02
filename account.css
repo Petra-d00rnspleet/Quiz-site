@@ -118,3 +118,6 @@ html.telefoon #scherm-algemeen .vak { min-height: 112px; height: auto; }
 .sitebeheer-overlay .sitebeheer-venster > .sitebeheer-icoon { width: 54px; max-width: 54px; flex: 0 0 auto; }
 .sitebeheer-overlay .sitebeheer-venster > .profiel-overlay-poppetje { width: 120px; max-width: 120px; flex: 0 0 auto; }
 #btn-vrienden-toevoegen { width: 100%; }
+
+/* Sitebeheer-vakje in de balk: alleen zichtbaar voor sitebeheer */
+.telefoon-nav button[hidden] { display: none !important; }
