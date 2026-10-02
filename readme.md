@@ -363,7 +363,8 @@ Plak dit in Realtime Database → Regels → Publiceren. Dezelfde tekst staat in
             ".write": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid)) && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid && data.child('status').val() !== 'bezig') || (data.exists() && newData.exists() && newData.child('uid').val() === data.child('uid').val() && newData.child('tekst').val() === data.child('tekst').val() && newData.child('type').val() === data.child('type').val() && newData.child('item').val() === data.child('item').val() && newData.child('soort').val() === data.child('soort').val() && newData.child('code').val() === data.child('code').val() && newData.child('aan').val() === data.child('aan').val()))",
             ".validate": "newData.hasChildren(['uid', 'gebruikersnaam']) && (!newData.hasChild('tekst') || (newData.child('tekst').isString() && newData.child('tekst').val().length <= 500)) && (!newData.hasChild('status') || newData.child('status').val() === 'open' || newData.child('status').val() === 'bezig' || newData.child('status').val() === 'geaccepteerd' || newData.child('status').val() === 'geweigerd' || newData.child('status').val() === 'mislukt')"
           }
-        }
+        },
+        ".write": "auth != null && !newData.exists() && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid))"
       }
     },
     "accountData": {
@@ -373,6 +374,13 @@ Plak dit in Realtime Database → Regels → Publiceren. Dezelfde tekst staat in
         "$sleutel": {
           ".validate": "newData.isString() && newData.val().length <= 100000"
         }
+      }
+    },
+    "beheerders": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && ((auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/)) || (auth.uid === $uid && !newData.exists()))",
+        ".validate": "newData.val() === true"
       }
     }
   }
@@ -398,3 +406,6 @@ Wijzigingslogboek
 - 2026-09-28 (app): profielpoppetje voor de naam in de chat, vriendenlijst en verzoeken; duidelijke melding als anoniem aanmelden mislukt; foutmelding bij een chatbericht dat niet verstuurd kan worden. Bestanden: app.js, index.html, style.css.
 - 2026-09-30 (app): vrienden verwijderen (🗑 bij elke vriend; je verdwijnt ook uit de lijst van de ander, met de bestaande regels; geen nieuwe regels nodig). Profielpoppetje: keuze wordt nu ook online opgeslagen (vrienden zien het), een profiel zonder opgeslagen dier krijgt automatisch je eerste dier, en de lijst springt niet meer naar boven bij het kiezen. Telefoonversie: nieuwe bestanden telefoon.css en telefoon.js (samen met index.html, style.css en app.js op de site zetten). Op de telefoon: onderbalk (Start, Vrienden, Profiel), tegels op het startscherm, vensters die van onderen omhoogschuiven, grotere knoppen; de laptop blijft ongewijzigd. Elk apparaat houdt zijn eigen profiel.
 - 2026-10-01: regel voor accountData/<uid> toegevoegd (nodig voor account verwijderen en voor het meenemen van munten/quizzen naar een ander apparaat bij inloggen). Publiceer de nieuwe firebase-rules.json.
+- 2026-10-01 (sitebeheer koppelen): bij Registreren kun je "Sitebeheer account" aanvinken en het e-mailadres + wachtwoord van sitebeheer invullen. Klopt dat, dan wordt je account gekoppeld (beheerders/<uid> = true) en blijf je gewoon met je eigen account ingelogd. Heb je al een account? Klik onderaan op "Sitebeheer" om te koppelen; klik nogmaals om los te koppelen. Nieuwe regel: beheerders/<uid>. Publiceer firebase-rules.json opnieuw.
+- 2026-10-01 (account verwijderen): wist nu ook je chats met vrienden, de quizzen die je zelf hebt gemaakt (en hun sessies), je sitebeheer-koppeling en het account zelf uit Authentication. Nieuwe regel: een deelnemer mag een hele chat verwijderen (chats/<id>). Publiceer firebase-rules.json opnieuw.
+- 2026-10-01 (blijf ingelogd): de site wacht eerst tot Firebase je opgeslagen login heeft hersteld voordat er een anoniem account wordt gemaakt.
