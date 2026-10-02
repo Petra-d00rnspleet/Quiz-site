@@ -121,3 +121,8 @@ html.telefoon #scherm-algemeen .vak { min-height: 112px; height: auto; }
 
 /* Sitebeheer-vakje in de balk: alleen zichtbaar voor sitebeheer */
 .telefoon-nav button[hidden] { display: none !important; }
+
+/* Sitebeheer: knoppen bij een profiel (Bezoeken / Verwijderen) */
+.vriend-rij .beheer-knoppen { display: flex; gap: 8px; margin-left: auto; }
+.beheer-knoppen .btn { flex: 1 1 auto; }
+html.telefoon .vriend-rij .beheer-knoppen { width: 100%; margin-left: 0; }
