@@ -1,7 +1,7 @@
 /* account.css — opmaak voor inloggen, registreren en het profiel (wachtwoordvelden) */
 
 /* Wachtwoordvelden zien er precies uit als de andere invoervelden */
-input[type="password"] {
+input[type="password"], .ww-wrap input {
   padding: 12px 14px;
   border-radius: 10px;
   border: 1px solid #4a3c1a;
@@ -11,8 +11,8 @@ input[type="password"] {
   width: 100%;
   box-sizing: border-box;
 }
-input[type="password"]::placeholder { color: #6b6580; }
-input[type="password"]:focus {
+input[type="password"]::placeholder, .ww-wrap input::placeholder { color: #6b6580; }
+input[type="password"]:focus, .ww-wrap input:focus {
   outline: none;
   border-color: #f0c04d;
   box-shadow: 0 0 0 1px #f0c04d;
@@ -33,7 +33,7 @@ input[type="password"]:focus {
 .profiel-naam-paneel[hidden] { display: none; }
 
 /* iPhones zoomen niet in bij 16px */
-html.telefoon input[type="password"], html.tablet input[type="password"] {
+html.telefoon input[type="password"], html.tablet input[type="password"], html.telefoon .ww-wrap input, html.tablet .ww-wrap input {
   font-size: 16px; min-height: 50px; border-radius: 14px;
 }
 
@@ -126,3 +126,13 @@ html.telefoon #scherm-algemeen .vak { min-height: 112px; height: auto; }
 .vriend-rij .beheer-knoppen { display: flex; gap: 8px; margin-left: auto; }
 .beheer-knoppen .btn { flex: 1 1 auto; }
 html.telefoon .vriend-rij .beheer-knoppen { width: 100%; margin-left: 0; }
+
+/* Oogje om het wachtwoord te laten zien */
+.ww-wrap { position: relative; display: block; width: 100%; }
+.ww-wrap input { padding-right: 48px !important; }
+.ww-oog {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 46px;
+  border: 0; background: none; color: #c9c5d6; font-size: 20px; line-height: 1;
+  cursor: pointer; border-radius: 0 10px 10px 0;
+}
+.ww-oog:hover { color: #f0c04d; }
