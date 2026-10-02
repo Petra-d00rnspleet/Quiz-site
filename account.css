@@ -50,3 +50,71 @@ html.telefoon input[type="password"], html.tablet input[type="password"] {
 .account-status .subtitel:empty { display: none; }
 .account-status-knoppen { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; }
 .account-status-knoppen .btn { flex: 1 1 160px; }
+
+/* ===================================================================
+   BEELDVULLEND: alle vensters (profiel, vrienden, sitebeheer, enz.)
+   vullen het hele scherm. Geen kleine vakken in het midden meer.
+   =================================================================== */
+#btn-sitebeheer { display: none !important; }   /* sitebeheer koppel je nu bij het registreren */
+
+.sitebeheer-overlay,
+html.telefoon .sitebeheer-overlay,
+html.telefoon .sitebeheer-overlay.profiel-overlay {
+  padding: 0 !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+  background: radial-gradient(ellipse 120% 70% at 50% -10%, #16204a 0%, #0a1130 45%, #05081c 100%) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.sitebeheer-overlay .sitebeheer-venster,
+html.telefoon .sitebeheer-overlay .sitebeheer-venster,
+html.telefoon .sitebeheer-venster, html.telefoon .sociaal-venster, html.telefoon .profiel-venster,
+html.breed .sitebeheer-venster, html.breed .sociaal-venster {
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;
+  max-height: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  animation: none !important;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: calc(28px + env(safe-area-inset-top, 0px)) clamp(18px, 6vw, 96px) calc(28px + env(safe-area-inset-bottom, 0px)) !important;
+  justify-content: flex-start;
+}
+html.telefoon .sitebeheer-venster::before { display: none !important; }
+/* Inhoud netjes in het midden, maar het venster zelf vult alles */
+.sitebeheer-overlay .sitebeheer-venster > * {
+  width: 100%;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+.sitebeheer-overlay .sitebeheer-venster .btn { min-height: 54px; }
+.profiel-venster { justify-content: center !important; }
+
+/* ===== Startscherm: de tegels vullen het hele scherm ===== */
+body[data-scherm="scherm-algemeen"] .container { max-width: none !important; }
+#scherm-algemeen { flex: 1 1 auto; }
+html.breed #scherm-algemeen .vakken-rij,
+html.telefoon #scherm-algemeen .vakken-rij {
+  flex: 1 1 auto !important;
+  grid-auto-rows: minmax(0, 1fr);
+  align-content: stretch;
+}
+html.breed #scherm-algemeen .vak,
+html.telefoon #scherm-algemeen .vak { min-height: 0; height: 100%; }
+html.breed #scherm-algemeen .vakken-rij { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+html.breed #scherm-algemeen .vakken-rij > .vak { grid-column: auto !important; grid-row: auto !important; }
+html.telefoon #scherm-algemeen .vak { min-height: 112px; height: auto; }
+.account-status { max-width: none; }
+.account-status[hidden] { display: none !important; }
+
+/* Het ronde icoontje en het poppetje behouden hun eigen formaat */
+.sitebeheer-overlay .sitebeheer-venster > .sitebeheer-icoon { width: 54px; max-width: 54px; flex: 0 0 auto; }
+.sitebeheer-overlay .sitebeheer-venster > .profiel-overlay-poppetje { width: 120px; max-width: 120px; flex: 0 0 auto; }
+#btn-vrienden-toevoegen { width: 100%; }
