@@ -191,6 +191,7 @@ function sluitSitebeheerOverlay() {
 }
 
 function werkSitebeheerKnopBij() {
+  if (typeof werkBeheerNavBij === 'function') werkBeheerNavBij();
   if (sitebeheerActief) {
     btnSitebeheerEl.classList.add('actief');
     btnSitebeheerEl.textContent = '🔓 Sitebeheer actief';
@@ -316,8 +317,7 @@ zorgVoorSocialeGebruiker();
 // maakt als "makerNaam" opgeslagen in Firebase. Uit privacy wordt de naam
 // op de site NIET getoond aan gewone bezoekers; alleen sitebeheer (ingelogd)
 // ziet bij Speelbare quizzen wie een quiz heeft gemaakt.
-// De maker zelf kan zijn/haar naam achteraf niet wijzigen. Sitebeheer kan dat
-// wel, via "Naam wijzigen" bij "Alle quizmakers" (zie toonSitebeheerMakersOverzicht).
+// De maker zelf kan zijn/haar naam achteraf niet wijzigen.
 
 const MAKER_NAAM_SLEUTEL = 'makerNaam';
 const PROFIEL_DIER_SLEUTEL = 'profielDier';
@@ -1518,207 +1518,6 @@ function laadEigenQuizzen() {
 
 // ---------- Speelbare quizzen tonen (openbaar gemaakt door anderen) ----------
 
-// Onthoudt of het overzicht open of ingeklapt staat (ook na opnieuw laden van de lijst).
-// Staat standaard ingeklapt; wordt automatisch opengeklapt zodra je in de zoekbalk typt.
-let makersOverzichtOpen = false;
-
-// Onthoudt de laatst opgehaalde makers (zodat de zoekbalk kan filteren zonder
-// steeds opnieuw bij Firebase te hoeven ophalen) en de huidige zoekterm.
-let laatsteMakersLijst = [];
-let makersZoekterm = '';
-
-// Bouwt de HTML voor de rijen in het makersoverzicht, gefilterd op zoekterm
-// (zoekt in de naam van de quizmaker, hoofdletterongevoelig, op elk deel van de naam).
-function bouwMakersRijenHtml(makers, zoekterm) {
-  if (makers.length === 0) {
-    return '<p class="voortgang">Er zijn nog geen quizzen gemaakt.</p>';
-  }
-
-  const term = zoekterm.trim().toLowerCase();
-  const gefilterd = term
-    ? makers.filter(maker => (maker.naam || 'naam onbekend').toLowerCase().includes(term))
-    : makers;
-
-  if (gefilterd.length === 0) {
-    return '<p class="sitebeheer-makers-leeg">Geen quizmakers gevonden voor "' + escapeHtml(zoekterm.trim()) + '".</p>';
-  }
-
-  return gefilterd.map(maker => {
-    const aantalOpenbaar = maker.quizzen.filter(q => q.openbaar).length;
-    const titels = maker.quizzen.map(q => {
-      const status = q.geblokkeerd ? 'geblokkeerd' : (q.openbaar ? 'openbaar' : (q.weggehaald ? 'weggehaald' : 'niet openbaar'));
-      const knopKlasse = 'btn-overzicht-blokkeren' + (q.geblokkeerd ? ' is-geblokkeerd' : '');
-      const knopTekst = q.geblokkeerd ? 'Deblokkeren' : 'Blokkeren';
-      const knop = '<button type="button" class="' + knopKlasse + '" data-code="' + escapeHtml(q.code) + '" data-geblokkeerd="' + (q.geblokkeerd ? '1' : '0') + '">' + knopTekst + '</button>';
-      return '<li>' + escapeHtml(q.titel) + ' <span class="sitebeheer-maker-code">' + escapeHtml(q.code) + ' · ' + status + '</span>' + knop + '</li>';
-    }).join('');
-    return '<div class="sitebeheer-maker-rij">' +
-      '<div class="sitebeheer-maker-naam-rij">' +
-      '<strong>' + (maker.naam ? escapeHtml(maker.naam) : 'Naam onbekend') + '</strong>' +
-      '<button type="button" class="btn-overzicht-naam-wijzigen" data-naam="' + escapeHtml(maker.naam) +
-      '" data-codes="' + maker.quizzen.map(q => escapeHtml(q.code)).join(',') + '">Naam wijzigen</button>' +
-      '<span class="sitebeheer-maker-telling">' + maker.quizzen.length + ' quiz/quizzen · ' + aantalOpenbaar + ' openbaar</span>' +
-      '</div>' +
-      '<ul>' + titels + '</ul>' +
-      '</div>';
-  }).join('');
-}
-
-// Alleen voor sitebeheer: overzicht van ALLE quizmakers (dus ook van quizzen
-// die niet openbaar zijn of door sitebeheer bij openbaar zijn weggehaald).
-function toonSitebeheerMakersOverzicht() {
-  const lijstEl = document.getElementById('lijst-openbare-quizzen');
-  let overzichtEl = document.getElementById('sitebeheer-makers-overzicht');
-
-  if (!sitebeheerActief) {
-    if (overzichtEl) overzichtEl.remove();
-    return;
-  }
-
-  if (!overzichtEl) {
-    overzichtEl = document.createElement('div');
-    overzichtEl.id = 'sitebeheer-makers-overzicht';
-    overzichtEl.className = 'sitebeheer-makers';
-    lijstEl.parentNode.insertBefore(overzichtEl, lijstEl);
-
-    // Eén keer een klik-listener voor de blokkeer/deblokkeer-knopjes: dit overzicht
-    // toont ALLE quizzen (ook niet-openbare), dus hier kan sitebeheer élke quiz
-    // blokkeren, niet alleen quizzen die nu in "Speelbare quizzen" staan.
-    overzichtEl.addEventListener('click', (e) => {
-      const blokkeerKnop = e.target.closest('.btn-overzicht-blokkeren');
-      if (blokkeerKnop) {
-        const code = blokkeerKnop.dataset.code;
-        const isNuGeblokkeerd = blokkeerKnop.dataset.geblokkeerd === '1';
-        const bevestiging = isNuGeblokkeerd
-          ? 'Weet je zeker dat je deze quiz wilt deblokkeren? De maker kan hem daarna weer openbaar zetten.'
-          : 'Weet je zeker dat je deze quiz wilt blokkeren? Hij gaat direct offline (als hij openbaar stond) en kan niet meer openbaar gezet worden totdat je hem weer deblokkeert.';
-        if (!confirm(bevestiging)) return;
-
-        const updateData = isNuGeblokkeerd
-          ? { geblokkeerd: false }
-          : { geblokkeerd: true, openbaar: false };
-
-        db.ref('quizzen/' + code).update(updateData)
-          .then(() => {
-            laadOpenbareQuizzen();
-          })
-          .catch(err => {
-            alert('Bijwerken mislukt: ' + err.message);
-          });
-        return;
-      }
-
-      const naamKnop = e.target.closest('.btn-overzicht-naam-wijzigen');
-      if (naamKnop) {
-        const codes = (naamKnop.dataset.codes || '').split(',').filter(Boolean);
-        if (codes.length === 0) return;
-        const huidigeNaam = naamKnop.dataset.naam || '';
-
-        const nieuweNaam = prompt(
-          'Nieuwe naam voor deze quizmaker (geldt voor al ' + (codes.length === 1 ? 'zijn/haar quiz' : 'zijn/haar ' + codes.length + ' quizzen') + '):',
-          huidigeNaam
-        );
-        if (nieuweNaam === null) return; // geannuleerd
-        const schoneNaam = nieuweNaam.trim();
-        if (!schoneNaam) {
-          alert('Vul een naam in.');
-          return;
-        }
-        if (schoneNaam === huidigeNaam) return; // niets veranderd
-
-        // Eén update met alle quizzen van deze maker tegelijk (voorkomt dat de
-        // groep halverwege in twee stukken uiteenvalt als één update mislukt).
-        const updates = {};
-        codes.forEach(code => {
-          updates[code + '/makerNaam'] = schoneNaam;
-        });
-
-        naamKnop.disabled = true;
-        db.ref('quizzen').update(updates)
-          .then(() => {
-            laadOpenbareQuizzen();
-          })
-          .catch(err => {
-            alert('Naam wijzigen mislukt: ' + err.message);
-            naamKnop.disabled = false;
-          });
-        return;
-      }
-    });
-
-    // Eén keer een input-listener voor de zoekbalk: filtert alleen de rijen
-    // (niet de hele overzicht-HTML), zodat de zoekbalk niet zijn focus verliest
-    // terwijl je typt. Klapt het venster ook automatisch open zodra je typt.
-    overzichtEl.addEventListener('input', (e) => {
-      if (e.target.id !== 'input-zoek-makers') return;
-      makersZoekterm = e.target.value;
-      const rijenEl = overzichtEl.querySelector('#sitebeheer-makers-rijen');
-      if (rijenEl) rijenEl.innerHTML = bouwMakersRijenHtml(laatsteMakersLijst, makersZoekterm);
-      const detailsEl = overzichtEl.querySelector('details');
-      if (detailsEl && makersZoekterm.trim()) {
-        detailsEl.open = true;
-        makersOverzichtOpen = true;
-      }
-    });
-  }
-  overzichtEl.innerHTML = '<p class="voortgang">Quizmakers laden...</p>';
-
-  db.ref('quizzen').once('value')
-    .then(snapshot => {
-      if (!sitebeheerActief) {
-        overzichtEl.remove();
-        return;
-      }
-
-      const data = snapshot.val() || {};
-      const groepen = {};
-
-      Object.entries(data).forEach(([code, quiz]) => {
-        const naam = ((quiz && quiz.makerNaam) || '').trim();
-        const sleutel = naam.toLowerCase(); // 'Sam' en 'sam' tellen als dezelfde maker
-        if (!groepen[sleutel]) {
-          groepen[sleutel] = { naam: naam, quizzen: [] };
-        }
-        groepen[sleutel].quizzen.push({
-          code: code,
-          titel: (quiz && quiz.titel) || '(zonder titel)',
-          openbaar: !!(quiz && quiz.openbaar),
-          weggehaald: !!(quiz && quiz.doorBeheerVerwijderd),
-          geblokkeerd: !!(quiz && quiz.geblokkeerd)
-        });
-      });
-
-      const makers = Object.values(groepen).sort((a, b) => {
-        if (!a.naam) return 1;   // "naam onbekend" altijd onderaan
-        if (!b.naam) return -1;
-        return a.naam.localeCompare(b.naam, 'nl');
-      });
-
-      laatsteMakersLijst = makers;
-
-      // <details> = inklapbaar venster (staat standaard ingeklapt); klik op de
-      // titel om in of uit te klappen. De zoekbalk staat erboven, buiten het
-      // inklapbare venster, zodat je ook kunt zoeken terwijl het dicht staat
-      // (typen klapt het vanzelf open).
-      overzichtEl.innerHTML =
-        '<div class="sitebeheer-makers-zoek">' +
-        '<input type="text" id="input-zoek-makers" placeholder="🔍 Zoek op naam..." value="' + escapeHtml(makersZoekterm) + '">' +
-        '</div>' +
-        '<details class="sitebeheer-makers-details"' + (makersOverzichtOpen ? ' open' : '') + '>' +
-        '<summary>Alle quizmakers (' + makers.length + ')</summary>' +
-        '<div id="sitebeheer-makers-rijen">' + bouwMakersRijenHtml(makers, makersZoekterm) + '</div>' +
-        '</details>';
-
-      const detailsEl = overzichtEl.querySelector('details');
-      detailsEl.addEventListener('toggle', () => {
-        makersOverzichtOpen = detailsEl.open;
-      });
-    })
-    .catch(err => {
-      overzichtEl.innerHTML = '<p class="foutmelding">Laden van quizmakers mislukt: ' + escapeHtml(err.message) + '</p>';
-    });
-}
-
 // Onthoudt de laatst opgehaalde openbare quizzen (zodat de zoekbalk kan
 // filteren zonder steeds opnieuw bij Firebase te hoeven ophalen).
 let laatsteOpenbareQuizzenData = []; // [[code, quiz], ...]
@@ -1842,7 +1641,6 @@ function renderOpenbareQuizzenLijst() {
 function laadOpenbareQuizzen() {
   const lijstEl = document.getElementById('lijst-openbare-quizzen');
   lijstEl.innerHTML = '<p>Bezig met laden...</p>';
-  toonSitebeheerMakersOverzicht();
 
   koppelMakerNaamAanEigenQuizzen()
     .then(() => db.ref('quizzen').orderByChild('openbaar').equalTo(true).once('value'))
@@ -4397,7 +4195,11 @@ function verwijderdAccountOpruimen() {
   // zodat je gebruikersnaam niet voor altijd bezet blijft.
   const opgeruimd = Promise.race([ruimOverblijfselsOp(uid, naam), new Promise(klaar => setTimeout(klaar, 5000))]);
   wisLokaalAccount();
-  opgeruimd.then(() => auth.signOut()).catch(() => {}).then(() => {
+  opgeruimd.then(() => {
+    const u = auth.currentUser;
+    // Haal ook de login zelf uit Firebase Authentication (lukt dit niet, dan blijft die onschuldig achter).
+    return (u && !u.isAnonymous) ? u.delete().catch(() => {}) : null;
+  }).then(() => auth.signOut()).catch(() => {}).then(() => {
     alert('Dit account bestaat niet meer (het is uit Firebase verwijderd). Je bent uitgelogd.');
     location.reload();
   });
@@ -5904,3 +5706,156 @@ document.getElementById('btn-profiel-verwijder-bevestig').addEventListener('clic
       ? 'Verkeerd wachtwoord.' : accountFoutTekst(err);
   });
 });
+
+
+// ================================================================
+// SITEBEHEER: ALLE PROFIELEN BEKIJKEN EN VERWIJDEREN
+// (vakje "Sitebeheer" naast "Profiel", alleen zichtbaar voor sitebeheer)
+// ================================================================
+
+function werkBeheerNavBij() {
+  const knop = document.getElementById('nav-sitebeheer');
+  if (knop) knop.hidden = !sitebeheerActief;
+  if (!sitebeheerActief) {
+    const o = document.getElementById('beheer-profielen-overlay');
+    if (o) o.classList.remove('actief');
+  }
+}
+
+let beheerProfielen = [];   // [{uid, naam, dier}]
+
+function bouwBeheerProfielenHtml(zoek) {
+  const term = (zoek || '').trim().toLowerCase();
+  const eigen = auth.currentUser ? auth.currentUser.uid : null;
+  const lijst = term ? beheerProfielen.filter(p => p.naam.toLowerCase().includes(term)) : beheerProfielen;
+  if (beheerProfielen.length === 0) return '<p class="voortgang">Er zijn nog geen profielen.</p>';
+  if (lijst.length === 0) return '<p class="sitebeheer-makers-leeg">Geen profiel gevonden voor "' + escapeHtml(zoek.trim()) + '".</p>';
+  return lijst.map(p => {
+    const isIk = p.uid === eigen || p.uid === accountUid();
+    return '<div class="vriend-rij">' +
+      '<span class="vriend-mini-poppetje" aria-hidden="true">' + (p.dier ? escapeHtml(p.dier) : '👤') + '</span>' +
+      '<strong>' + escapeHtml(p.naam) + '</strong>' +
+      (isIk ? '<span class="subtitel">Dit ben jij</span>'
+            : '<button type="button" class="btn btn-secondary beheer-profiel-verwijder" data-uid="' + escapeHtml(p.uid) + '">🗑 Verwijderen</button>') +
+      '</div>';
+  }).join('');
+}
+
+function toonBeheerProfielen() {
+  const rijen = document.getElementById('beheer-profielen-lijst');
+  const zoek = document.getElementById('input-beheer-zoek');
+  rijen.innerHTML = bouwBeheerProfielenHtml(zoek.value);
+  document.getElementById('beheer-profielen-aantal').textContent = beheerProfielen.length;
+}
+
+function laadBeheerProfielen() {
+  const rijen = document.getElementById('beheer-profielen-lijst');
+  const fout = document.getElementById('beheer-profielen-fout');
+  fout.textContent = '';
+  rijen.innerHTML = '<p class="voortgang">Profielen laden...</p>';
+  db.ref(SOCIAAL_PROFIEL_PAD).once('value').then(snap => {
+    const data = snap.val() || {};
+    beheerProfielen = Object.keys(data)
+      .filter(uid => data[uid] && data[uid].gebruikersnaam)
+      .map(uid => ({ uid: uid, naam: String(data[uid].gebruikersnaam), dier: data[uid].dier || '' }))
+      .sort((a, b) => a.naam.localeCompare(b.naam, 'nl', { sensitivity: 'base' }));
+    toonBeheerProfielen();
+  }).catch(err => {
+    rijen.innerHTML = '';
+    fout.textContent = accountFoutTekst(err);
+  });
+}
+
+// Haalt een profiel van een ander helemaal uit Firebase. Het apparaat van die persoon merkt
+// dit vanzelf en logt uit; daarna kan die persoon op dat apparaat weer een nieuw account maken.
+function verwijderProfielAlsBeheer(uid) {
+  const profiel = beheerProfielen.find(p => p.uid === uid);
+  if (!profiel) return Promise.resolve();
+  const fout = document.getElementById('beheer-profielen-fout');
+  fout.textContent = '';
+  if (!confirm('Profiel "' + profiel.naam + '" voorgoed verwijderen?\n\nHet account, de vrienden, de chats en de quizzen van deze persoon worden uit Firebase gehaald. Dit kan niet ongedaan worden gemaakt.')) return Promise.resolve();
+
+  const lees = pad => db.ref(pad).once('value').catch(() => null);
+  return Promise.all([
+    lees(SOCIAAL_PROFIEL_PAD + '/' + uid),
+    lees('vrienden/' + uid),
+    lees('accountData/' + uid),
+    lees('vriendschapsverzoeken')
+  ]).then(([prof, vrienden, accData, verzoeken]) => {
+    const p = (prof && prof.val()) || {};
+    const updates = {};
+    // gebruikersnamen die echt van dit profiel zijn
+    const sleutels = Array.from(new Set([p.gebruikersnaamZoek, normaliseerGebruikersnaam(profiel.naam)].filter(Boolean).map(naamSleutel)));
+    return Promise.all(sleutels.map(k => lees('gebruikersnamen/' + k).then(sn => (sn && sn.val() === uid ? k : null)))).then(eigenSleutels => {
+      eigenSleutels.filter(Boolean).forEach(k => { updates['gebruikersnamen/' + k] = null; });
+      // vrienden, chats en verzoeken
+      Object.keys((vrienden && vrienden.val()) || {}).forEach(f => {
+        updates['vrienden/' + f + '/' + uid] = null;
+        updates['vrienden/' + uid + '/' + f] = null;
+        updates['chats/' + chatIdVoor(uid, f)] = null;
+      });
+      const alleVerzoeken = (verzoeken && verzoeken.val()) || {};
+      Object.keys(alleVerzoeken).forEach(ontvanger => {
+        if (ontvanger === uid) updates['vriendschapsverzoeken/' + uid] = null;
+        else if (alleVerzoeken[ontvanger] && alleVerzoeken[ontvanger][uid] !== undefined) updates['vriendschapsverzoeken/' + ontvanger + '/' + uid] = null;
+      });
+      // quizzen die deze persoon zelf heeft gemaakt (gedeelde quizzen van anderen blijven staan)
+      try {
+        const eq = JSON.parse(((accData && accData.val()) || {}).eigenQuizzen || '[]') || [];
+        eq.filter(q => q && q.code && !q.gedeeldVan).forEach(q => { updates['quizzen/' + q.code] = null; updates['sessies/' + q.code] = null; });
+      } catch (e) {}
+      updates['accountData/' + uid] = null;
+      updates['beheerders/' + uid] = null;
+      updates[SOCIAAL_PROFIEL_PAD + '/' + uid] = null;
+      return db.ref().update(updates);
+    });
+  }).then(() => {
+    beheerProfielen = beheerProfielen.filter(x => x.uid !== uid);
+    toonBeheerProfielen();
+  }).catch(err => { fout.textContent = accountFoutTekst(err); });
+}
+
+function openBeheerProfielen() {
+  if (!sitebeheerActief) return;
+  document.getElementById('input-beheer-zoek').value = '';
+  document.getElementById('beheer-profielen-overlay').classList.add('actief');
+  laadBeheerProfielen();
+}
+
+document.getElementById('beheer-profielen-sluiten').addEventListener('click', () => {
+  document.getElementById('beheer-profielen-overlay').classList.remove('actief');
+});
+document.getElementById('input-beheer-zoek').addEventListener('input', toonBeheerProfielen);
+document.getElementById('beheer-profielen-lijst').addEventListener('click', e => {
+  const knop = e.target.closest('.beheer-profiel-verwijder');
+  if (!knop) return;
+  knop.disabled = true;
+  verwijderProfielAlsBeheer(knop.dataset.uid).then(() => { knop.disabled = false; });
+});
+document.getElementById('nav-sitebeheer').addEventListener('click', openBeheerProfielen);
+werkBeheerNavBij();
+
+// Is JOUW profiel door sitebeheer verwijderd terwijl je de site open hebt? Dan merk je dat meteen
+// (en niet pas bij de controle om de 20 seconden) en wordt je uitgelogd; daarna mag je op dit
+// apparaat weer een nieuw account maken (zie verwijderdAccountOpruimen).
+(function bewaakEigenProfiel() {
+  let luisterUid = null, gezien = false, ref = null;
+  setInterval(() => {
+    const uid = accountUid();
+    const u = auth.currentUser;
+    if (!uid || !u || u.uid !== uid || u.isAnonymous) {
+      if (ref) { ref.off(); ref = null; luisterUid = null; gezien = false; }
+      return;
+    }
+    if (luisterUid === uid) return;
+    if (ref) ref.off();
+    luisterUid = uid; gezien = false;
+    ref = db.ref(SOCIAAL_PROFIEL_PAD + '/' + uid + '/gebruikersnaam');
+    ref.on('value', snap => {
+      if (snap.exists()) { gezien = true; return; }
+      if (gezien && !accountWordtVerwijderd && !accountWeg) {
+        accountIsVerdwenen().then(weg => { if (weg) verwijderdAccountOpruimen(); }).catch(() => {});
+      }
+    }, () => {});
+  }, 2000);
+})();
