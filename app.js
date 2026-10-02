@@ -1,4 +1,4 @@
-console.log('Quiz-site app.js versie 2026-10-01-d (blijf ingelogd)');
+console.log('Quiz-site app.js versie 2026-10-01-f (sitebeheer + volledig verwijderen)');
 // ---------- Accounts (gebruikersnaam + wachtwoord) ----------
 //
 // Een profiel is nu een echt account. Onder water is dat een Firebase-account met
@@ -33,6 +33,7 @@ Storage.prototype.setItem = function (sleutel, waarde) {
 
 function syncAccountData() {
   clearTimeout(accountSyncTimer);
+  if (accountWordtVerwijderd) return Promise.resolve();
   const u = auth.currentUser;
   if (!isSpelerAccount(u) || u.uid !== accountUid()) return Promise.resolve();
   const data = {};
@@ -69,6 +70,53 @@ let accountDataGehaald = false;
 // ingelogd tot er bewust wordt uitgelogd.
 
 let sitebeheerActief = false;
+// Is je gewone account aan sitebeheer gekoppeld? (Dan is dit je uid, anders null.)
+let beheerGekoppeldUid = null;
+// Tijdens het verwijderen van een account mag niets meer teruggeschreven worden naar Firebase.
+let accountWordtVerwijderd = false;
+
+// Het koppelen gebeurt via een tweede, losse Firebase-verbinding ("beheer"). Zo kun je met het
+// sitebeheer-wachtwoord een koppeling maken zonder dat je eigen account wordt uitgelogd.
+let beheerApp = null;
+function beheerAuthApp() {
+  if (!beheerApp) {
+    try { beheerApp = firebase.app('beheer'); } catch (e) { beheerApp = firebase.initializeApp(firebaseConfig, 'beheer'); }
+  }
+  return beheerApp;
+}
+function beheerInloggenLos(email, ww) {
+  const a = beheerAuthApp().auth();
+  return a.signInWithEmailAndPassword(email, ww).then(res => {
+    if (isSpelerAccount(res.user)) return a.signOut().then(() => { throw { code: 'geen-beheer' }; });
+    return res.user;
+  });
+}
+function beheerUitloggenLos() { return beheerApp ? beheerApp.auth().signOut().catch(() => {}) : Promise.resolve(); }
+function schrijfBeheerKoppeling(uid) { return beheerAuthApp().database().ref('beheerders/' + uid).set(true); }
+function beheerFoutTekst(err) {
+  const c = err && err.code;
+  if (c === 'geen-beheer') return 'Dat is geen sitebeheer-account. Gebruik het e-mailadres uit Firebase (Authentication > Users).';
+  if (c === 'auth/invalid-credential' || c === 'auth/wrong-password' || c === 'auth/user-not-found' || c === 'auth/invalid-email' || c === 'auth/invalid-login-credentials') return 'Onjuist e-mailadres of wachtwoord van sitebeheer.';
+  return accountFoutTekst(err);
+}
+function herlaadBeheerSchermen() {
+  if (document.getElementById('scherm-speelbare-quizzen').classList.contains('actief')) laadOpenbareQuizzen();
+  if (document.getElementById('scherm-quizmaken').classList.contains('actief')) laadEigenQuizzen();
+}
+function zetBeheerGekoppeld(uid) {
+  beheerGekoppeldUid = uid; sitebeheerActief = true;
+  werkSitebeheerKnopBij(); herlaadBeheerSchermen();
+}
+function zetBeheerLosgekoppeld() {
+  beheerGekoppeldUid = null; sitebeheerActief = isBeheerAccount(auth.currentUser);
+  werkSitebeheerKnopBij(); herlaadBeheerSchermen();
+}
+function controleerBeheerKoppeling(gebruiker) {
+  if (!isSpelerAccount(gebruiker) || beheerGekoppeldUid === gebruiker.uid) return;
+  db.ref('beheerders/' + gebruiker.uid).once('value').then(snap => {
+    if (snap.val() === true && auth.currentUser && auth.currentUser.uid === gebruiker.uid) zetBeheerGekoppeld(gebruiker.uid);
+  }).catch(() => {});
+}
 
 // Voor gewone spelers gebruiken we anonieme Firebase-authenticatie. Daardoor
 // krijgt iedere browser een eigen veilige Firebase-ID zonder dat er een wachtwoord
@@ -123,7 +171,14 @@ const sitebeheerFoutmeldingEl = document.getElementById('sitebeheer-foutmelding'
 const btnSitebeheerEl = document.getElementById('btn-sitebeheer');
 const btnSitebeheerBevestigenEl = document.getElementById('btn-sitebeheer-bevestigen');
 
+function wilKoppelen() { return isSpelerAccount(auth.currentUser) && auth.currentUser.uid === accountUid(); }
+
 function openSitebeheerOverlay() {
+  const uitleg = document.getElementById('sitebeheer-uitleg');
+  if (uitleg) uitleg.textContent = wilKoppelen()
+    ? 'Vul het e-mailadres en wachtwoord van sitebeheer in. Je blijft ingelogd met je eigen account; dat account wordt dan aan sitebeheer gekoppeld.'
+    : 'Log in met het beheerdersaccount. Daarna kun je bij "Speelbare quizzen" quizzen uit die lijst verwijderen.';
+  btnSitebeheerBevestigenEl.textContent = wilKoppelen() ? 'Koppelen' : 'Inloggen';
   sitebeheerFoutmeldingEl.textContent = '';
   inputSitebeheerEmailEl.value = '';
   inputSitebeheerWachtwoordEl.value = '';
@@ -147,7 +202,13 @@ function werkSitebeheerKnopBij() {
 
 btnSitebeheerEl.addEventListener('click', () => {
   if (sitebeheerActief) {
-    // Al ingelogd: nogmaals klikken logt meteen uit.
+    if (beheerGekoppeldUid) {
+      // Gekoppeld aan je eigen account: nogmaals klikken haalt de koppeling weg (je blijft ingelogd).
+      if (!confirm('Je account is gekoppeld aan sitebeheer. Wil je die koppeling weghalen?')) return;
+      db.ref('beheerders/' + beheerGekoppeldUid).remove().then(zetBeheerLosgekoppeld).catch(() => alert('Loskoppelen is niet gelukt.'));
+      return;
+    }
+    // Direct als beheerder ingelogd: nogmaals klikken logt meteen uit.
     auth.signOut();
     return;
   }
@@ -161,6 +222,8 @@ document.getElementById('btn-sitebeheer-annuleren').addEventListener('click', ()
 function probeerSitebeheerInloggen() {
   const email = inputSitebeheerEmailEl.value.trim();
   const wachtwoord = inputSitebeheerWachtwoordEl.value;
+  const koppelen = wilKoppelen();
+  const knopTekst = koppelen ? 'Koppelen' : 'Inloggen';
 
   if (!email || !wachtwoord) {
     sitebeheerFoutmeldingEl.textContent = 'Vul e-mailadres en wachtwoord in.';
@@ -170,6 +233,19 @@ function probeerSitebeheerInloggen() {
   sitebeheerFoutmeldingEl.textContent = '';
   btnSitebeheerBevestigenEl.disabled = true;
   btnSitebeheerBevestigenEl.textContent = 'Bezig...';
+  const klaar = () => { btnSitebeheerBevestigenEl.disabled = false; btnSitebeheerBevestigenEl.textContent = knopTekst; };
+
+  if (koppelen) {
+    // Gewoon account: wachtwoord controleren met een losse verbinding en je account koppelen.
+    const uid = auth.currentUser.uid;
+    beheerInloggenLos(email, wachtwoord)
+      .then(() => schrijfBeheerKoppeling(uid))
+      .then(() => { zetBeheerGekoppeld(uid); sluitSitebeheerOverlay(); })
+      .catch(err => { sitebeheerFoutmeldingEl.textContent = beheerFoutTekst(err); })
+      .then(() => beheerUitloggenLos())
+      .then(klaar);
+    return;
+  }
 
   auth.signInWithEmailAndPassword(email, wachtwoord)
     .then(() => {
@@ -179,10 +255,7 @@ function probeerSitebeheerInloggen() {
     .catch(() => {
       sitebeheerFoutmeldingEl.textContent = 'Inloggen mislukt: onjuist e-mailadres of wachtwoord.';
     })
-    .finally(() => {
-      btnSitebeheerBevestigenEl.disabled = false;
-      btnSitebeheerBevestigenEl.textContent = 'Inloggen';
-    });
+    .then(klaar);
 }
 
 btnSitebeheerBevestigenEl.addEventListener('click', probeerSitebeheerInloggen);
@@ -196,8 +269,10 @@ btnSitebeheerBevestigenEl.addEventListener('click', probeerSitebeheerInloggen);
 });
 
 auth.onAuthStateChanged(gebruiker => {
-  sitebeheerActief = isBeheerAccount(gebruiker);
+  if (beheerGekoppeldUid && (!gebruiker || gebruiker.uid !== beheerGekoppeldUid)) beheerGekoppeldUid = null;
+  sitebeheerActief = isBeheerAccount(gebruiker) || (isSpelerAccount(gebruiker) && beheerGekoppeldUid === gebruiker.uid);
   werkSitebeheerKnopBij();
+  controleerBeheerKoppeling(gebruiker);
   // Is de online sessie een ander account dan wat dit apparaat denkt (bijv. uitgelogd of
   // beheerder ingelogd)? Dan loggen we lokaal netjes uit: je gegevens staan veilig online.
   const lokaalUid = accountUid();
@@ -342,6 +417,10 @@ function openProfielMakenScherm() {
   document.getElementById('poppetje-foutmelding').textContent = '';
   document.getElementById('account-apparaat-melding').hidden = true;
   document.getElementById('reg-wachtwoord-velden').hidden = !!sitebeheerActief;
+  document.getElementById('reg-beheer-keuze').hidden = !!sitebeheerActief;
+  document.getElementById('reg-is-beheer').checked = false;
+  document.getElementById('reg-beheer-velden').hidden = true;
+  ['input-reg-beheer-email', 'input-reg-beheer-ww'].forEach(id => { document.getElementById(id).value = ''; });
   profielGekozenDier = geldigDier(huidigProfielDier());
   bouwProfielDierenKiezer();
   zetAccountTab(sitebeheerActief ? 'registreren' : 'inloggen');
@@ -463,10 +542,17 @@ function bevestigMakerNaam() {
     return;
   }
 
+  // Wil je ook sitebeheer zijn? Dan controleren we eerst het sitebeheer-wachtwoord.
+  const wilBeheer = !!document.getElementById('reg-is-beheer').checked;
+  const beheerEmail = wilBeheer ? document.getElementById('input-reg-beheer-email').value.trim() : '';
+  const beheerWw = wilBeheer ? document.getElementById('input-reg-beheer-ww').value : '';
+  if (wilBeheer && (!beheerEmail || !beheerWw)) { fout.textContent = 'Vul het e-mailadres en wachtwoord van sitebeheer in.'; return; }
+
   const knop = document.getElementById('btn-naam-bevestigen');
   knop.disabled = true;
   let gebruiker = null, naamVastgelegd = false, gekoppeld = false;
-  controleerGebruikersnaamVrij(naam).then(vrij => {
+  (wilBeheer ? beheerInloggenLos(beheerEmail, beheerWw).catch(err => { throw new Error(beheerFoutTekst(err)); }) : Promise.resolve())
+  .then(() => controleerGebruikersnaamVrij(naam)).then(vrij => {
     if (!vrij) throw new Error('Deze naam is al in gebruik. Kies een andere naam.');
     return zorgVoorSocialeGebruiker();
   }).then(user => {
@@ -498,6 +584,12 @@ function bevestigMakerNaam() {
       return registreerSociaalProfiel();
     })
     .then(() => {
+      if (!wilBeheer) return;
+      return schrijfBeheerKoppeling(gebruiker.uid).then(() => zetBeheerGekoppeld(gebruiker.uid)).catch(err => {
+        alert('Je account is gemaakt, maar koppelen aan sitebeheer is niet gelukt: ' + accountFoutTekst(err) + ' Probeer het later opnieuw met de knop Sitebeheer onderaan.');
+      });
+    })
+    .then(() => {
       syncAccountData();
       werkProfielBadgeBij();
       werkVakSlotjesBij();
@@ -512,7 +604,7 @@ function bevestigMakerNaam() {
         db.ref('gebruikersnamen/' + naamSleutel(normaliseerGebruikersnaam(naam))).transaction(v => (v === gebruiker.uid ? null : v)).catch(() => {});
       }
     })
-    .then(() => { knop.disabled = false; });
+    .then(() => { knop.disabled = false; return beheerUitloggenLos(); });
 }
 
 // Stap 2: poppetje gekozen -> profiel klaar.
@@ -636,6 +728,9 @@ function rondProfielAanmakenAf(naam) {
 }
 
 document.getElementById('btn-naam-bevestigen').addEventListener('click', bevestigMakerNaam);
+document.getElementById('reg-is-beheer').addEventListener('change', e => {
+  document.getElementById('reg-beheer-velden').hidden = !e.target.checked;
+});
 
 inputMakerNaamEl.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
@@ -4165,13 +4260,13 @@ function onlineBezitObject() {
 
 function syncSociaalBezit() {
   const gebruiker = profielFirebaseGebruiker();
-  if (!gebruiker || !heeftProfiel()) return Promise.resolve();
+  if (accountWordtVerwijderd || !gebruiker || !heeftProfiel()) return Promise.resolve();
   return db.ref(SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid + '/bezit').set(onlineBezitObject()).catch(() => {});
 }
 
 function registreerSociaalProfiel() {
   const gebruiker = profielFirebaseGebruiker();
-  if (!gebruiker || !heeftProfiel()) return Promise.resolve();
+  if (accountWordtVerwijderd || !gebruiker || !heeftProfiel()) return Promise.resolve();
   const naam = huidigeMakerNaam();
   const zoeknaam = normaliseerGebruikersnaam(naam);
   const dier = geldigDier(huidigProfielDier()) || '';
@@ -5659,26 +5754,42 @@ document.getElementById('btn-profiel-verwijder-bevestig').addEventListener('clic
   fout.textContent = '';
   if (!isSpelerAccount(user)) return;
   if (!ww) { fout.textContent = 'Vul je wachtwoord in.'; return; }
-  if (!confirm('Weet je het zeker? Je account, vrienden en alles wat je hebt wordt voorgoed verwijderd. Dit kan niet ongedaan worden gemaakt.')) return;
+  if (!confirm('Weet je het zeker? Je account, je vrienden, je chats en de quizzen die je zelf hebt gemaakt worden voorgoed verwijderd, ook uit Firebase. Dit kan niet ongedaan worden gemaakt.')) return;
   knop.disabled = true;
+  accountWordtVerwijderd = true;
   const uid = user.uid;
   const naam = huidigeMakerNaam() || '';
   const vrienden = Object.keys(socialeVrienden || {});
   const verzoeken = Object.keys(socialeVerzoeken || {});
+  // Quizzen die je zelf hebt gemaakt (gedeelde quizzen van anderen blijven bij de maker staan).
+  let eigenGemaakt = [];
+  try { eigenGemaakt = (JSON.parse(localStorage.getItem('eigenQuizzen') || '[]') || []).filter(q => q && q.code && !q.gedeeldVan); } catch (e) {}
   user.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(user.email, ww)).then(() => {
+    // Welke gebruikersnamen zijn echt van dit account? (alleen die mogen we weghalen)
+    return db.ref(SOCIAAL_PROFIEL_PAD + '/' + uid).once('value').then(p => {
+      const prof = p.val() || {};
+      const sleutels = [prof.gebruikersnaamZoek, naam ? normaliseerGebruikersnaam(naam) : ''].filter(Boolean).map(naamSleutel);
+      return Promise.all(Array.from(new Set(sleutels)).map(k => db.ref('gebruikersnamen/' + k).once('value').then(sn => (sn.val() === uid ? k : null))));
+    });
+  }).then(naamSleutels => {
     const updates = {};
     vrienden.forEach(f => { updates['vrienden/' + f + '/' + uid] = null; updates['vrienden/' + uid + '/' + f] = null; });
     verzoeken.forEach(f => { updates['vriendschapsverzoeken/' + uid + '/' + f] = null; });
     updates['accountData/' + uid] = null;
+    updates['beheerders/' + uid] = null;
     updates['gebruikers/' + uid] = null;
-    if (naam) updates['gebruikersnamen/' + naamSleutel(normaliseerGebruikersnaam(naam))] = null;
+    naamSleutels.filter(Boolean).forEach(k => { updates['gebruikersnamen/' + k] = null; });
+    vrienden.forEach(f => { updates['chats/' + chatIdVoor(uid, f)] = null; });
+    eigenGemaakt.forEach(q => { updates['quizzen/' + q.code] = null; updates['sessies/' + q.code] = null; });
     return db.ref().update(updates);
   }).then(() => user.delete()).then(() => {
+    beheerUitloggenLos();
     wisLokaalAccount();
     localStorage.removeItem(ACCOUNT_APPARAAT_SLEUTEL);   // alleen na verwijderen kun je opnieuw registreren
     location.reload();
   }).catch(err => {
     knop.disabled = false;
+    accountWordtVerwijderd = false;
     const c = err && err.code;
     fout.textContent = (c === 'auth/wrong-password' || c === 'auth/invalid-credential' || c === 'auth/invalid-login-credentials')
       ? 'Verkeerd wachtwoord.' : accountFoutTekst(err);
