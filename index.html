@@ -22,10 +22,10 @@
     })();
   </script>
   <title>Quiz Maker</title>
-  <link rel="stylesheet" href="style.css?v=20261001f">
-  <link rel="stylesheet" href="telefoon.css?v=20261001f">
-  <link rel="stylesheet" href="breed.css?v=20261001f">
-  <link rel="stylesheet" href="account.css?v=20261001f">
+  <link rel="stylesheet" href="style.css?v=20261001g">
+  <link rel="stylesheet" href="telefoon.css?v=20261001g">
+  <link rel="stylesheet" href="breed.css?v=20261001g">
+  <link rel="stylesheet" href="account.css?v=20261001g">
 </head>
 <body>
 
@@ -83,6 +83,24 @@
       <h1 class="titel-regenboog">Quizzzzz</h1>
       <p class="subtitel">Maak een quiz of doe mee met een quiz</p>
       <div class="munten-weergave">💰 <span class="munten-aantal">0</span> munten</div>
+      <div id="account-status" class="account-status">
+        <div id="account-status-uit" hidden>
+          <strong>🔒 Je bent niet ingelogd</strong>
+          <p id="account-status-oud" class="subtitel"></p>
+                <p id="profiel-vereist-hint" class="subtitel">🔒 Log eerst in (of registreer een account met gebruikersnaam + wachtwoord) om quizzen te maken, de winkel, de dierenverzameling en het geluksrad te gebruiken. Meedoen aan een quiz en speelbare quizzen spelen kan altijd, ook zonder profiel.</p>
+          <div class="account-status-knoppen">
+            <button class="btn btn-primary" id="btn-status-inloggen" type="button">Inloggen</button>
+            <button class="btn btn-secondary" id="btn-status-registreren" type="button">Registreren</button>
+          </div>
+        </div>
+        <div id="account-status-in" hidden>
+          <strong id="account-status-naam"></strong>
+          <div class="account-status-knoppen">
+            <button class="btn btn-secondary" id="btn-status-uitloggen" type="button">🚪 Uitloggen</button>
+            <button class="btn btn-secondary" id="btn-status-verwijderen" type="button">🗑 Account verwijderen</button>
+          </div>
+        </div>
+      </div>
       <div class="vakken-rij">
         <button class="vak vak-maken" id="btn-naar-quizmaken">📝 Quiz maken<span class="vak-slotje" aria-hidden="true">🔒</span></button>
         <button class="vak vak-speelbaar" id="btn-naar-speelbaar">🌍 Speelbare quizzen</button>
@@ -91,7 +109,7 @@
         <button class="vak vak-dierentuin" id="btn-naar-dierentuin">🐾 Dierenverzameling<span class="vak-slotje" aria-hidden="true">🔒</span></button>
         <button class="vak vak-wiel" id="btn-naar-wiel">🎡 Geluksrad<span class="vak-slotje" aria-hidden="true">🔒</span></button>
       </div>
-      <p id="profiel-vereist-hint" class="subtitel" style="margin-top:14px;">🔒 Log eerst in (of registreer een account met gebruikersnaam + wachtwoord) om quizzen te maken, de winkel, de dierenverzameling en het geluksrad te gebruiken. Meedoen aan een quiz en speelbare quizzen spelen kan altijd, ook zonder profiel.</p>
+
     </section>
 
     <!-- SCHERM: DIERENVERZAMELING (alle dieren en accessoires bekijken, ook buiten een quiz om) -->
@@ -742,9 +760,9 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 
-  <script src="firebase-config.js?v=20261001f"></script>
-  <script src="poppetjes.js?v=20261001f"></script>
-  <script src="app.js?v=20261001f"></script>
-  <script src="telefoon.js?v=20261001f"></script>
+  <script src="firebase-config.js?v=20261001g"></script>
+  <script src="poppetjes.js?v=20261001g"></script>
+  <script src="app.js?v=20261001g"></script>
+  <script src="telefoon.js?v=20261001g"></script>
 </body>
 </html>
