@@ -6017,165 +6017,181 @@ function laadBezoekQuizzen() {
 
 
 // ================================================================
-// SITEBEHEER: LIJST MET ALLE DIEREN EN ACCESSOIRES (emoji met de naam eronder)
-// De volgorde en namen zijn vastgelegd zoals sitebeheer ze wil zien.
+// SITEBEHEER: OVERZICHT VAN ALLE DIEREN EN ACCESSOIRES (zoals in de kisten)
+// Dezelfde getekende poppetjes als in het kistenscherm, met de naam eronder.
+// Alleen om te bekijken: dit verandert niets aan de lijsten van de site zelf.
+// [emoji zoals de site hem gebruikt, naam om te tonen]
 // ================================================================
-const BEHEER_LIJST_POPPETJES = [
-  "🐭 Muis",
-  "🐹 Hamster",
-  "🐰 Konijn",
-  "🦊 Vos",
-  "🐻 Beer",
-  "🐼 Panda",
-  "🐨 Koala",
-  "🐯 Tijger",
-  "🦁 Leeuw",
-  "🐮 Koe",
-  "🐷 Varken",
-  "🐸 Kikker",
-  "🐵 Aap",
-  "🐔 Kip",
-  "🐧 Pinguïn",
-  "🦄 Eenhoorn",
-  "🦊 Vos",
-  "🐲 Draak",
-  "🦡 Das",
-  "🦔 Egel",
-  "🐘 Olifant",
-  "⛄ Sneeuwpop",
-  "🦒 Giraf",
-  "🦓 Zebra",
-  "🦛 Nijlpaard",
-  "🦏 Neushoorn",
-  "🐑 Schaap",
-  "🐐 Geit",
-  "🐎 Paard",
-  "🫏 Ezel",
-  "🐥 Kuiken",
-  "🦉 Uil",
-  "🦇 Vleermuis",
-  "🐬 Dolfijn",
-  "🐳 Walvis",
-  "🐟 Vis",
-  "🐙 Octopus",
-  "🦀 Krab",
-  "🐢 Schildpad",
-  "🐍 Slang",
-  "🐊 Krokodil",
-  "🦋 Vlinder",
-  "🐝 Bij",
-  "🐞 Lieveheersbeestje",
-  "🐌 Slak",
-  "🕷️ Spin",
-  "🐿️ Eekhoorn",
-  "🐫 Kameel",
-  "🦙 Lama",
-  "🦌 Hert",
-  "🦝 Wasbeer",
-  "🦨 Stinkdier",
-  "🦥 Luiaard",
-  "🦦 Otter",
-  "🦘 Kangaroe",
-  "🦩 Flamingo",
-  "🦚 Pauw",
-  "🦜 Papegaai",
-  "🦢 Zwaan",
-  "🦈 Haai",
-  "🦭 Zeehond",
-  "🐻‍❄️ IJsbeer",
-  "🦃 Kalkoen",
-  "🦍 Gorilla",
-  "🦣 Mammoet",
-  "🦖 Dino",
-  "🤖 Robot",
-  "👻 Spook",
-  "👽 Alien"
+const BEHEER_OVERZICHT_POPPETJES = [
+  ["🐶", "Hond"],
+  ["🐱", "Kat"],
+  ["🐭", "Muis"],
+  ["🐹", "Hamster"],
+  ["🐰", "Konijn"],
+  ["🦊", "Vos"],
+  ["🐻", "Beer"],
+  ["🐼", "Panda"],
+  ["🐨", "Koala"],
+  ["🐯", "Tijger"],
+  ["🦁", "Leeuw"],
+  ["🐮", "Koe"],
+  ["🐷", "Varken"],
+  ["🐸", "Kikker"],
+  ["🐵", "Aap"],
+  ["🐔", "Kip"],
+  ["🐧", "Pinguïn"],
+  ["🦄", "Eenhoorn"],
+  ["🐺", "Vos"],
+  ["🐲", "Draak"],
+  ["🦡", "Das"],
+  ["🦔", "Egel"],
+  ["🐘", "Olifant"],
+  ["⛄", "Sneeuwpop"],
+  ["🦒", "Giraf"],
+  ["🦓", "Zebra"],
+  ["🦛", "Nijlpaard"],
+  ["🦏", "Neushoorn"],
+  ["🐑", "Schaap"],
+  ["🐐", "Geit"],
+  ["🐴", "Paard"],
+  ["🫏", "Ezel"],
+  ["🦆", "Kuiken"],
+  ["🦉", "Uil"],
+  ["🦇", "Vleermuis"],
+  ["🐬", "Dolfijn"],
+  ["🐳", "Walvis"],
+  ["🐟", "Vis"],
+  ["🐙", "Octopus"],
+  ["🦀", "Krab"],
+  ["🐢", "Schildpad"],
+  ["🐍", "Slang"],
+  ["🐊", "Krokodil"],
+  ["🦋", "Vlinder"],
+  ["🐝", "Bij"],
+  ["🐞", "Lieveheersbeestje"],
+  ["🐌", "Slak"],
+  ["🕷️", "Spin"],
+  ["🐿️", "Eekhoorn"],
+  ["🐫", "Kameel"],
+  ["🦙", "Lama"],
+  ["🦌", "Hert"],
+  ["🦝", "Wasbeer"],
+  ["🦨", "Stinkdier"],
+  ["🦥", "Luiaard"],
+  ["🦦", "Otter"],
+  ["🦘", "Kangaroe"],
+  ["🦩", "Flamingo"],
+  ["🦚", "Pauw"],
+  ["🦜", "Papegaai"],
+  ["🦢", "Zwaan"],
+  ["🦈", "Haai"],
+  ["🦭", "Zeehond"],
+  ["🐻‍❄️", "IJsbeer"],
+  ["🦃", "Kalkoen"],
+  ["🦍", "Gorilla"],
+  ["🦣", "Mammoet"],
+  ["🦖", "Dino"],
+  ["🤖", "Robot"],
+  ["👻", "Spook"],
+  ["👽", "Alien"],
+  ["🎃", "Pompoen"]
 ];
-const BEHEER_LIJST_ACCESSOIRES = [
-  "🎩 Goochelhoed",
-  "👑 Kroon",
-  "🎓 Afstudeerhoed",
-  "🧢 Pet",
-  "🤠 Cowboyhoed",
-  "👒 Strandhoed",
-  "🧑‍🎄 Kerstmuts",
-  "🎀 Strikje",
-  "🧙 Toverhoed",
-  "👷 Helm",
-  "🥳 Feesthoedje",
-  "🐈‍⬛ Kattenoren",
-  "👿 Duivelsoren",
-  "😇 Engelenring",
-  "🍄 Paddenstoelhoed",
-  "🎂 Taarthoed",
-  "🧑‍🍳 Koksmuts",
-  "🏴‍☠️ Piratenhoed",
-  "⛑️ Mijnwerkershelm",
-  "🎧 Oorwarmers",
-  "👽 Aliensprieten",
-  "🕶️ Zonnebril",
-  "👓 Bril",
-  "🤿 Duikbril",
-  "🥸 Snorbril",
-  "🧐 Monocle",
-  "🤡 Rode neus",
-  "😍 Hartjesbril",
-  "🤩 Sterrenogen",
-  "👁️‍🗨️ Piratenlapje",
-  "🎭 Masker",
-  "❤️ Hartje",
-  "🩷 Hartje",
-  "💙 Hartje",
-  "💚 Hartje",
-  "💛 Hartje",
-  "💜 Hartje",
-  "⭐ Sterretje",
-  "✨ Sprankels",
-  "🌸 Bloem",
-  "🔥 Vlam",
-  "💎 Diamant",
-  "🍀 Klavertje",
-  "🎈 Ballon",
-  "🍭 Lolly",
-  "🌈 Regenboog",
-  "☀️ Zon",
-  "🌛 Maan",
-  "⚡ Bliksem",
-  "🎶 Muzieknoot",
-  "🍓 Aardbei",
-  "🦋 Vlinder",
-  "❄️ Sneeuwvlokje",
-  "🎁 Cadeautje",
-  "🏆 Trofee",
-  "🍩 Donut",
-  "⚽ Voetbal",
-  "🎂 Taart"
+const BEHEER_OVERZICHT_ACCESSOIRES = [
+  ["🎩", "Goochelhoed"],
+  ["👑", "Kroon"],
+  ["🎓", "Afstudeerhoed"],
+  ["🧢", "Pet"],
+  ["🤠", "Cowboyhoed"],
+  ["👒", "Strandhoed"],
+  ["🎅", "Kerstmuts"],
+  ["🎀", "Strikje"],
+  ["🧙", "Toverhoed"],
+  ["👷", "Helm"],
+  ["🥳", "Feesthoedje"],
+  ["😺", "Kattenoren"],
+  ["😈", "Duivelsoren"],
+  ["👼", "Engelenring"],
+  ["🍄", "Paddenstoelhoed"],
+  ["🍦", "Taarthoed"],
+  ["👨‍🍳", "Koksmuts"],
+  ["☠️", "Piratenhoed"],
+  ["🚒", "Mijnwerkershelm"],
+  ["🎧", "Oorwarmers"],
+  ["👽", "Aliensprieten"],
+  ["🕶️", "Zonnebril"],
+  ["👓", "Bril"],
+  ["🥽", "Duikbril"],
+  ["🥸", "Snorbril"],
+  ["🧐", "Monocle"],
+  ["🤡", "Rode neus"],
+  ["😍", "Hartjesbril"],
+  ["🤩", "Sterrenogen"],
+  ["🏴", "Piratenlapje"],
+  ["🎭", "Masker"],
+  ["❤️", "Hartje"],
+  ["💖", "Hartje"],
+  ["💙", "Hartje"],
+  ["💚", "Hartje"],
+  ["💛", "Hartje"],
+  ["💜", "Hartje"],
+  ["⭐", "Sterretje"],
+  ["✨", "Sprankels"],
+  ["🌸", "Bloem"],
+  ["🔥", "Vlam"],
+  ["💎", "Diamant"],
+  ["🍀", "Klavertje"],
+  ["🎈", "Ballon"],
+  ["🍭", "Lolly"],
+  ["🌈", "Regenboog"],
+  ["☀️", "Zon"],
+  ["🌙", "Maan"],
+  ["⚡", "Bliksem"],
+  ["🎵", "Muzieknoot"],
+  ["🍓", "Aardbei"],
+  ["🦋", "Vlinder"],
+  ["❄️", "Sneeuwvlokje"],
+  ["🎁", "Cadeautje"],
+  ["🏆", "Trofee"],
+  ["🍩", "Donut"],
+  ["⚽", "Voetbal"],
+  ["🎂", "Taart"],
+  ["🧸", "Knuffelbeertje"]
 ];
 
-function bouwBeheerTegels(lijst) {
+function bouwBeheerTegels(lijst, soort) {
   return lijst.map(t => {
-    const i = t.indexOf(' ');
-    return '<div class="beheer-tegel"><span class="beheer-tegel-emoji">' + escapeHtml(t.slice(0, i)) + '</span>' +
-      '<span class="beheer-tegel-naam">' + escapeHtml(t.slice(i + 1)) + '</span></div>';
+    let svg = '';
+    try {
+      if (soort === 'dier') {
+        svg = poppetjeSvg(t[0], {});
+      } else {
+        const groep = ACCESSOIRE_GROEPEN.find(g => g.items.indexOf(t[0]) !== -1);
+        const voorbeeld = {};
+        if (groep) voorbeeld[groep.plek] = t[0];
+        svg = poppetjeSvg(DIEREN[0], voorbeeld);
+      }
+    } catch (e) { svg = ''; }
+    return '<div class="beheer-tegel"><span class="beheer-tegel-poppetje">' + (svg || escapeHtml(t[0])) + '</span>' +
+      '<span class="beheer-tegel-naam">' + escapeHtml(t[1]) + '</span></div>';
   }).join('');
 }
 
-function vulBeheerDieren() {
-  document.getElementById('beheer-dieren-aantal').textContent = BEHEER_LIJST_POPPETJES.length;
-  document.getElementById('beheer-accessoires-aantal').textContent = BEHEER_LIJST_ACCESSOIRES.length;
-  document.getElementById('beheer-dieren-raster').innerHTML = bouwBeheerTegels(BEHEER_LIJST_POPPETJES);
-  document.getElementById('beheer-accessoires-raster').innerHTML = bouwBeheerTegels(BEHEER_LIJST_ACCESSOIRES);
+function vulBeheerOverzicht() {
+  document.getElementById('beheer-dieren-aantal').textContent = BEHEER_OVERZICHT_POPPETJES.length;
+  document.getElementById('beheer-accessoires-aantal').textContent = BEHEER_OVERZICHT_ACCESSOIRES.length;
+  document.getElementById('beheer-dieren-raster').innerHTML = bouwBeheerTegels(BEHEER_OVERZICHT_POPPETJES, 'dier');
+  document.getElementById('beheer-accessoires-raster').innerHTML = bouwBeheerTegels(BEHEER_OVERZICHT_ACCESSOIRES, 'accessoire');
 }
-vulBeheerDieren();
+vulBeheerOverzicht();
 
 function kiesBeheerTab(tab) {
-  const dieren = tab === 'dieren';
-  document.getElementById('beheer-pane-profielen').hidden = dieren;
-  document.getElementById('beheer-pane-dieren').hidden = !dieren;
-  document.getElementById('beheer-tab-profielen').classList.toggle('actief', !dieren);
-  document.getElementById('beheer-tab-dieren').classList.toggle('actief', dieren);
+  const overzicht = tab === 'overzicht';
+  document.getElementById('beheer-pane-profielen').hidden = overzicht;
+  document.getElementById('beheer-pane-overzicht').hidden = !overzicht;
+  document.getElementById('beheer-tab-profielen').classList.toggle('actief', !overzicht);
+  document.getElementById('beheer-tab-overzicht').classList.toggle('actief', overzicht);
   const o = document.querySelector('#beheer-profielen-overlay .sitebeheer-venster');
   if (o) o.scrollTop = 0;
 }
 document.getElementById('beheer-tab-profielen').addEventListener('click', () => kiesBeheerTab('profielen'));
-document.getElementById('beheer-tab-dieren').addEventListener('click', () => kiesBeheerTab('dieren'));
+document.getElementById('beheer-tab-overzicht').addEventListener('click', () => kiesBeheerTab('overzicht'));
