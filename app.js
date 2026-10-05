@@ -1,4 +1,4 @@
-console.log('Quiz-site app.js versie 2026-10-05-c (waarschuwing van sitebeheer in de chat)');
+console.log('Quiz-site app.js versie 2026-10-05-d (waarschuwing in de chat, naam wijzigen verbeterd)');
 // ---------- Accounts (gebruikersnaam + wachtwoord) ----------
 //
 // Een profiel is nu een echt account. Onder water is dat een Firebase-account met
@@ -4461,6 +4461,9 @@ let socialeZoekTimer = null;
 let huidigChatUid = '';
 let huidigChatNaam = '';
 let chatBerichtenQuery = null;      // de open chat (zodat we hem netjes kunnen stoppen)
+let chatWaarschuwingQuery = null;   // waarschuwingen van sitebeheer in de open chat
+let chatWaarschuwingen = [];        // [{ key, b }]
+let chatLaatsteSnap = null;         // laatste berichten-momentopname (om opnieuw te tekenen)
 let chatOngelezen = {};             // vriend-uid -> aantal ongelezen berichten
 let chatOngelezenQueries = {};      // vriend-uid -> luisteraar voor ongelezen berichten
 const CHAT_GELEZEN_SLEUTEL = 'quizAppChatGelezen';
@@ -4947,7 +4950,6 @@ let chatAntwoord = null;   // { key, uid, naam, tekst } van het bericht waarop j
 function berichtSamenvatting(b) {
   let t = String(b.tekst || '').trim();
   if (!t && b.type === 'quiz') t = '📝 ' + (b.titel || 'Quiz');
-  if (!t && b.type === 'waarschuwing') t = '⚠️ Waarschuwing';
   if (!t) t = 'Bericht';
   return t.length > 100 ? t.slice(0, 100) + '…' : t;
 }
@@ -5244,7 +5246,8 @@ function werkChatBeheerBij() {
 // ---------------- Waarschuwing van sitebeheer in de chat ----------------
 // Sitebeheer kan in elke chat (ook als hij meeleest bij een bezocht profiel) een waarschuwing
 // plaatsen. Die staat als opvallend rood kaartje in de chat en is voor beide kanten zichtbaar.
-// Alleen sitebeheer mag zo'n bericht maken: dat wordt in de Firebase-regels afgedwongen.
+// Ze staan apart van de gewone berichten (chats/<id>/waarschuwingen), zodat de bestaande
+// chatregels precies hetzelfde blijven. Alleen sitebeheer mag hier schrijven.
 function maakChatWaarschuwing(key, b) {
   const kaart = document.createElement('div');
   kaart.className = 'chat-waarschuwing';
@@ -5263,7 +5266,13 @@ function maakChatWaarschuwing(key, b) {
     weg.title = 'Waarschuwing verwijderen';
     weg.setAttribute('aria-label', 'Waarschuwing verwijderen');
     weg.textContent = '🗑';
-    weg.addEventListener('click', () => verwijderChatBericht(key, b));
+    weg.addEventListener('click', () => {
+      const ref = chatWaarschuwingenRef();
+      if (!ref || !confirm('Deze waarschuwing verwijderen?')) return;
+      ref.child(key).remove().catch(err => {
+        alert('Verwijderen is mislukt' + (err && err.code ? ' (' + err.code + ')' : '') + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.');
+      });
+    });
     kaart.appendChild(weg);
   }
   return kaart;
@@ -5271,17 +5280,12 @@ function maakChatWaarschuwing(key, b) {
 
 function stuurChatWaarschuwing() {
   const echt = auth.currentUser;   // altijd het echte sitebeheer-account, ook in bezoekmodus
-  const ref = chatBerichtenRef();
+  const ref = chatWaarschuwingenRef();
   if (!echt || !ref || !sitebeheerActief) return;
-  const invoer = prompt('Waarschuwing voor beide kanten van deze chat.\n\nWat wil je zeggen? (max. 500 tekens)', '');
-  const tekst = veiligeChatTekst(invoer);
+  const tekst = veiligeChatTekst(prompt('Waarschuwing voor beide kanten van deze chat.\n\nWat wil je zeggen? (max. 500 tekens)', ''));
   if (!tekst) return;
-  ref.push().set({
-    type: 'waarschuwing', uid: echt.uid, gebruikersnaam: 'Beheerder',
-    tekst: tekst, tijd: firebase.database.ServerValue.TIMESTAMP
-  }).catch(err => {
-    const code = err && err.code ? ' (' + err.code + ')' : '';
-    alert('De waarschuwing kon niet worden geplaatst' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.');
+  ref.push().set({ uid: echt.uid, tekst: tekst, tijd: firebase.database.ServerValue.TIMESTAMP }).catch(err => {
+    alert('De waarschuwing kon niet worden geplaatst' + (err && err.code ? ' (' + err.code + ')' : '') + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.');
   });
 }
 
@@ -5415,6 +5419,8 @@ function openChat(uid, naam) {
 
 function sluitChat() {
   if (chatBerichtenQuery) { chatBerichtenQuery.off(); chatBerichtenQuery = null; }
+  if (chatWaarschuwingQuery) { chatWaarschuwingQuery.off(); chatWaarschuwingQuery = null; }
+  chatLaatsteSnap = null; chatWaarschuwingen = [];
   if (chatBlokRef) { chatBlokRef.off(); chatBlokRef = null; }
   stopAntwoord();
   document.getElementById('chat-overlay').classList.remove('actief');
@@ -5428,39 +5434,66 @@ function chatBerichtenRef() {
   return db.ref('chats/' + chatIdVoor(gebruiker.uid, huidigChatUid) + '/berichten');
 }
 
+function chatWaarschuwingenRef() {
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker || !huidigChatUid) return null;
+  return db.ref('chats/' + chatIdVoor(gebruiker.uid, huidigChatUid) + '/waarschuwingen');
+}
+
 function laadChatBerichten() {
   const gebruiker = profielFirebaseGebruiker();
   const ref = chatBerichtenRef();
   if (!gebruiker || !ref) return;
-  const lijst = document.getElementById('chat-berichten');
   if (chatBerichtenQuery) chatBerichtenQuery.off();
+  if (chatWaarschuwingQuery) { chatWaarschuwingQuery.off(); chatWaarschuwingQuery = null; }
+  chatLaatsteSnap = null; chatWaarschuwingen = [];
   chatBerichtenQuery = ref.limitToLast(100);
   chatBerichtenQuery.on('value', snap => {
     markeerChatGelezen(snap);
-    const onderaan = lijst.scrollHeight - lijst.scrollTop - lijst.clientHeight < 80 || !lijst.childElementCount;
-    lijst.innerHTML = '';
-    snap.forEach(child => {
-      const b = child.val() || {};
-      const eigen = b.uid === gebruiker.uid;
-      if (!eigen && sitebeheerActief && geblokkeerdDoorMij[b.uid]) return;
-      if (b.type === 'poppetje') { const el = maakChatPoppetjeBericht(child.key, b, eigen, gebruiker); el.dataset.key = child.key; lijst.appendChild(el); return; }
-      if (b.type === 'quiz') { const el = maakChatQuizBericht(child.key, b, eigen, gebruiker); el.dataset.key = child.key; lijst.appendChild(el); return; }
-      if (b.type === 'waarschuwing') { lijst.appendChild(maakChatWaarschuwing(child.key, b)); return; }
-      const p = document.createElement('div');
-      p.className = 'chat-bericht' + (eigen ? ' eigen' : '') + (isAlleenEmoji(b.tekst) ? ' alleen-emoji' : '');
-      const wie = maakChatWie(eigen, b);
-      const tekst = document.createElement('span');
-      tekst.className = 'chat-bericht-tekst';
-      tekst.textContent = b.tekst || '';
-      p.dataset.key = child.key;
-      p.append(maakChatBerichtKop(wie, child.key, b, eigen));
-      if (b.antwoordOp && typeof b.antwoordOp === 'object') p.appendChild(maakAntwoordCitaat(b.antwoordOp));
-      p.appendChild(tekst);
-      lijst.appendChild(p);
-    });
-    if (bezoekUid()) lijst.querySelectorAll('button:not(.chat-waarschuwing-weg)').forEach(k => k.remove());   // alleen kijken
-    if (onderaan) lijst.scrollTop = lijst.scrollHeight;
+    chatLaatsteSnap = snap;
+    tekenChatBerichten();
   });
+  chatWaarschuwingQuery = chatWaarschuwingenRef().limitToLast(20);
+  chatWaarschuwingQuery.on('value', snap => {
+    chatWaarschuwingen = [];
+    snap.forEach(c => { chatWaarschuwingen.push({ key: c.key, b: c.val() || {} }); });
+    tekenChatBerichten();
+  }, () => {});
+}
+
+function tekenChatBerichten() {
+  const gebruiker = profielFirebaseGebruiker();
+  const snap = chatLaatsteSnap;
+  const lijst = document.getElementById('chat-berichten');
+  if (!gebruiker || !snap || !lijst) return;
+  const onderaan = lijst.scrollHeight - lijst.scrollTop - lijst.clientHeight < 80 || !lijst.childElementCount;
+  lijst.innerHTML = '';
+  const items = [];
+  snap.forEach(child => { items.push({ soort: 'bericht', key: child.key, b: child.val() || {} }); });
+  chatWaarschuwingen.forEach(w => { items.push({ soort: 'waarschuwing', key: w.key, b: w.b }); });
+  const tijdVan = it => (typeof it.b.tijd === 'number' ? it.b.tijd : Number.MAX_SAFE_INTEGER);
+  items.sort((x, y) => tijdVan(x) - tijdVan(y));
+  items.forEach(it => {
+    const b = it.b, key = it.key;
+    if (it.soort === 'waarschuwing') { lijst.appendChild(maakChatWaarschuwing(key, b)); return; }
+    const eigen = b.uid === gebruiker.uid;
+    if (!eigen && sitebeheerActief && geblokkeerdDoorMij[b.uid]) return;
+    if (b.type === 'poppetje') { const el = maakChatPoppetjeBericht(key, b, eigen, gebruiker); el.dataset.key = key; lijst.appendChild(el); return; }
+    if (b.type === 'quiz') { const el = maakChatQuizBericht(key, b, eigen, gebruiker); el.dataset.key = key; lijst.appendChild(el); return; }
+    const p = document.createElement('div');
+    p.className = 'chat-bericht' + (eigen ? ' eigen' : '') + (isAlleenEmoji(b.tekst) ? ' alleen-emoji' : '');
+    const wie = maakChatWie(eigen, b);
+    const tekst = document.createElement('span');
+    tekst.className = 'chat-bericht-tekst';
+    tekst.textContent = b.tekst || '';
+    p.dataset.key = key;
+    p.append(maakChatBerichtKop(wie, key, b, eigen));
+    if (b.antwoordOp && typeof b.antwoordOp === 'object') p.appendChild(maakAntwoordCitaat(b.antwoordOp));
+    p.appendChild(tekst);
+    lijst.appendChild(p);
+  });
+  if (bezoekUid()) lijst.querySelectorAll('button:not(.chat-waarschuwing-weg)').forEach(k => k.remove());   // alleen kijken
+  if (onderaan) lijst.scrollTop = lijst.scrollHeight;
 }
 
 // Kopregel van een bericht: naam, en bij je eigen berichten een 🗑-knop om het te verwijderen.
@@ -5979,6 +6012,7 @@ function wijzigGebruikersnaam(nieuweNaamRaw) {
   if (!nieuweNaam) return Promise.reject(new Error('Vul een gebruikersnaam in.'));
   if (nieuweNaam === oudeNaam) return Promise.resolve(false);
   if (!gebruiker) return Promise.reject(new Error('Je profiel is nog niet verbonden. Probeer het over een paar seconden opnieuw.'));
+  if (gebruiker.bezoek) return Promise.reject(new Error('Je bekijkt nu het profiel van iemand anders. Druk eerst op Stoppen met bezoeken om je eigen naam te wijzigen.'));
 
   const nieuweZoek = normaliseerGebruikersnaam(nieuweNaam);
   const oudeZoek = normaliseerGebruikersnaam(oudeNaam);
@@ -6054,7 +6088,11 @@ function slaNieuweGebruikersnaamOp() {
     sluitNaamWijzigenPaneel();
   }).catch(err => {
     knop.disabled = false;
-    fout.textContent = (err && err.message) || 'Naam wijzigen is mislukt.';
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    const rechten = String((err && (err.code || err.message)) || '').toUpperCase().indexOf('PERMISSION') !== -1;
+    fout.textContent = rechten
+      ? 'Firebase weigert dit' + code + '. Publiceer de nieuwste regels uit firebase-rules.json.'
+      : ((err && err.message) || 'Naam wijzigen is mislukt.') + code;
   });
 }
 document.getElementById('btn-profiel-naam-opslaan').addEventListener('click', slaNieuweGebruikersnaamOp);
