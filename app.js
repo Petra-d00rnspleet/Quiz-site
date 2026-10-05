@@ -4474,6 +4474,7 @@ function laadVriendenEnVerzoeken() {
     if (huidigChatUid && !socialeVrienden[huidigChatUid]) sluitChat();
     synchroniseerChatOngelezen();
     renderVrienden();
+    zorgVoorBeheerVrienden();
   });
   verzoekenRef = db.ref('vriendschapsverzoeken/' + gebruiker.uid);
   verzoekenRef.on('value', snap => {
@@ -4619,7 +4620,7 @@ function zoekGebruikersOpNaam(zoekterm, forceer) {
         const knop = document.createElement('button');
         knop.className = 'btn btn-secondary';
         knop.type = 'button';
-        if (socialeVrienden[r.uid]) {
+        if (socialeVrienden[r.uid] || isBeheerUid(r.uid)) {
           knop.textContent = '✓ Vriend';
           knop.disabled = true;
         } else if (socialeVerzoeken[r.uid]) {
@@ -4741,6 +4742,7 @@ function renderVrienden() {
       const weg = document.createElement('button');
       weg.type = 'button'; weg.className = 'btn btn-secondary vriend-verwijder-knop';
       weg.textContent = '🗑'; weg.title = 'Uit mijn vrienden halen';
+      weg.hidden = isBeheerUid(uid);
       weg.setAttribute('aria-label', (info.gebruikersnaam || 'Vriend') + ' uit mijn vrienden halen');
       weg.addEventListener('click', () => verwijderVriend(uid, info.gebruikersnaam || 'Vriend'));
       const knoppen = document.createElement('div');
@@ -4928,6 +4930,32 @@ let geblokkeerdDoorMij = {};   // (alleen sitebeheer) uid -> true
 let ikBenGeblokkeerd = {};     // beheerder-uid -> true/false (voor de chat die nu open is)
 let blokkadeRef = null, blokkadeUid = '';
 let chatBlokRef = null;
+
+// Mensen hoeven geen verzoek te sturen aan sitebeheer: iedereen is automatisch vrienden met
+// elke beheerder (aan beide kanten), zodat je meteen kunt chatten.
+let beheerVriendenBezig = false;
+let beheerVriendenGeprobeerd = {};
+function zorgVoorBeheerVrienden() {
+  const g = profielFirebaseGebruiker();
+  if (!g || sitebeheerActief || !heeftProfiel() || beheerVriendenBezig) return;
+  beheerVriendenBezig = true;
+  db.ref('beheerders').once('value').then(snap => {
+    const uids = [];
+    snap.forEach(c => { if (c.val() === true && c.key !== g.uid) uids.push(c.key); });
+    uids.forEach(u => { beheerCache[u] = { waarde: true, tijd: Date.now() }; });
+    const nieuw = uids.filter(u => !socialeVrienden[u] && !beheerVriendenGeprobeerd[g.uid + u]);
+    return Promise.all(nieuw.map(u => {
+      beheerVriendenGeprobeerd[g.uid + u] = true;
+      return db.ref(SOCIAAL_PROFIEL_PAD + '/' + u + '/gebruikersnaam').once('value').then(ns => {
+        const up = {};
+        up['vrienden/' + g.uid + '/' + u] = { gebruikersnaam: ns.val() || 'Beheerder', sinds: firebase.database.ServerValue.TIMESTAMP };
+        up['vrienden/' + u + '/' + g.uid] = { gebruikersnaam: huidigeMakerNaam(), sinds: firebase.database.ServerValue.TIMESTAMP };
+        return db.ref().update(up);
+      });
+    }));
+  }).catch(err => { console.error('Vrienden met sitebeheer maken mislukt:', err); })
+    .then(() => { beheerVriendenBezig = false; renderVrienden(); });
+}
 
 function isBeheerUid(uid) {
   const g = profielFirebaseGebruiker();
