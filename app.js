@@ -4520,13 +4520,17 @@ function synchroniseerChatOngelezen() {
     query.on('value', snap => {
       let nieuwste = 0;
       let aantal = 0;
-      const gelezen = Number(laadChatGelezen()[chatId]) || 0;
+      const gelezenAlles = laadChatGelezen();
+      let gelezen = Number(gelezenAlles[chatId]) || 0;
+      const eersteKeer = gelezenAlles[chatId] === undefined;
       snap.forEach(c => {
         const b = c.val() || {};
         const t = Number(b.tijd) || 0;
         if (t > nieuwste) nieuwste = t;
         if (b.uid !== gebruiker.uid && t > gelezen && !(sitebeheerActief && geblokkeerdDoorMij[b.uid])) aantal++;
       });
+      // Nog nooit naar deze chat gekeken op dit apparaat? Dan is alles wat er al staat niet nieuw.
+      if (eersteKeer) { zetChatGelezen(chatId, nieuwste || 1); if (nieuwste) { aantal = 0; gelezen = nieuwste; } }
       const chatIsOpen = huidigChatUid === fuid && document.getElementById('chat-overlay').classList.contains('actief');
       if (chatIsOpen) { zetChatGelezen(chatId, nieuwste); aantal = 0; }
       chatOngelezen[fuid] = aantal;
@@ -4702,11 +4706,10 @@ function verwijderVriend(fuid, naam) {
 function updateVriendenBadge() {
   const badge = document.getElementById('vrienden-badge-aantal');
   if (!badge) return;
-  const verzoeken = Object.keys(socialeVerzoeken || {}).length;
   const berichten = totaalOngelezenChatBerichten();
-  const totaal = verzoeken + berichten;
+  const totaal = berichten;   // alleen nieuwe berichten, geen vriendschapsverzoeken
   badge.textContent = totaal > 99 ? '99+' : String(totaal);
-  badge.title = verzoeken + ' vriendschapsverzoek(en), ' + berichten + ' nieuw(e) bericht(en)';
+  badge.title = berichten + ' nieuw(e) bericht(en)';
   badge.hidden = totaal === 0;
 }
 
@@ -4917,6 +4920,72 @@ function chatPoppetjeGeldig(soort, item) {
   return soort === 'dier' ? !!geldigDier(item) : (soort === 'accessoire' && !!ACCESSOIRES[item]);
 }
 
+// ---------------- Emoties sturen in de chat ----------------
+const CHAT_EMOTIES = ['😀','😃','😄','😁','😆','😅','😂','🤣','🙂','😉','😊','😇','🥰','😍','🤩','😘','😋','😜','🤪','😎',
+  '🤗','🤔','🤭','😐','😴','🥱','😮','😲','😳','🥺','😢','😭','😤','😠','😡','🤯','🥳','😱','🤒','🤕',
+  '❤️','🧡','💛','💚','💙','💜','🖤','💔','💖','💯','👍','👎','👏','🙌','🙏','💪','👋','🤝','✌️','🤞',
+  '🔥','⭐','🎉','🎁','🏆','✅','❌','❗','❓','💤','🎂','🌈'];
+
+function bouwChatEmojiPaneel() {
+  if (document.getElementById('chat-emoji-paneel')) return;
+  const invoer = document.querySelector('#chat-overlay .chat-invoer');
+  if (!invoer) return;
+  const paneel = document.createElement('div');
+  paneel.id = 'chat-emoji-paneel';
+  paneel.className = 'chat-paneel chat-emoji-paneel';
+  paneel.hidden = true;
+  const titel = document.createElement('p');
+  titel.className = 'chat-paneel-titel';
+  titel.textContent = 'Kies een emotie';
+  const raster = document.createElement('div');
+  raster.className = 'chat-emoji-raster';
+  CHAT_EMOTIES.forEach(e => {
+    const k = document.createElement('button');
+    k.type = 'button'; k.className = 'chat-emoji-keuze'; k.textContent = e;
+    k.setAttribute('aria-label', e);
+    k.addEventListener('click', () => voegEmojiToe(e));
+    raster.appendChild(k);
+  });
+  paneel.append(titel, raster);
+  invoer.before(paneel);
+
+  const knop = document.createElement('button');
+  knop.id = 'btn-chat-emoji'; knop.type = 'button'; knop.className = 'chat-poppetje-knop';
+  knop.title = 'Emotie sturen';
+  const plaatje = document.createElement('span');
+  plaatje.className = 'chat-poppetje-knop-plaatje'; plaatje.textContent = '😊';
+  knop.appendChild(plaatje);
+  document.getElementById('chat-input').before(knop);
+  knop.addEventListener('click', () => {
+    const open = paneel.hidden;
+    ['chat-stijl-paneel', 'chat-poppetjes-paneel', 'chat-quiz-paneel'].forEach(id => { const el = document.getElementById(id); if (el) el.hidden = true; });
+    paneel.hidden = !open;
+  });
+  // Opent een ander paneel? Dan gaat dit dicht.
+  ['btn-chat-stijl', 'btn-chat-poppetje', 'btn-chat-quiz'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', () => { paneel.hidden = true; });
+  });
+}
+
+function voegEmojiToe(e) {
+  const input = document.getElementById('chat-input');
+  if (!input || input.disabled) return;
+  const van = input.selectionStart != null ? input.selectionStart : input.value.length;
+  const tot = input.selectionEnd != null ? input.selectionEnd : van;
+  const nieuw = input.value.slice(0, van) + e + input.value.slice(tot);
+  if (nieuw.length > 500) return;
+  input.value = nieuw;
+  const pos = van + e.length;
+  try { input.setSelectionRange(pos, pos); } catch (x) {}
+}
+
+// Een bericht met alleen emoji's laten we groot zien.
+function isAlleenEmoji(tekst) {
+  const t = String(tekst || '').trim();
+  return !!t && t.length <= 24 && /^(?:\p{Extended_Pictographic}|\u200d|\ufe0f|\s)+$/u.test(t);
+}
+
 // ---------------- Beheerder-weergave ----------------
 // Is iemand sitebeheer? Dan is het profielplaatje een instellingen-logo, heet hij "Beheerder"
 // en staat zijn eigen naam er in het klein onder. Gewone mensen kunnen gewoon met hem chatten,
@@ -5020,6 +5089,7 @@ function chatGeblokkeerd() {
 function werkChatBeheerBij() {
   const overlay = document.getElementById('chat-overlay');
   if (!overlay) return;
+  bouwChatEmojiPaneel();
   let melding = document.getElementById('chat-beheer-melding');
   if (!melding) {
     melding = document.createElement('div');
@@ -5050,7 +5120,7 @@ function werkChatBeheerBij() {
 
   // Geblokkeerd: het schrijfvak staat uit
   const input = document.getElementById('chat-input');
-  ['chat-input', 'btn-chat-sturen', 'btn-chat-poppetje', 'btn-chat-quiz'].forEach(id => {
+  ['chat-input', 'btn-chat-sturen', 'btn-chat-poppetje', 'btn-chat-quiz', 'btn-chat-emoji'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.disabled = geblokkeerd;
   });
@@ -5171,6 +5241,8 @@ function openChat(uid, naam) {
   document.getElementById('chat-stijl-paneel').hidden = true;
   document.getElementById('chat-poppetjes-paneel').hidden = true;
   document.getElementById('chat-quiz-paneel').hidden = true;
+  bouwChatEmojiPaneel();
+  document.getElementById('chat-emoji-paneel').hidden = true;
   chatGekozenPoppetje = null;
   document.getElementById('chat-poppetje-knop-plaatje').innerHTML =
     geldigDier(huidigProfielDier()) ? poppetjeSvg(huidigProfielDier(), {}) : '👤';
@@ -5214,7 +5286,7 @@ function laadChatBerichten() {
       if (b.type === 'poppetje') { lijst.appendChild(maakChatPoppetjeBericht(child.key, b, eigen, gebruiker)); return; }
       if (b.type === 'quiz') { lijst.appendChild(maakChatQuizBericht(child.key, b, eigen, gebruiker)); return; }
       const p = document.createElement('div');
-      p.className = 'chat-bericht' + (eigen ? ' eigen' : '');
+      p.className = 'chat-bericht' + (eigen ? ' eigen' : '') + (isAlleenEmoji(b.tekst) ? ' alleen-emoji' : '');
       const wie = maakChatWie(eigen, b);
       const tekst = document.createElement('span');
       tekst.className = 'chat-bericht-tekst';
