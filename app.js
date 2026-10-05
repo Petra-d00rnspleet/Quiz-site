@@ -223,6 +223,10 @@ function sluitSitebeheerOverlay() {
 
 function werkSitebeheerKnopBij() {
   if (typeof werkBeheerNavBij === 'function') werkBeheerNavBij();
+  try {
+    werkProfielPoppetjeWeergaveBij(); werkProfielOverlayNaamBij(); werkBlokkadeLuisteraarBij(); renderVrienden();
+    if (huidigChatUid) werkChatBeheerBij();
+  } catch (e) { /* de rest van de site is nog aan het laden */ }
   if (sitebeheerActief) {
     btnSitebeheerEl.classList.add('actief');
     btnSitebeheerEl.textContent = '🔓 Sitebeheer actief';
@@ -3833,8 +3837,8 @@ function werkProfielPoppetjeWeergaveBij() {
   const overlayPoppetjeEl = document.getElementById('profiel-overlay-poppetje');
   const badgePoppetjeEl = document.getElementById('profiel-badge-poppetje');
 
-  if (heeftProfiel() && geldigDier(huidigProfielDier())) {
-    const svg = profielPoppetjeHtml();
+  if (heeftProfiel() && (sitebeheerActief || geldigDier(huidigProfielDier()))) {
+    const svg = sitebeheerActief ? BEHEER_LOGO_HTML : profielPoppetjeHtml();
     overlayPoppetjeEl.innerHTML = svg;
     badgePoppetjeEl.innerHTML = svg;
   } else {
@@ -4026,7 +4030,8 @@ document.getElementById('btn-pe-klaar').addEventListener('click', sluitPoppetjeE
 
 document.getElementById('btn-profiel-badge').addEventListener('click', () => {
   if (heeftProfiel()) {
-    document.getElementById('profiel-overlay-naam').textContent = 'Ingelogd als ' + huidigeMakerNaam();
+    werkProfielOverlayNaamBij();
+    document.getElementById('btn-profiel-poppetje-wijzigen').hidden = !!sitebeheerActief;
     werkProfielPoppetjeWeergaveBij();
     sluitProfielPoppetjeKiezer();
     profielOverlayEl.classList.add('actief');
@@ -4519,7 +4524,7 @@ function synchroniseerChatOngelezen() {
         const b = c.val() || {};
         const t = Number(b.tijd) || 0;
         if (t > nieuwste) nieuwste = t;
-        if (b.uid !== gebruiker.uid && t > gelezen) aantal++;
+        if (b.uid !== gebruiker.uid && t > gelezen && !(sitebeheerActief && geblokkeerdDoorMij[b.uid])) aantal++;
       });
       const chatIsOpen = huidigChatUid === fuid && document.getElementById('chat-overlay').classList.contains('actief');
       if (chatIsOpen) { zetChatGelezen(chatId, nieuwste); aantal = 0; }
@@ -4591,7 +4596,8 @@ function zoekGebruikersOpNaam(zoekterm, forceer) {
     }
     return Promise.all(treffers.map(t => Promise.all([
       db.ref(SOCIAAL_PROFIEL_PAD + '/' + t.uid).once('value'),
-      eigenUid ? db.ref('vriendschapsverzoeken/' + t.uid + '/' + eigenUid).once('value').catch(() => null) : Promise.resolve(null)
+      eigenUid ? db.ref('vriendschapsverzoeken/' + t.uid + '/' + eigenUid).once('value').catch(() => null) : Promise.resolve(null),
+      laadBeheerStatus(t.uid)
     ]).then(([profielSnap, verzoekSnap]) => ({
       uid: t.uid, p: profielSnap.val(), verstuurd: !!(verzoekSnap && verzoekSnap.exists())
     })))).then(resultaten => {
@@ -4606,9 +4612,10 @@ function zoekGebruikersOpNaam(zoekterm, forceer) {
         rij.className = 'vriend-zoekresultaat';
         const pop = document.createElement('div');
         pop.className = 'vriend-mini-poppetje';
-        if (geldigDier(p.dier)) pop.innerHTML = poppetjeSvg(p.dier, geldigeAccessoires(p.accessoires));
+        if (isBeheerUid(r.uid)) pop.innerHTML = BEHEER_LOGO_HTML;
+        else if (geldigDier(p.dier)) pop.innerHTML = poppetjeSvg(p.dier, geldigeAccessoires(p.accessoires));
         const naam = document.createElement('strong');
-        naam.textContent = p.gebruikersnaam;
+        vulWeergaveNaam(naam, r.uid, p.gebruikersnaam);
         const knop = document.createElement('button');
         knop.className = 'btn btn-secondary';
         knop.type = 'button';
@@ -4713,7 +4720,13 @@ function renderVrienden() {
       const rij = document.createElement('div');
       rij.className = 'vriend-rij';
       const naam = document.createElement('strong');
-      naam.textContent = info.gebruikersnaam || 'Vriend';
+      maakWeergaveNaam(naam, uid, info.gebruikersnaam || 'Vriend');
+      if (sitebeheerActief && geblokkeerdDoorMij[uid]) {
+        const blok = document.createElement('small');
+        blok.className = 'beheer-echte-naam';
+        blok.textContent = '🚫 Geblokkeerd';
+        naam.appendChild(blok);
+      }
       const chat = document.createElement('button');
       chat.type = 'button'; chat.className = 'btn btn-secondary chat-knop'; chat.textContent = '💬 Chat';
       const ongelezen = chatOngelezen[uid] || 0;
@@ -4742,7 +4755,7 @@ function renderVrienden() {
     const rij = document.createElement('div');
     rij.className = 'vriend-rij';
     const naam = document.createElement('strong');
-    naam.textContent = verzoek.gebruikersnaam || 'Gebruiker';
+    maakWeergaveNaam(naam, uid, verzoek.gebruikersnaam || 'Gebruiker');
     const knop = document.createElement('button');
     knop.type = 'button'; knop.className = 'btn btn-primary'; knop.textContent = '✓ Accepteren';
     knop.addEventListener('click', () => accepteerVriendschapsverzoek(uid, verzoek));
@@ -4902,12 +4915,176 @@ function chatPoppetjeGeldig(soort, item) {
   return soort === 'dier' ? !!geldigDier(item) : (soort === 'accessoire' && !!ACCESSOIRES[item]);
 }
 
+// ---------------- Beheerder-weergave ----------------
+// Is iemand sitebeheer? Dan is het profielplaatje een instellingen-logo, heet hij "Beheerder"
+// en staat zijn eigen naam er in het klein onder. Gewone mensen kunnen gewoon met hem chatten,
+// maar hij kan hen ook blokkeren.
+const BEHEER_LOGO_HTML = '<svg class="beheer-logo-svg" viewBox="0 0 100 100" aria-hidden="true">' +
+  '<circle cx="50" cy="50" r="46" fill="#16204a" stroke="#f0c04d" stroke-width="5"/>' +
+  '<text x="50" y="50" dy=".35em" text-anchor="middle" font-size="54">⚙️</text></svg>';
+let beheerCache = {};          // uid -> { waarde: true/false, tijd }
+let beheerLaden = {};
+let geblokkeerdDoorMij = {};   // (alleen sitebeheer) uid -> true
+let ikBenGeblokkeerd = {};     // beheerder-uid -> true/false (voor de chat die nu open is)
+let blokkadeRef = null, blokkadeUid = '';
+let chatBlokRef = null;
+
+function isBeheerUid(uid) {
+  const g = profielFirebaseGebruiker();
+  if (g && uid === g.uid) return !!sitebeheerActief;
+  const c = beheerCache[uid];
+  return !!(c && c.waarde);
+}
+
+function laadBeheerStatus(uid) {
+  if (!uid) return Promise.resolve(false);
+  const g = profielFirebaseGebruiker();
+  if (g && uid === g.uid) return Promise.resolve(!!sitebeheerActief);
+  const c = beheerCache[uid];
+  if (c && Date.now() - c.tijd < 60000) return Promise.resolve(c.waarde);
+  if (beheerLaden[uid]) return beheerLaden[uid];
+  beheerLaden[uid] = db.ref('beheerders/' + uid).once('value')
+    .then(snap => snap.val() === true)
+    .catch(() => false)
+    .then(waarde => { beheerCache[uid] = { waarde: waarde, tijd: Date.now() }; delete beheerLaden[uid]; return waarde; });
+  return beheerLaden[uid];
+}
+
+// Zet de naam in een element: gewoon de naam, of "Beheerder" met de echte naam klein eronder.
+function vulWeergaveNaam(el, uid, naam) {
+  el.textContent = '';
+  if (isBeheerUid(uid)) {
+    el.appendChild(document.createTextNode('Beheerder'));
+    if (naam) {
+      const klein = document.createElement('small');
+      klein.className = 'beheer-echte-naam';
+      klein.textContent = naam;
+      el.appendChild(klein);
+    }
+  } else {
+    el.textContent = naam;
+  }
+}
+
+function maakWeergaveNaam(el, uid, naam) {
+  vulWeergaveNaam(el, uid, naam);
+  laadBeheerStatus(uid).then(() => { if (el.isConnected !== false) vulWeergaveNaam(el, uid, naam); });
+  return el;
+}
+
+function werkProfielOverlayNaamBij() {
+  const el = document.getElementById('profiel-overlay-naam');
+  if (!el) return;
+  const naam = huidigeMakerNaam();
+  if (sitebeheerActief) vulWeergaveNaam(el, (profielFirebaseGebruiker() || {}).uid, naam);
+  else el.textContent = 'Ingelogd als ' + naam;
+}
+
+// Is er in de open chat een beheerder (jij of de ander)? Dan staat er bovenin een waarschuwing.
+function chatMetBeheerder() {
+  return !!huidigChatUid && (!!sitebeheerActief || isBeheerUid(huidigChatUid));
+}
+
+function chatGeblokkeerd() {
+  return !!huidigChatUid && !!ikBenGeblokkeerd[huidigChatUid];
+}
+
+function werkChatBeheerBij() {
+  const overlay = document.getElementById('chat-overlay');
+  if (!overlay) return;
+  let melding = document.getElementById('chat-beheer-melding');
+  if (!melding) {
+    melding = document.createElement('div');
+    melding.id = 'chat-beheer-melding';
+    melding.className = 'chat-beheer-melding';
+    document.getElementById('chat-berichten').before(melding);
+  }
+  const geblokkeerd = chatGeblokkeerd();
+  melding.textContent = geblokkeerd ? '🚫 Je bent geblokkeerd. Je kunt geen berichten meer sturen.' : '⚠️Dit is alleen voor belangrijke dingen⚠️';
+  melding.classList.toggle('geblokkeerd', geblokkeerd);
+  melding.hidden = !(geblokkeerd || chatMetBeheerder());
+
+  // Blokkeerknop: alleen voor sitebeheer, en alleen bij gewone gebruikers
+  let knop = document.getElementById('btn-chat-blokkeer');
+  if (!knop) {
+    knop = document.createElement('button');
+    knop.id = 'btn-chat-blokkeer';
+    knop.type = 'button';
+    knop.className = 'chat-kop-knop';
+    knop.addEventListener('click', wisselBlokkade);
+    document.getElementById('btn-chat-stijl').before(knop);
+  }
+  const kanBlokkeren = !!sitebeheerActief && !!huidigChatUid && !isBeheerUid(huidigChatUid);
+  knop.hidden = !kanBlokkeren;
+  const isGeblokkeerd = !!geblokkeerdDoorMij[huidigChatUid];
+  knop.textContent = isGeblokkeerd ? '✅' : '🚫';
+  knop.title = isGeblokkeerd ? 'Deblokkeren' : 'Blokkeren';
+
+  // Geblokkeerd: het schrijfvak staat uit
+  const input = document.getElementById('chat-input');
+  ['chat-input', 'btn-chat-sturen', 'btn-chat-poppetje', 'btn-chat-quiz'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = geblokkeerd;
+  });
+  if (input) input.placeholder = geblokkeerd ? 'Je bent geblokkeerd' : 'Typ een bericht...';
+}
+
+function wisselBlokkade() {
+  const g = profielFirebaseGebruiker();
+  const uid = huidigChatUid;
+  if (!g || !uid || !sitebeheerActief || isBeheerUid(uid)) return;
+  const blokkeer = !geblokkeerdDoorMij[uid];
+  if (blokkeer && !confirm(huidigChatNaam + ' blokkeren?\n\nJe ziet geen berichten meer van deze persoon en hij/zij kan jou niets meer sturen. Je kunt dit altijd weer ongedaan maken.')) return;
+  const ref = db.ref('geblokkeerd/' + g.uid + '/' + uid);
+  (blokkeer ? ref.set(true) : ref.remove()).catch(err => {
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    alert('Blokkeren is niet gelukt' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.');
+  });
+}
+
+// Sitebeheer luistert live naar de eigen blokkadelijst.
+function werkBlokkadeLuisteraarBij() {
+  const g = profielFirebaseGebruiker();
+  const uid = (g && sitebeheerActief) ? g.uid : '';
+  if (uid === blokkadeUid) return;
+  if (blokkadeRef) { blokkadeRef.off(); blokkadeRef = null; }
+  blokkadeUid = uid;
+  geblokkeerdDoorMij = {};
+  if (!uid) return;
+  blokkadeRef = db.ref('geblokkeerd/' + uid);
+  blokkadeRef.on('value', snap => {
+    geblokkeerdDoorMij = snap.val() || {};
+    werkChatBeheerBij();
+    renderVrienden();
+    if (huidigChatUid && document.getElementById('chat-overlay').classList.contains('actief')) laadChatBerichten();
+    updateVriendenBadge();
+  }, () => {});
+}
+
+// In de chat met een beheerder: kijk live of die jou heeft geblokkeerd.
+function volgBlokkadeInChat(uid) {
+  if (chatBlokRef) { chatBlokRef.off(); chatBlokRef = null; }
+  const g = profielFirebaseGebruiker();
+  if (!g || !uid) return;
+  laadBeheerStatus(uid).then(isBeheer => {
+    if (huidigChatUid !== uid) return;
+    werkChatBeheerBij();
+    if (!isBeheer) return;
+    chatBlokRef = db.ref('geblokkeerd/' + uid + '/' + g.uid);
+    chatBlokRef.on('value', snap => {
+      ikBenGeblokkeerd[uid] = snap.val() === true;
+      werkChatBeheerBij();
+    }, () => {});
+  });
+}
+
 // ---------------- Profielpoppetjes (bij de naam in chat en vriendenlijst) ----------------
 
 let chatProfielCache = {};      // uid -> { dier, accessoires } (van een ander)
 let chatProfielLaden = {};
 
 function poppetjeHtmlVoorUid(uid) {
+  if (isBeheerUid(uid)) return BEHEER_LOGO_HTML;
   const gebruiker = profielFirebaseGebruiker();
   if (gebruiker && uid === gebruiker.uid) return profielPoppetjeHtml();
   const p = chatProfielCache[uid];
@@ -4920,7 +5097,7 @@ function maakMiniPoppetje(uid, klasse) {
   el.className = klasse;
   el.dataset.uid = uid;
   el.innerHTML = poppetjeHtmlVoorUid(uid) || '<span class="mini-poppetje-leeg">👤</span>';
-  laadChatProfiel(uid).then(() => {
+  Promise.all([laadChatProfiel(uid), laadBeheerStatus(uid)]).then(() => {
     const html = poppetjeHtmlVoorUid(uid);
     if (html && el.isConnected !== false) el.innerHTML = html;
   });
@@ -4949,7 +5126,8 @@ function maakChatWie(eigen, b) {
   wie.className = 'chat-bericht-naam';
   wie.appendChild(maakMiniPoppetje(uid, 'chat-bericht-poppetje'));
   const t = document.createElement('span');
-  t.textContent = eigen ? 'Jij' : (b.gebruikersnaam || huidigChatNaam || 'Gebruiker');
+  if (eigen) t.textContent = 'Jij';
+  else maakWeergaveNaam(t, uid, b.gebruikersnaam || huidigChatNaam || 'Gebruiker');
   wie.appendChild(t);
   return wie;
 }
@@ -4957,10 +5135,10 @@ function maakChatWie(eigen, b) {
 function openChat(uid, naam) {
   huidigChatUid = uid; huidigChatNaam = naam;
   const overlay = document.getElementById('chat-overlay');
-  document.getElementById('chat-titel').textContent = naam;
+  maakWeergaveNaam(document.getElementById('chat-titel'), uid, naam);
   const kopPop = document.getElementById('chat-kop-poppetje');
   kopPop.innerHTML = poppetjeHtmlVoorUid(uid) || '<span class="mini-poppetje-leeg">👤</span>';
-  laadChatProfiel(uid).then(() => { if (huidigChatUid === uid) kopPop.innerHTML = poppetjeHtmlVoorUid(uid) || kopPop.innerHTML; });
+  Promise.all([laadChatProfiel(uid), laadBeheerStatus(uid)]).then(() => { if (huidigChatUid === uid) kopPop.innerHTML = poppetjeHtmlVoorUid(uid) || kopPop.innerHTML; });
   chatStijlPaneelOpen = false;
   document.getElementById('chat-stijl-paneel').hidden = true;
   document.getElementById('chat-poppetjes-paneel').hidden = true;
@@ -4971,11 +5149,14 @@ function openChat(uid, naam) {
   overlay.classList.add('actief');
   document.body.classList.add('chat-open');
   pasChatStijlToe();
+  werkChatBeheerBij();
+  volgBlokkadeInChat(uid);
   laadChatBerichten();
 }
 
 function sluitChat() {
   if (chatBerichtenQuery) { chatBerichtenQuery.off(); chatBerichtenQuery = null; }
+  if (chatBlokRef) { chatBlokRef.off(); chatBlokRef = null; }
   document.getElementById('chat-overlay').classList.remove('actief');
   document.body.classList.remove('chat-open');
   huidigChatUid = '';
@@ -5001,6 +5182,7 @@ function laadChatBerichten() {
     snap.forEach(child => {
       const b = child.val() || {};
       const eigen = b.uid === gebruiker.uid;
+      if (!eigen && sitebeheerActief && geblokkeerdDoorMij[b.uid]) return;
       if (b.type === 'poppetje') { lijst.appendChild(maakChatPoppetjeBericht(child.key, b, eigen, gebruiker)); return; }
       if (b.type === 'quiz') { lijst.appendChild(maakChatQuizBericht(child.key, b, eigen, gebruiker)); return; }
       const p = document.createElement('div');
@@ -5138,6 +5320,7 @@ function verstuurChatBericht() {
   const input = document.getElementById('chat-input');
   const tekst = veiligeChatTekst(input.value);
   if (!tekst) return;
+  if (chatGeblokkeerd()) { werkChatBeheerBij(); return; }
   const ref = chatBerichtenRef();
   if (!gebruiker || !ref) { alert(socialeVerbindingsMelding()); zorgVoorSocialeGebruiker(); return; }
   input.value = '';
@@ -5242,6 +5425,7 @@ function verstuurChatPoppetje() {
   const ref = chatBerichtenRef();
   const keuze = chatGekozenPoppetje;
   if (!gebruiker || !ref || !keuze) return;
+  if (chatGeblokkeerd()) { werkChatBeheerBij(); return; }
   if (!socialeVrienden[huidigChatUid]) { alert('Je kunt alleen poppetjes naar vrienden sturen.'); return; }
   if (!chatPoppetjeGeldig(keuze.soort, keuze.item) || chatBeschikbaarAantal(keuze.soort, keuze.item) < 1) {
     alert('Je hebt dit poppetje niet (meer).'); return;
@@ -5344,6 +5528,7 @@ function verstuurChatQuiz(q) {
   const gebruiker = profielFirebaseGebruiker();
   const ref = chatBerichtenRef();
   if (!gebruiker || !ref) return;
+  if (chatGeblokkeerd()) { werkChatBeheerBij(); return; }
   if (!socialeVrienden[huidigChatUid]) { alert('Je kunt alleen quizzen naar vrienden sturen.'); return; }
   db.ref('quizzen/' + q.code + '/titel').once('value').then(snap => {
     if (!snap.exists()) throw new Error('Deze quiz bestaat niet meer.');
@@ -5583,7 +5768,7 @@ function slaNieuweGebruikersnaamOp() {
   knop.disabled = true;
   wijzigGebruikersnaam(input.value).then(gewijzigd => {
     knop.disabled = false;
-    if (gewijzigd) document.getElementById('profiel-overlay-naam').textContent = 'Ingelogd als ' + huidigeMakerNaam();
+    if (gewijzigd) werkProfielOverlayNaamBij();
     sluitNaamWijzigenPaneel();
   }).catch(err => {
     knop.disabled = false;
