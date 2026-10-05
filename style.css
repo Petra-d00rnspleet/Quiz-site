@@ -2782,3 +2782,25 @@ body.chat-open { overflow: hidden; }
 }
 .chat-emoji-keuze:hover, .chat-emoji-keuze:active { background: rgba(255,255,255,.22); }
 .chat-bericht.alleen-emoji .chat-bericht-tekst { font-size: 2.4rem; line-height: 1.15; }
+
+/* ===== Een bericht beantwoorden ===== */
+.chat-bericht-acties { display: inline-flex; align-items: center; gap: 4px; }
+.chat-bericht-antwoord { font-size: 1.05rem; }
+.chat-citaat {
+  margin: 4px 0 6px; padding: 6px 10px; border-radius: 8px; cursor: pointer;
+  border-left: 4px solid #8f98ff; background: rgba(128, 128, 128, .22);
+  display: flex; flex-direction: column; gap: 2px; font-size: .88rem; line-height: 1.25;
+}
+.chat-citaat strong { font-size: .8rem; opacity: .9; }
+.chat-citaat span { opacity: .85; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.chat-citaat .beheer-echte-naam { display: inline; margin-left: 4px; }
+.chat-bericht-licht { animation: chat-licht 1.4s ease-out; }
+@keyframes chat-licht { 0%, 40% { box-shadow: 0 0 0 4px #8f98ff; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.chat-antwoord-balk {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+  background: rgba(10, 12, 30, .92); color: #fff; border-top: 1px solid rgba(255,255,255,.15);
+}
+.chat-antwoord-balk[hidden] { display: none; }
+.chat-antwoord-inhoud { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding-left: 10px; border-left: 4px solid #8f98ff; font-size: .9rem; }
+.chat-antwoord-inhoud span { opacity: .8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-antwoord-sluit { width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(255,255,255,.14); color: #fff; font-size: 1rem; cursor: pointer; }
