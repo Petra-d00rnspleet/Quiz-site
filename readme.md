@@ -311,9 +311,10 @@ Plak dit in Realtime Database → Regels → Publiceren. Dezelfde tekst staat in
       ".write": true
     },
     "gebruikers": {
+      ".read": "auth != null && (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/)))",
       "$uid": {
         ".read": "auth != null",
-        ".write": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && (auth.uid === $uid || (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/))))",
         "bezit": {
           "dieren": {
             "$item": {
@@ -333,7 +334,7 @@ Plak dit in Realtime Database → Regels → Publiceren. Dezelfde tekst staat in
     "gebruikersnamen": {
       ".read": "auth != null",
       "$naam": {
-        ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid) || (data.exists() && data.val() === auth.uid))",
+        ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid) || (data.exists() && data.val() === auth.uid) || (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/))))",
         ".validate": "newData.isString()"
       }
     },
@@ -341,30 +342,32 @@ Plak dit in Realtime Database → Regels → Publiceren. Dezelfde tekst staat in
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/))))",
         "$vriend": {
-          ".write": "auth != null && (auth.uid === $uid || (auth.uid === $vriend && (data.exists() || root.child('vriendschapsverzoeken').child(auth.uid).child($uid).exists())))"
+          ".write": "auth != null && (auth.uid === $uid || (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/))) || (auth.uid === $vriend && (data.exists() || root.child('vriendschapsverzoeken').child(auth.uid).child($uid).exists() || root.child('beheerders').child($uid).val() === true)))"
         }
       }
     },
     "vriendschapsverzoeken": {
+      ".read": "auth != null && (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/)))",
       "$ontvanger": {
         ".read": "auth != null && (auth.uid === $ontvanger || (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/))))",
+        ".write": "auth != null && (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/)))",
         "$afzender": {
           ".read": "auth != null && auth.uid === $afzender",
-          ".write": "auth != null && (auth.uid === $afzender || auth.uid === $ontvanger)",
+          ".write": "auth != null && (auth.uid === $afzender || auth.uid === $ontvanger || (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/))))",
           ".validate": "!newData.exists() || newData.child('uid').val() === $afzender"
         }
       }
     },
     "chats": {
       "$chatId": {
-        ".read": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid) || (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/))))",
+        ".read": "auth != null && (($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid)) || (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/))))",
+        ".write": "auth != null && !newData.exists() && (($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid)) || (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/))))",
         "berichten": {
           "$key": {
             ".write": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid)) && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid && data.child('status').val() !== 'bezig') || (data.exists() && newData.exists() && newData.child('uid').val() === data.child('uid').val() && newData.child('tekst').val() === data.child('tekst').val() && newData.child('type').val() === data.child('type').val() && newData.child('item').val() === data.child('item').val() && newData.child('soort').val() === data.child('soort').val() && newData.child('code').val() === data.child('code').val() && newData.child('aan').val() === data.child('aan').val()))",
             ".validate": "newData.hasChildren(['uid', 'gebruikersnaam']) && (!newData.hasChild('tekst') || (newData.child('tekst').isString() && newData.child('tekst').val().length <= 500)) && (!newData.hasChild('status') || newData.child('status').val() === 'open' || newData.child('status').val() === 'bezig' || newData.child('status').val() === 'geaccepteerd' || newData.child('status').val() === 'geweigerd' || newData.child('status').val() === 'mislukt')"
           }
         },
-        ".write": "auth != null && !newData.exists() && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid))",
         "waarschuwingen": {
           "$key": {
             ".write": "auth != null && (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/))) && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && !newData.exists()))",
@@ -375,18 +378,28 @@ Plak dit in Realtime Database → Regels → Publiceren. Dezelfde tekst staat in
     },
     "accountData": {
       "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid",
+        ".read": "auth != null && (auth.uid === $uid || (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/))))",
+        ".write": "auth != null && (auth.uid === $uid || (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/))))",
         "$sleutel": {
           ".validate": "newData.isString() && newData.val().length <= 100000"
         }
       }
     },
     "beheerders": {
+      ".read": "auth != null",
       "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && ((auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/)) || (auth.uid === $uid && !newData.exists()))",
+        ".write": "auth != null && ((auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/)) || (!newData.exists() && (auth.uid === $uid || (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/))))))",
         ".validate": "newData.val() === true"
+      }
+    },
+    "geblokkeerd": {
+      "$beheerder": {
+        ".read": "auth != null && auth.uid === $beheerder",
+        "$gebruiker": {
+          ".read": "auth != null && auth.uid === $gebruiker",
+          ".write": "auth != null && auth.uid === $beheerder && (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/)))",
+          ".validate": "newData.val() === true"
+        }
       }
     }
   }
@@ -401,7 +414,11 @@ Wat de regels doen (kort)
 - vriendschapsverzoeken/<ontvanger>/<afzender>: de ontvanger leest en verwijdert; de afzender schrijft en leest zijn eigen verzoek (voor "Verzoek gestuurd").
 - chats/<chatId>/berichten: alleen de twee deelnemers (hun uid staat in de chatId) lezen en schrijven. Een nieuw bericht moet je eigen uid dragen. Bij een bestaand bericht mag alleen het veld status veranderen. Je mag je eigen bericht verwijderen, behalve tijdens "bezig" (het accepteren van een cadeau of quiz). Tekst maximaal 500 tekens.
 - accountData/<uid>: je munten, quizzen en kistenaankopen die bij je account horen. Alleen jijzelf leest en schrijft dit (maximaal 100000 tekens per onderdeel). Zonder deze regel kan je account niet verwijderd worden en komen je munten en quizzen niet mee naar een ander apparaat.
-- chats/<chatId>/waarschuwingen: alleen sitebeheer kan hier een waarschuwing plaatsen of verwijderen (ook in chats waar sitebeheer geen deelnemer van is). De deelnemers lezen ze mee via de bestaande leesregel van de chat. De gewone berichtenregels zijn niet veranderd.
+- chats/<chatId>/waarschuwingen: alleen sitebeheer kan hier een waarschuwing plaatsen of verwijderen (ook in chats waar sitebeheer geen deelnemer van is). De deelnemers lezen ze mee via de leesregel van de chat.
+- Sitebeheer (beheerders/<uid> = true, of een inlog met een echt e-mailadres) mag daarnaast: de lijst met alle profielen lezen, profielen, gebruikersnamen, vrienden, verzoeken, chats en accountData van een ander bewerken of verwijderen (nodig voor bezoeken en profiel verwijderen).
+- beheerders: elke ingelogde gebruiker mag de lijst met sitebeheer-uids lezen (nodig om automatisch vrienden te worden met sitebeheer en om "Beheerder" bij een naam te tonen).
+- geblokkeerd/<beheerder>/<gebruiker>: alleen die sitebeheerder zet of haalt een blokkade weg; de beheerder leest zijn hele lijst, de geblokkeerde alleen zijn eigen vakje.
+- vrienden/<beheerder>/<jij>: iedereen mag zichzelf toevoegen bij een sitebeheerder, zonder verzoek.
 - Alles wat niet genoemd wordt is dicht.
 
 Bekende beperkingen (bewust zo gelaten)
@@ -421,3 +438,4 @@ Wijzigingslogboek
 - 2026-10-05 (bezoekmodus): als sitebeheer zie je bij een bezocht profiel nu ook de vrienden, verzoeken en alle chats (alleen meelezen; je kunt niet namens die persoon schrijven of iets accepteren). Nieuwe leesregels voor sitebeheer bij vrienden, vriendschapsverzoeken en chats: publiceer firebase-rules.json opnieuw. Let op: sitebeheer kan daarna alle chats lezen.
 - 2026-10-01 (account verwijderd in Firebase): de site controleert bij het laden, elke 20 seconden en als je terugkomt op de pagina of het account nog bestaat (Authentication + database). Is het account weggehaald, dan krijg je een melding, word je uitgelogd en wordt er niets teruggeschreven. Wat er in de database van het account over is (profiel, gebruikersnaam, vrienden, chats) wordt zo goed mogelijk opgeruimd, zodat je gebruikersnaam weer vrij komt. Daarna kun je opnieuw registreren.
 - 2026-10-05 (waarschuwing in de chat): sitebeheer heeft in elke chat een knop ⚠️ bovenin (ook tijdens meelezen bij een bezocht profiel). Het bericht staat als rood kaartje "Waarschuwing van sitebeheer" in de chat en is voor beide kanten zichtbaar; sitebeheer haalt het met 🗑 weg. Nieuw pad chats/<id>/waarschuwingen; de bestaande regels zijn ongewijzigd. Publiceer firebase-rules.json opnieuw. Gebruikersnaam wijzigen toont nu de echte foutcode en geeft een duidelijke melding tijdens bezoekmodus.
+- 2026-10-05 (regels hersteld): het regelblok in deze readme liep achter op de app: er ontbraken regels voor sitebeheer (profielenlijst, bezoeken, profiel verwijderen, naam wijzigen), voor blokkeren (geblokkeerd/) en voor het lezen van beheerders. Dit blok is nu volledig. Publiceer firebase-rules.json opnieuw.
