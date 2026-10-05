@@ -1,4 +1,4 @@
-console.log('Quiz-site app.js versie 2026-10-01-i (weg is weg)');
+console.log('Quiz-site app.js versie 2026-10-05-b (sitebeheer-logo in profielenlijst)');
 // ---------- Accounts (gebruikersnaam + wachtwoord) ----------
 //
 // Een profiel is nu een echt account. Onder water is dat een Firebase-account met
@@ -4474,7 +4474,7 @@ function veiligeChatTekst(tekst) { return String(tekst || '').trim().slice(0, 50
 
 function laadVriendenEnVerzoeken() {
   const gebruiker = profielFirebaseGebruiker();
-  if (!gebruiker || gebruiker.bezoek || !heeftProfiel()) return;
+  if (!gebruiker || !heeftProfiel()) return;   // ook in bezoekmodus: sitebeheer leest dan de vrienden van het bezochte account
   if (vriendenLuisteraarUid === gebruiker.uid) return; // luistert al (live)
   // Ander account (bijv. na inloggen als beheerder): oude luisteraars netjes stoppen.
   if (vriendenRef) vriendenRef.off();
@@ -4783,6 +4783,11 @@ function renderVrienden() {
     rij.append(maakMiniPoppetje(uid, 'vriend-mini-poppetje'), naam, knop); verzoeken.appendChild(rij);
   });
   if (!Object.keys(socialeVerzoeken).length) verzoeken.innerHTML = '<p class="subtitel">Geen nieuwe verzoeken.</p>';
+  if (bezoekUid()) {   // bezoekmodus: alles zien, niets veranderen
+    document.querySelectorAll('#vrienden-lijst .vriend-verwijder-knop, #vrienden-verzoeken .btn').forEach(e => e.remove());
+    const toev = document.getElementById('btn-vrienden-toevoegen'); if (toev) toev.hidden = true;
+    const pan = document.getElementById('vrienden-toevoegen-paneel'); if (pan) pan.hidden = true;
+  }
   updateVriendenBadge();
 }
 
@@ -4996,7 +5001,7 @@ function maakAntwoordCitaat(a) {
   const c = document.createElement('div');
   c.className = 'chat-citaat';
   const naam = document.createElement('strong');
-  if (eigen) naam.textContent = 'Jij'; else maakWeergaveNaam(naam, a.uid, a.naam || 'Gebruiker');
+  if (eigen) naam.textContent = bezoekUid() ? (huidigeMakerNaam() || 'Gebruiker') : 'Jij'; else maakWeergaveNaam(naam, a.uid, a.naam || 'Gebruiker');
   const tekst = document.createElement('span');
   tekst.textContent = String(a.tekst || '');
   c.append(naam, tekst);
@@ -5190,9 +5195,11 @@ function werkChatBeheerBij() {
     document.getElementById('chat-berichten').before(melding);
   }
   const geblokkeerd = chatGeblokkeerd();
-  melding.textContent = geblokkeerd ? '🚫 Je bent geblokkeerd. Je kunt geen berichten meer sturen.' : '⚠️Dit is alleen voor belangrijke dingen⚠️';
-  melding.classList.toggle('geblokkeerd', geblokkeerd);
-  melding.hidden = !(geblokkeerd || chatMetBeheerder());
+  const bezoek = !!bezoekUid();   // sitebeheer leest mee: alleen kijken
+  melding.textContent = bezoek ? '👁 Je leest mee in het account van ' + (huidigeMakerNaam() || '') + '. Je kunt hier niets versturen.'
+    : (geblokkeerd ? '🚫 Je bent geblokkeerd. Je kunt geen berichten meer sturen.' : '⚠️Dit is alleen voor belangrijke dingen⚠️');
+  melding.classList.toggle('geblokkeerd', geblokkeerd || bezoek);
+  melding.hidden = !(bezoek || geblokkeerd || chatMetBeheerder());
 
   // Blokkeerknop: alleen voor sitebeheer, en alleen bij gewone gebruikers
   let knop = document.getElementById('btn-chat-blokkeer');
@@ -5204,7 +5211,7 @@ function werkChatBeheerBij() {
     knop.addEventListener('click', wisselBlokkade);
     document.getElementById('btn-chat-stijl').before(knop);
   }
-  const kanBlokkeren = !!sitebeheerActief && !!huidigChatUid && !isBeheerUid(huidigChatUid);
+  const kanBlokkeren = !!sitebeheerActief && !bezoek && !!huidigChatUid && !isBeheerUid(huidigChatUid);
   knop.hidden = !kanBlokkeren;
   const isGeblokkeerd = !!geblokkeerdDoorMij[huidigChatUid];
   knop.textContent = isGeblokkeerd ? '✅' : '🚫';
@@ -5214,9 +5221,9 @@ function werkChatBeheerBij() {
   const input = document.getElementById('chat-input');
   ['chat-input', 'btn-chat-sturen', 'btn-chat-poppetje', 'btn-chat-quiz', 'btn-chat-emoji'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.disabled = geblokkeerd;
+    if (el) el.disabled = geblokkeerd || bezoek;
   });
-  if (input) input.placeholder = geblokkeerd ? 'Je bent geblokkeerd' : 'Typ een bericht...';
+  if (input) input.placeholder = bezoek ? 'Alleen meelezen' : (geblokkeerd ? 'Je bent geblokkeerd' : 'Typ een bericht...');
 }
 
 function wisselBlokkade() {
@@ -5316,7 +5323,7 @@ function maakChatWie(eigen, b) {
   wie.className = 'chat-bericht-naam';
   wie.appendChild(maakMiniPoppetje(uid, 'chat-bericht-poppetje'));
   const t = document.createElement('span');
-  if (eigen) t.textContent = 'Jij';
+  if (eigen) t.textContent = bezoekUid() ? (huidigeMakerNaam() || 'Gebruiker') : 'Jij';
   else maakWeergaveNaam(t, uid, b.gebruikersnaam || huidigChatNaam || 'Gebruiker');
   wie.appendChild(t);
   return wie;
@@ -5391,6 +5398,7 @@ function laadChatBerichten() {
       p.appendChild(tekst);
       lijst.appendChild(p);
     });
+    if (bezoekUid()) lijst.querySelectorAll('button').forEach(k => k.remove());   // alleen kijken
     if (onderaan) lijst.scrollTop = lijst.scrollHeight;
   });
 }
@@ -5528,6 +5536,7 @@ function verstuurChatBericht() {
   const input = document.getElementById('chat-input');
   const tekst = veiligeChatTekst(input.value);
   if (!tekst) return;
+  if (bezoekUid()) return;   // meelezen mag, namens iemand anders schrijven niet
   if (chatGeblokkeerd()) { werkChatBeheerBij(); return; }
   const ref = chatBerichtenRef();
   if (!gebruiker || !ref) { alert(socialeVerbindingsMelding()); zorgVoorSocialeGebruiker(); return; }
@@ -6172,8 +6181,8 @@ function bouwBeheerProfielenHtml(zoek) {
   return lijst.map(p => {
     const isIk = p.uid === eigen || p.uid === accountUid();
     return '<div class="vriend-rij">' +
-      '<span class="vriend-mini-poppetje" aria-hidden="true">' + (p.dier ? escapeHtml(p.dier) : '👤') + '</span>' +
-      '<strong>' + escapeHtml(p.naam) + '</strong>' +
+      '<span class="vriend-mini-poppetje" aria-hidden="true">' + (p.beheer ? BEHEER_LOGO_HTML : (p.dier ? escapeHtml(p.dier) : '👤')) + '</span>' +
+      '<strong>' + escapeHtml(p.naam) + '</strong>' + (p.beheer ? '<span class="subtitel"> Sitebeheer</span>' : '') +
       '<div class="beheer-knoppen">' +
       '<button type="button" class="btn btn-secondary beheer-profiel-bezoek" data-uid="' + escapeHtml(p.uid) + '">👀 Bezoeken</button>' +
       (isIk ? '' : '<button type="button" class="btn btn-secondary beheer-profiel-verwijder" data-uid="' + escapeHtml(p.uid) + '">🗑 Verwijderen</button>') +
@@ -6194,11 +6203,16 @@ function laadBeheerProfielen() {
   const fout = document.getElementById('beheer-profielen-fout');
   fout.textContent = '';
   rijen.innerHTML = '<p class="voortgang">Profielen laden...</p>';
-  db.ref(SOCIAAL_PROFIEL_PAD).once('value').then(snap => {
+  Promise.all([
+    db.ref(SOCIAAL_PROFIEL_PAD).once('value'),
+    db.ref('beheerders').once('value').catch(() => null)
+  ]).then(([snap, bsnap]) => {
     const data = snap.val() || {};
+    const beheerders = (bsnap && bsnap.val()) || {};
+    Object.keys(beheerders).forEach(u => { if (beheerders[u] === true) beheerCache[u] = { waarde: true, tijd: Date.now() }; });
     beheerProfielen = Object.keys(data)
       .filter(uid => data[uid] && data[uid].gebruikersnaam)
-      .map(uid => ({ uid: uid, naam: String(data[uid].gebruikersnaam), dier: data[uid].dier || '' }))
+      .map(uid => ({ uid: uid, naam: String(data[uid].gebruikersnaam), dier: data[uid].dier || '', beheer: beheerders[uid] === true }))
       .sort((a, b) => a.naam.localeCompare(b.naam, 'nl', { sensitivity: 'base' }));
     toonBeheerProfielen();
   }).catch(err => {
