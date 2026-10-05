@@ -2817,5 +2817,9 @@ body.chat-open { overflow: hidden; }
   background: #fff; color: #b3243a; font: inherit; font-weight: 800;
 }
 body.bezoek-modus { padding-top: calc(52px + env(safe-area-inset-top, 0px)); }
-body.bezoek-modus #btn-vrienden-badge,
-body.bezoek-modus .telefoon-nav button[data-nav="vrienden"] { display: none !important; }
+/* Vrienden en chat blijven zichtbaar in de bezoekmodus; alles schuift alleen onder de rode balk vandaan. */
+body.bezoek-modus .bovenbalk-knoppen { top: calc(62px + env(safe-area-inset-top, 0px)); }
+body.bezoek-modus .sitebeheer-overlay,
+body.bezoek-modus .poppetje-editor,
+body.bezoek-modus .chat-scherm { top: calc(52px + env(safe-area-inset-top, 0px)); }
+html.breed body.bezoek-modus .telefoon-nav { top: calc(52px + env(safe-area-inset-top, 0px)) !important; }
