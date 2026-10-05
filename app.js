@@ -1,4 +1,4 @@
-console.log('Quiz-site app.js versie 2026-10-05-b (sitebeheer-logo in profielenlijst)');
+console.log('Quiz-site app.js versie 2026-10-05-c (waarschuwing van sitebeheer in de chat)');
 // ---------- Accounts (gebruikersnaam + wachtwoord) ----------
 //
 // Een profiel is nu een echt account. Onder water is dat een Firebase-account met
@@ -4947,6 +4947,7 @@ let chatAntwoord = null;   // { key, uid, naam, tekst } van het bericht waarop j
 function berichtSamenvatting(b) {
   let t = String(b.tekst || '').trim();
   if (!t && b.type === 'quiz') t = '📝 ' + (b.titel || 'Quiz');
+  if (!t && b.type === 'waarschuwing') t = '⚠️ Waarschuwing';
   if (!t) t = 'Bericht';
   return t.length > 100 ? t.slice(0, 100) + '…' : t;
 }
@@ -5217,6 +5218,20 @@ function werkChatBeheerBij() {
   knop.textContent = isGeblokkeerd ? '✅' : '🚫';
   knop.title = isGeblokkeerd ? 'Deblokkeren' : 'Blokkeren';
 
+  // Waarschuwingsknop: alleen voor sitebeheer (ook tijdens meelezen)
+  let wknop = document.getElementById('btn-chat-waarschuwing');
+  if (!wknop) {
+    wknop = document.createElement('button');
+    wknop.id = 'btn-chat-waarschuwing';
+    wknop.type = 'button';
+    wknop.className = 'chat-kop-knop';
+    wknop.textContent = '⚠️';
+    wknop.title = 'Waarschuwing geven';
+    wknop.addEventListener('click', stuurChatWaarschuwing);
+    document.getElementById('btn-chat-stijl').before(wknop);
+  }
+  wknop.hidden = !sitebeheerActief || !huidigChatUid;
+
   // Geblokkeerd: het schrijfvak staat uit
   const input = document.getElementById('chat-input');
   ['chat-input', 'btn-chat-sturen', 'btn-chat-poppetje', 'btn-chat-quiz', 'btn-chat-emoji'].forEach(id => {
@@ -5224,6 +5239,50 @@ function werkChatBeheerBij() {
     if (el) el.disabled = geblokkeerd || bezoek;
   });
   if (input) input.placeholder = bezoek ? 'Alleen meelezen' : (geblokkeerd ? 'Je bent geblokkeerd' : 'Typ een bericht...');
+}
+
+// ---------------- Waarschuwing van sitebeheer in de chat ----------------
+// Sitebeheer kan in elke chat (ook als hij meeleest bij een bezocht profiel) een waarschuwing
+// plaatsen. Die staat als opvallend rood kaartje in de chat en is voor beide kanten zichtbaar.
+// Alleen sitebeheer mag zo'n bericht maken: dat wordt in de Firebase-regels afgedwongen.
+function maakChatWaarschuwing(key, b) {
+  const kaart = document.createElement('div');
+  kaart.className = 'chat-waarschuwing';
+  kaart.dataset.key = key;
+  const titel = document.createElement('div');
+  titel.className = 'chat-waarschuwing-titel';
+  titel.textContent = '⚠️ Waarschuwing van sitebeheer';
+  const tekst = document.createElement('div');
+  tekst.className = 'chat-waarschuwing-tekst';
+  tekst.textContent = b.tekst || '';
+  kaart.append(titel, tekst);
+  if (sitebeheerActief) {
+    const weg = document.createElement('button');
+    weg.type = 'button';
+    weg.className = 'chat-bericht-verwijder chat-waarschuwing-weg';
+    weg.title = 'Waarschuwing verwijderen';
+    weg.setAttribute('aria-label', 'Waarschuwing verwijderen');
+    weg.textContent = '🗑';
+    weg.addEventListener('click', () => verwijderChatBericht(key, b));
+    kaart.appendChild(weg);
+  }
+  return kaart;
+}
+
+function stuurChatWaarschuwing() {
+  const echt = auth.currentUser;   // altijd het echte sitebeheer-account, ook in bezoekmodus
+  const ref = chatBerichtenRef();
+  if (!echt || !ref || !sitebeheerActief) return;
+  const invoer = prompt('Waarschuwing voor beide kanten van deze chat.\n\nWat wil je zeggen? (max. 500 tekens)', '');
+  const tekst = veiligeChatTekst(invoer);
+  if (!tekst) return;
+  ref.push().set({
+    type: 'waarschuwing', uid: echt.uid, gebruikersnaam: 'Beheerder',
+    tekst: tekst, tijd: firebase.database.ServerValue.TIMESTAMP
+  }).catch(err => {
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    alert('De waarschuwing kon niet worden geplaatst' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.');
+  });
 }
 
 function wisselBlokkade() {
@@ -5386,6 +5445,7 @@ function laadChatBerichten() {
       if (!eigen && sitebeheerActief && geblokkeerdDoorMij[b.uid]) return;
       if (b.type === 'poppetje') { const el = maakChatPoppetjeBericht(child.key, b, eigen, gebruiker); el.dataset.key = child.key; lijst.appendChild(el); return; }
       if (b.type === 'quiz') { const el = maakChatQuizBericht(child.key, b, eigen, gebruiker); el.dataset.key = child.key; lijst.appendChild(el); return; }
+      if (b.type === 'waarschuwing') { lijst.appendChild(maakChatWaarschuwing(child.key, b)); return; }
       const p = document.createElement('div');
       p.className = 'chat-bericht' + (eigen ? ' eigen' : '') + (isAlleenEmoji(b.tekst) ? ' alleen-emoji' : '');
       const wie = maakChatWie(eigen, b);
@@ -5398,7 +5458,7 @@ function laadChatBerichten() {
       p.appendChild(tekst);
       lijst.appendChild(p);
     });
-    if (bezoekUid()) lijst.querySelectorAll('button').forEach(k => k.remove());   // alleen kijken
+    if (bezoekUid()) lijst.querySelectorAll('button:not(.chat-waarschuwing-weg)').forEach(k => k.remove());   // alleen kijken
     if (onderaan) lijst.scrollTop = lijst.scrollHeight;
   });
 }
