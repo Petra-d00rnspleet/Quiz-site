@@ -6022,14 +6022,14 @@ function wijzigGebruikersnaam(nieuweNaamRaw) {
     ? Promise.resolve()
     : db.ref('gebruikersnamen/' + naamSleutel(nieuweZoek)).transaction(v => v || gebruiker.uid).then(res => {
         if (res.snapshot.val() !== gebruiker.uid) throw new Error('Deze gebruikersnaam is al in gebruik. Kies een andere naam.');
-      });
+      }).catch(err => { if (err && !err.stap) err.stap = 'gebruikersnamen'; throw err; });
 
   return reserveer
     // Stap 2: online profiel bijwerken.
     .then(() => db.ref(SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid).update({
       gebruikersnaam: nieuweNaam,
       gebruikersnaamZoek: nieuweZoek
-    }))
+    }).catch(err => { if (err && !err.stap) err.stap = SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid; throw err; }))
     // Stap 3: de oude naam vrijgeven, zodat een ander hem weer kan kiezen.
     .then(() => {
       if (oudeZoek && oudeZoek !== nieuweZoek) {
@@ -6091,7 +6091,7 @@ function slaNieuweGebruikersnaamOp() {
     const code = err && err.code ? ' (' + err.code + ')' : '';
     const rechten = String((err && (err.code || err.message)) || '').toUpperCase().indexOf('PERMISSION') !== -1;
     fout.textContent = rechten
-      ? 'Firebase weigert dit' + code + '. Publiceer de nieuwste regels uit firebase-rules.json.'
+      ? 'Firebase weigert dit' + code + (err && err.stap ? ' bij "' + err.stap + '"' : '') + '. Publiceer de nieuwste regels uit firebase-rules.json.'
       : ((err && err.message) || 'Naam wijzigen is mislukt.') + code;
   });
 }
