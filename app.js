@@ -1,4 +1,4 @@
-console.log('Quiz-site app.js versie 2026-10-05-d (waarschuwing in de chat, naam wijzigen verbeterd)');
+console.log('Quiz-site app.js versie 2026-10-05-e (zelfde naam toegestaan, verdienlijst in sitebeheer)');
 // ---------- Accounts (gebruikersnaam + wachtwoord) ----------
 //
 // Een profiel is nu een echt account. Onder water is dat een Firebase-account met
@@ -624,9 +624,8 @@ function bevestigMakerNaam() {
     if (!user) throw new Error('Geen verbinding met de server. Probeer het zo nog eens.');
     gebruiker = user;
     // Stap 1: de naam vastleggen (nog als anoniem account, met dezelfde uid).
-    return db.ref('gebruikersnamen/' + naamSleutel(normaliseerGebruikersnaam(naam))).transaction(v => v || user.uid);
-  }).then(res => {
-    if (res.snapshot.val() !== gebruiker.uid) throw new Error('Deze naam is al in gebruik. Kies een andere naam. (Was dit je oude naam van vóór de accounts? Dan hoort hij bij een profiel dat niet meer te openen is: kies dan een nieuwe naam.)');
+    return naamRegistreer(user.uid, normaliseerGebruikersnaam(naam));
+  }).then(() => {
     naamVastgelegd = true;
     // Stap 2: het anonieme account wordt een echt account: je uid blijft hetzelfde.
     const bewijs = firebase.auth.EmailAuthProvider.credential(maakAccountEmail(gebruiker.uid), ww);
@@ -657,7 +656,7 @@ function bevestigMakerNaam() {
       fout.textContent = accountFoutTekst(err);
       // Mislukt het koppelen, dan geven we de naam weer vrij zodat je het opnieuw kunt proberen.
       if (naamVastgelegd && !gekoppeld && gebruiker) {
-        db.ref('gebruikersnamen/' + naamSleutel(normaliseerGebruikersnaam(naam))).transaction(v => (v === gebruiker.uid ? null : v)).catch(() => {});
+        naamVrijgeven(gebruiker.uid, normaliseerGebruikersnaam(naam));
       }
     })
     .then(() => { knop.disabled = false; return beheerUitloggenLos(); });
@@ -723,11 +722,23 @@ function probeerAccountInloggen() {
   knop.disabled = true;
   zorgVoorSocialeGebruiker().then(user => {
     if (!user) throw new Error('Geen verbinding met de server. Probeer het zo nog eens.');
-    return db.ref('gebruikersnamen/' + naamSleutel(normaliseerGebruikersnaam(naam))).once('value');
-  }).then(snap => {
-    const uid = snap.val();
-    if (typeof uid !== 'string') throw { code: 'geen-account' };
-    return auth.signInWithEmailAndPassword(maakAccountEmail(uid), ww).then(res => res.user);
+    return naamUids(normaliseerGebruikersnaam(naam));
+  }).then(uids => {
+    if (!uids.length) throw { code: 'geen-account' };
+    // Meerdere accounts met dezelfde naam? Het wachtwoord bepaalt welk account het is.
+    let laatsteFout = null;
+    const probeer = i => {
+      if (i >= uids.length) throw laatsteFout || { code: 'geen-account' };
+      return auth.signInWithEmailAndPassword(maakAccountEmail(uids[i]), ww).then(res => res.user).catch(err => {
+        const c = err && err.code;
+        if (c === 'auth/wrong-password' || c === 'auth/invalid-credential' || c === 'auth/invalid-login-credentials' || c === 'auth/user-not-found') {
+          laatsteFout = err;
+          return probeer(i + 1);
+        }
+        throw err;
+      });
+    };
+    return probeer(0);
   }).then(user => zetLokaalAccountVanOnline(user).catch(err => auth.signOut().then(() => { throw err; })))
     .then(() => location.reload())
     .catch(err => {
@@ -748,17 +759,38 @@ document.getElementById('btn-inloggen').addEventListener('click', probeerAccount
   document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') bevestigMakerNaam(); });
 });
 
+// ---------- Gebruikersnamen (meerdere accounts mogen dezelfde naam hebben) ----------
+// Wie wie is, bepaalt het wachtwoord: bij inloggen proberen we elk account met die naam.
+// Nieuwe namen staan in namen/<naam>/<uid> = true. Oude accounts staan nog in
+// gebruikersnamen/<naam> = <uid> (die blijven werken).
+function naamRegistreer(uid, zoeknaam) {
+  return db.ref('namen/' + naamSleutel(zoeknaam) + '/' + uid).set(true);
+}
+function naamVrijgeven(uid, zoeknaam) {
+  const k = naamSleutel(zoeknaam);
+  return Promise.all([
+    db.ref('namen/' + k + '/' + uid).remove().catch(() => {}),
+    db.ref('gebruikersnamen/' + k).transaction(v => (v === uid ? null : v)).catch(() => {})
+  ]);
+}
+function naamUids(zoeknaam) {
+  const k = naamSleutel(zoeknaam);
+  return Promise.all([
+    db.ref('namen/' + k).once('value').catch(() => null),
+    db.ref('gebruikersnamen/' + k).once('value').catch(() => null)
+  ]).then(([nieuw, oud]) => {
+    const uids = [];
+    if (nieuw && nieuw.val() && typeof nieuw.val() === 'object') Object.keys(nieuw.val()).forEach(u => uids.push(u));
+    if (oud && typeof oud.val() === 'string' && uids.indexOf(oud.val()) === -1) uids.push(oud.val());
+    return uids;
+  });
+}
+
 // Geeft true als de naam nog vrij is of van dit account is. Lukt de controle niet
 // (geen internet of nog niet verbonden), dan blokkeren we niet en gaat het zoals eerder.
 function controleerGebruikersnaamVrij(naam) {
-  const zoeknaam = normaliseerGebruikersnaam(naam);
-  return zorgVoorSocialeGebruiker().then(gebruiker => {
-    if (!gebruiker) return true;
-    return db.ref('gebruikersnamen/' + naamSleutel(zoeknaam)).once('value').then(snap => {
-      const eigenaar = snap.val();
-      return !eigenaar || eigenaar === gebruiker.uid;
-    });
-  }).catch(() => true);
+  // Dezelfde naam mag vaker voorkomen: het wachtwoord bepaalt welk account het is.
+  return Promise.resolve(true);
 }
 
 function rondProfielAanmakenAf(naam) {
@@ -2017,6 +2049,51 @@ const GEKOCHTE_BOXEN_SLEUTEL = 'quizAppGekochteBoxen';
 const MUNTEN_LIVE_PER_PLEK = [30, 20, 10];
 // Munten als je alleen speelt ("Zonder mensen") en alles goed hebt.
 const MUNTEN_SOLO_ALLES_GOED = 5;
+
+// ---- Verdienlijst (door sitebeheer in te stellen) ----
+// Per soort een lijst regels "vanaf N vragen -> M munten". Geldt de regel met het hoogste N dat
+// niet groter is dan het aantal vragen van de quiz. Staat in Firebase onder instellingen/verdienlijst.
+const VERDIEN_SOORTEN = [
+  { id: 'solo',  titel: '🎮 Alleen spelen (alles goed)' },
+  { id: 'plek1', titel: '🥇 Met mensen: 1e plek' },
+  { id: 'plek2', titel: '🥈 Met mensen: 2e plek' },
+  { id: 'plek3', titel: '🥉 Met mensen: 3e plek' }
+];
+const VERDIEN_STANDAARD = {
+  solo:  [{ vanaf: 1, munten: MUNTEN_SOLO_ALLES_GOED }],
+  plek1: [{ vanaf: 1, munten: MUNTEN_LIVE_PER_PLEK[0] }],
+  plek2: [{ vanaf: 1, munten: MUNTEN_LIVE_PER_PLEK[1] }],
+  plek3: [{ vanaf: 1, munten: MUNTEN_LIVE_PER_PLEK[2] }]
+};
+let verdienLijst = JSON.parse(JSON.stringify(VERDIEN_STANDAARD));
+
+function schoonVerdienRegels(lijst) {
+  const regels = Array.isArray(lijst) ? lijst : Object.keys(lijst || {}).map(k => lijst[k]);
+  return regels
+    .map(r => ({ vanaf: parseInt(r && r.vanaf, 10), munten: parseInt(r && r.munten, 10) }))
+    .filter(r => r.vanaf >= 1 && r.munten >= 0)
+    .sort((a, b) => a.vanaf - b.vanaf);
+}
+
+function zetVerdienLijstUitData(data) {
+  if (!data || typeof data !== 'object') { verdienLijst = JSON.parse(JSON.stringify(VERDIEN_STANDAARD)); return; }
+  const nieuw = {};
+  VERDIEN_SOORTEN.forEach(z => { nieuw[z.id] = schoonVerdienRegels(data[z.id]); });
+  verdienLijst = nieuw;
+}
+
+// Hoeveel munten levert deze soort op bij een quiz met zoveel vragen? (0 = niets)
+function muntenVoor(soort, aantalVragen) {
+  const regels = verdienLijst[soort] || [];
+  let gevonden = 0;
+  regels.forEach(r => { if (r.vanaf <= aantalVragen) gevonden = r.munten; });
+  return gevonden;
+}
+
+// Iedereen leest de verdienlijst live mee; sitebeheer past hem aan.
+try {
+  db.ref('instellingen/verdienlijst').on('value', snap => { zetVerdienLijstUitData(snap.val()); if (typeof vulVerdienEditor === 'function') vulVerdienEditor(false); }, () => {});
+} catch (e) {}
 
 function haalMunten() {
   return parseInt(localStorage.getItem(MUNTEN_SLEUTEL) || '0', 10) || 0;
@@ -3509,10 +3586,14 @@ function renderSessieVoorSpeler(sessie) {
       });
       const mijnPlek = eindstand.findIndex(regel => regel[0] === huidigeSpelerId);
       if (mijnPlek !== -1 && mijnPlek < MUNTEN_LIVE_PER_PLEK.length) {
-        const verdiend = MUNTEN_LIVE_PER_PLEK[mijnPlek];
-        geefMunten(verdiend);
+        const verdiend = muntenVoor('plek' + (mijnPlek + 1), huidigeQuizVragen.length);
         const medaille = ['🥇', '🥈', '🥉'][mijnPlek];
-        scorebordBericht = medaille + ' Je bent ' + (mijnPlek + 1) + 'e geworden: +' + verdiend + ' munten! Bekijk de winkel voor mysterieboxen.';
+        if (verdiend > 0) {
+          geefMunten(verdiend);
+          scorebordBericht = medaille + ' Je bent ' + (mijnPlek + 1) + 'e geworden: +' + verdiend + ' munten! Bekijk de winkel voor mysterieboxen.';
+        } else {
+          scorebordBericht = medaille + ' Je bent ' + (mijnPlek + 1) + 'e geworden!';
+        }
       }
     }
     document.getElementById('speler-scorebord-bericht').textContent = scorebordBericht;
@@ -3749,8 +3830,11 @@ function toonSoloEinde() {
   document.getElementById('solo-einde-aantal').textContent = soloAantalGoed + '/' + totaal;
   let eindTekst = 'Je had ' + soloAantalGoed + ' van de ' + totaal + (totaal === 1 ? ' vraag' : ' vragen') + ' goed';
   if (totaal > 0 && soloAantalGoed === totaal) {
-    geefMunten(MUNTEN_SOLO_ALLES_GOED);
-    eindTekst += ' — 🎉 +' + MUNTEN_SOLO_ALLES_GOED + ' munten!';
+    const verdiendSolo = muntenVoor('solo', totaal);
+    if (verdiendSolo > 0) {
+      geefMunten(verdiendSolo);
+      eindTekst += ' — 🎉 +' + verdiendSolo + ' munten!';
+    }
   }
   document.getElementById('solo-einde-tekst').textContent = eindTekst;
 
@@ -4157,21 +4241,7 @@ function registreerSociaalProfiel() {
   const zoeknaam = normaliseerGebruikersnaam(naam);
   const dier = geldigDier(huidigProfielDier()) || '';
   const accessoires = huidigeProfielAccessoires ? huidigeProfielAccessoires() : {};
-  const naamRef = db.ref('gebruikersnamen/' + naamSleutel(zoeknaam));
-  return naamRef.transaction(v => v || gebruiker.uid).then(result => {
-    const eigenaar = result.snapshot.val();
-    if (eigenaar && eigenaar !== gebruiker.uid) {
-      // Alleen bij gewone (anonieme) spelers: de beheerder heeft een eigen account en mag de naam niet kwijtraken.
-      if (!isBeheerAccount(gebruiker)) {
-        localStorage.removeItem(MAKER_NAAM_SLEUTEL);
-        werkProfielBadgeBij();
-        werkVakSlotjesBij();
-        alert('De naam "' + naam + '" is al van een ander profiel (bijvoorbeeld op je telefoon of laptop). Kies een andere naam.');
-        naProfielActie = null;
-        openProfielMakenScherm();
-      }
-      throw new Error('Deze gebruikersnaam is al in gebruik.');
-    }
+  return naamRegistreer(gebruiker.uid, zoeknaam).then(() => {
     return db.ref(SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid).update({
       gebruikersnaam: naam,
       gebruikersnaamZoek: zoeknaam,
@@ -4180,7 +4250,7 @@ function registreerSociaalProfiel() {
       laatstOnline: firebase.database.ServerValue.TIMESTAMP
     });
   }).then(() => syncSociaalBezit()).catch(err => {
-    // (de melding over een bezette naam is hierboven al getoond)
+    console.error('Profiel registreren mislukt:', err);
   });
 }
 
@@ -4221,8 +4291,8 @@ function accountIsVerdwenen() {   // geeft een belofte: true = het account besta
   if (!lokaal || !naam || !u || u.uid !== lokaal || u.isAnonymous) return Promise.resolve(false);
   return u.reload().then(() => Promise.all([
     db.ref('gebruikers/' + lokaal + '/gebruikersnaam').once('value'),
-    db.ref('gebruikersnamen/' + naamSleutel(normaliseerGebruikersnaam(naam))).once('value')
-  ])).then(res => !res[0].exists() && res[1].val() !== lokaal).catch(err => {
+    naamUids(normaliseerGebruikersnaam(naam))
+  ])).then(res => !res[0].exists() && res[1].indexOf(lokaal) === -1).catch(err => {
     const c = err && err.code;
     return c === 'auth/user-not-found' || c === 'auth/user-token-expired' || c === 'auth/invalid-user-token' || c === 'auth/user-disabled';
   });
@@ -4238,6 +4308,7 @@ function ruimOverblijfselsOp(uid, naam) {
     const kern = {};
     kern['gebruikers/' + uid] = null; kern['accountData/' + uid] = null; kern['beheerders/' + uid] = null;
     if (res[1] && res[1].val() === uid) kern['gebruikersnamen/' + sleutel] = null;
+    if (sleutel) kern['namen/' + sleutel + '/' + uid] = null;
     const vrienden = {};
     const lijst = res[0] && res[0].val() ? Object.keys(res[0].val()) : [];
     lijst.forEach(f => { vrienden['vrienden/' + f + '/' + uid] = null; vrienden['vrienden/' + uid + '/' + f] = null; vrienden['chats/' + chatIdVoor(uid, f)] = null; });
@@ -4583,14 +4654,18 @@ function laadSocialeNamen(forceer) {
   const vers = socialeNamenCache && (Date.now() - socialeNamenTijd < 60000);
   if (!forceer && vers) return Promise.resolve(socialeNamenCache);
   if (socialeNamenLaadt) return socialeNamenLaadt;
-  socialeNamenLaadt = db.ref('gebruikersnamen').once('value').then(snap => {
+  socialeNamenLaadt = Promise.all([db.ref('gebruikersnamen').once('value'), db.ref('namen').once('value').catch(() => null)]).then(([oud, nieuw]) => {
     const lijst = [];
-    snap.forEach(c => {
-      if (typeof c.val() !== 'string') return;
-      let zoek = c.key;
-      try { zoek = decodeURIComponent(c.key); } catch (e) {}
-      lijst.push({ zoek: zoek, uid: c.val() });
-    });
+    const gezien = {};
+    const voeg = (sleutel, uid) => {
+      if (typeof uid !== 'string' || gezien[sleutel + '|' + uid]) return;
+      gezien[sleutel + '|' + uid] = true;
+      let zoek = sleutel;
+      try { zoek = decodeURIComponent(sleutel); } catch (e) {}
+      lijst.push({ zoek: zoek, uid: uid });
+    };
+    oud.forEach(c => { voeg(c.key, c.val()); });
+    if (nieuw) nieuw.forEach(c => { Object.keys(c.val() || {}).forEach(u => voeg(c.key, u)); });
     socialeNamenCache = lijst;
     socialeNamenTijd = Date.now();
     socialeNamenLaadt = null;
@@ -6017,12 +6092,10 @@ function wijzigGebruikersnaam(nieuweNaamRaw) {
   const nieuweZoek = normaliseerGebruikersnaam(nieuweNaam);
   const oudeZoek = normaliseerGebruikersnaam(oudeNaam);
 
-  // Stap 1: de nieuwe naam reserveren (tenzij alleen hoofdletters veranderen).
+  // Stap 1: de nieuwe naam vastleggen (dezelfde naam als een ander mag).
   const reserveer = nieuweZoek === oudeZoek
     ? Promise.resolve()
-    : db.ref('gebruikersnamen/' + naamSleutel(nieuweZoek)).transaction(v => v || gebruiker.uid).then(res => {
-        if (res.snapshot.val() !== gebruiker.uid) throw new Error('Deze gebruikersnaam is al in gebruik. Kies een andere naam.');
-      }).catch(err => { if (err && !err.stap) err.stap = 'gebruikersnamen'; throw err; });
+    : naamRegistreer(gebruiker.uid, nieuweZoek).catch(err => { if (err && !err.stap) err.stap = 'namen'; throw err; });
 
   return reserveer
     // Stap 2: online profiel bijwerken.
@@ -6033,7 +6106,7 @@ function wijzigGebruikersnaam(nieuweNaamRaw) {
     // Stap 3: de oude naam vrijgeven, zodat een ander hem weer kan kiezen.
     .then(() => {
       if (oudeZoek && oudeZoek !== nieuweZoek) {
-        return db.ref('gebruikersnamen/' + naamSleutel(oudeZoek)).transaction(v => (v === gebruiker.uid ? null : v)).catch(() => {});
+        return naamVrijgeven(gebruiker.uid, oudeZoek);
       }
     })
     .then(() => {
@@ -6226,7 +6299,9 @@ document.getElementById('btn-profiel-verwijder-bevestig').addEventListener('clic
     return db.ref(SOCIAAL_PROFIEL_PAD + '/' + uid).once('value').then(p => {
       const prof = p.val() || {};
       const sleutels = [prof.gebruikersnaamZoek, naam ? normaliseerGebruikersnaam(naam) : ''].filter(Boolean).map(naamSleutel);
-      return Promise.all(Array.from(new Set(sleutels)).map(k => db.ref('gebruikersnamen/' + k).once('value').then(sn => (sn.val() === uid ? k : null))));
+      const uniek = Array.from(new Set(sleutels));
+      return Promise.all(uniek.map(k => db.ref('gebruikersnamen/' + k).once('value').then(sn => (sn.val() === uid ? k : null)).catch(() => null)))
+        .then(oud => ({ nieuw: uniek, oud: oud.filter(Boolean) }));
     });
   }).then(naamSleutels => {
     const updates = {};
@@ -6235,7 +6310,8 @@ document.getElementById('btn-profiel-verwijder-bevestig').addEventListener('clic
     updates['accountData/' + uid] = null;
     updates['beheerders/' + uid] = null;
     updates['gebruikers/' + uid] = null;
-    naamSleutels.filter(Boolean).forEach(k => { updates['gebruikersnamen/' + k] = null; });
+    naamSleutels.nieuw.forEach(k => { updates['namen/' + k + '/' + uid] = null; });
+    naamSleutels.oud.forEach(k => { updates['gebruikersnamen/' + k] = null; });
     vrienden.forEach(f => { updates['chats/' + chatIdVoor(uid, f)] = null; });
     eigenGemaakt.forEach(q => { updates['quizzen/' + q.code] = null; updates['sessies/' + q.code] = null; });
     return db.ref().update(updates);
@@ -6341,6 +6417,7 @@ function verwijderProfielAlsBeheer(uid) {
     const sleutels = Array.from(new Set([p.gebruikersnaamZoek, normaliseerGebruikersnaam(profiel.naam)].filter(Boolean).map(naamSleutel)));
     return Promise.all(sleutels.map(k => lees('gebruikersnamen/' + k).then(sn => (sn && sn.val() === uid ? k : null)))).then(eigenSleutels => {
       eigenSleutels.filter(Boolean).forEach(k => { updates['gebruikersnamen/' + k] = null; });
+      sleutels.forEach(k => { updates['namen/' + k + '/' + uid] = null; });
       // vrienden, chats en verzoeken
       Object.keys((vrienden && vrienden.val()) || {}).forEach(f => {
         updates['vrienden/' + f + '/' + uid] = null;
@@ -6793,14 +6870,115 @@ function vulBeheerOverzicht() {
 }
 vulBeheerOverzicht();
 
+
+// ---------------- Sitebeheer: verdienlijst bewerken ----------------
+let verdienConcept = null;   // wat je nu aan het bewerken bent (nog niet opgeslagen)
+
+function vulVerdienEditor(forceer) {
+  const doel = document.getElementById('verdien-editor');
+  if (!doel) return;
+  if (!forceer && verdienConcept) return;      // niet overschrijven terwijl je bezig bent
+  verdienConcept = JSON.parse(JSON.stringify(verdienLijst));
+  tekenVerdienEditor();
+}
+
+function tekenVerdienEditor() {
+  const doel = document.getElementById('verdien-editor');
+  if (!doel || !verdienConcept) return;
+  doel.innerHTML = '';
+  VERDIEN_SOORTEN.forEach(z => {
+    const blok = document.createElement('div');
+    blok.className = 'verdien-blok';
+    const kop = document.createElement('h4');
+    kop.textContent = z.titel;
+    blok.appendChild(kop);
+    const regels = verdienConcept[z.id] = verdienConcept[z.id] || [];
+    if (!regels.length) {
+      const leeg = document.createElement('p');
+      leeg.className = 'subtitel';
+      leeg.textContent = 'Geen regels: hier krijg je geen munten voor.';
+      blok.appendChild(leeg);
+    }
+    regels.forEach((r, i) => {
+      const rij = document.createElement('div');
+      rij.className = 'verdien-rij';
+      const l1 = document.createElement('span'); l1.textContent = 'Vanaf';
+      const vanaf = document.createElement('input');
+      vanaf.type = 'number'; vanaf.min = '1'; vanaf.value = r.vanaf; vanaf.className = 'verdien-getal'; vanaf.setAttribute('aria-label', 'Vanaf hoeveel vragen');
+      vanaf.addEventListener('input', () => { r.vanaf = vanaf.value; });
+      const l2 = document.createElement('span'); l2.textContent = 'vragen →';
+      const munten = document.createElement('input');
+      munten.type = 'number'; munten.min = '0'; munten.value = r.munten; munten.className = 'verdien-getal'; munten.setAttribute('aria-label', 'Aantal munten');
+      munten.addEventListener('input', () => { r.munten = munten.value; });
+      const l3 = document.createElement('span'); l3.textContent = '🪙';
+      const weg = document.createElement('button');
+      weg.type = 'button'; weg.className = 'btn btn-secondary verdien-weg'; weg.textContent = '🗑'; weg.title = 'Regel verwijderen';
+      weg.addEventListener('click', () => { regels.splice(i, 1); tekenVerdienEditor(); });
+      rij.append(l1, vanaf, l2, munten, l3, weg);
+      blok.appendChild(rij);
+    });
+    const plus = document.createElement('button');
+    plus.type = 'button'; plus.className = 'btn btn-secondary'; plus.textContent = '➕ Regel toevoegen';
+    plus.addEventListener('click', () => {
+      const laatste = regels.length ? regels[regels.length - 1] : null;
+      regels.push({ vanaf: laatste ? (parseInt(laatste.vanaf, 10) || 0) + 5 : 1, munten: laatste ? (parseInt(laatste.munten, 10) || 0) + 10 : 5 });
+      tekenVerdienEditor();
+    });
+    blok.appendChild(plus);
+    doel.appendChild(blok);
+  });
+}
+
+function slaVerdienLijstOp() {
+  const fout = document.getElementById('verdien-fout');
+  const knop = document.getElementById('btn-verdien-opslaan');
+  fout.textContent = '';
+  if (!sitebeheerActief || !verdienConcept) return;
+  const data = { versie: 1 };
+  let probleem = '';
+  VERDIEN_SOORTEN.forEach(z => {
+    const ruw = verdienConcept[z.id] || [];
+    ruw.forEach(r => {
+      const v = parseInt(r.vanaf, 10), m = parseInt(r.munten, 10);
+      if (!(v >= 1) || !(m >= 0)) probleem = 'Vul bij "' + z.titel.replace(/^\S+\s/, '') + '" overal een aantal vragen (1 of meer) en een aantal munten (0 of meer) in.';
+    });
+    const schoon = schoonVerdienRegels(ruw);
+    const gezien = {};
+    schoon.forEach(r => { if (gezien[r.vanaf]) probleem = probleem || 'Bij "' + z.titel.replace(/^\S+\s/, '') + '" staat "vanaf ' + r.vanaf + ' vragen" twee keer.'; gezien[r.vanaf] = true; });
+    data[z.id] = schoon;
+  });
+  if (probleem) { fout.textContent = probleem; return; }
+  knop.disabled = true;
+  db.ref('instellingen/verdienlijst').set(data).then(() => {
+    verdienConcept = null;
+    zetVerdienLijstUitData(data);
+    vulVerdienEditor(true);
+    fout.className = 'voortgang'; fout.textContent = '✅ Opgeslagen.';
+    setTimeout(() => { if (fout.textContent === '✅ Opgeslagen.') { fout.textContent = ''; fout.className = 'foutmelding'; } }, 2500);
+  }).catch(err => {
+    fout.className = 'foutmelding';
+    fout.textContent = 'Opslaan is mislukt' + (err && err.code ? ' (' + err.code + ')' : '') + '. Publiceer de nieuwste regels uit firebase-rules.json.';
+  }).then(() => { knop.disabled = false; });
+}
+
+document.getElementById('btn-verdien-opslaan').addEventListener('click', slaVerdienLijstOp);
+document.getElementById('btn-verdien-standaard').addEventListener('click', () => {
+  if (!confirm('Terug naar de standaardlijst? (Daarna nog op Opslaan klikken.)')) return;
+  verdienConcept = JSON.parse(JSON.stringify(VERDIEN_STANDAARD));
+  tekenVerdienEditor();
+});
+vulVerdienEditor(true);
+
 function kiesBeheerTab(tab) {
-  const overzicht = tab === 'overzicht';
-  document.getElementById('beheer-pane-profielen').hidden = overzicht;
-  document.getElementById('beheer-pane-overzicht').hidden = !overzicht;
-  document.getElementById('beheer-tab-profielen').classList.toggle('actief', !overzicht);
-  document.getElementById('beheer-tab-overzicht').classList.toggle('actief', overzicht);
+  const panes = { profielen: 'beheer-pane-profielen', overzicht: 'beheer-pane-overzicht', verdienen: 'beheer-pane-verdienen' };
+  Object.keys(panes).forEach(t => {
+    document.getElementById(panes[t]).hidden = t !== tab;
+    document.getElementById('beheer-tab-' + t).classList.toggle('actief', t === tab);
+  });
+  if (tab === 'verdienen') vulVerdienEditor(false);
   const o = document.querySelector('#beheer-profielen-overlay .sitebeheer-venster');
   if (o) o.scrollTop = 0;
 }
 document.getElementById('beheer-tab-profielen').addEventListener('click', () => kiesBeheerTab('profielen'));
 document.getElementById('beheer-tab-overzicht').addEventListener('click', () => kiesBeheerTab('overzicht'));
+document.getElementById('beheer-tab-verdienen').addEventListener('click', () => kiesBeheerTab('verdienen'));
