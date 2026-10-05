@@ -339,7 +339,7 @@ Plak dit in Realtime Database → Regels → Publiceren. Dezelfde tekst staat in
     },
     "vrienden": {
       "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
+        ".read": "auth != null && (auth.uid === $uid || (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/))))",
         "$vriend": {
           ".write": "auth != null && (auth.uid === $uid || (auth.uid === $vriend && (data.exists() || root.child('vriendschapsverzoeken').child(auth.uid).child($uid).exists())))"
         }
@@ -347,7 +347,7 @@ Plak dit in Realtime Database → Regels → Publiceren. Dezelfde tekst staat in
     },
     "vriendschapsverzoeken": {
       "$ontvanger": {
-        ".read": "auth != null && auth.uid === $ontvanger",
+        ".read": "auth != null && (auth.uid === $ontvanger || (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/))))",
         "$afzender": {
           ".read": "auth != null && auth.uid === $afzender",
           ".write": "auth != null && (auth.uid === $afzender || auth.uid === $ontvanger)",
@@ -357,7 +357,7 @@ Plak dit in Realtime Database → Regels → Publiceren. Dezelfde tekst staat in
     },
     "chats": {
       "$chatId": {
-        ".read": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid))",
+        ".read": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid) || (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/))))",
         "berichten": {
           "$key": {
             ".write": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid)) && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid && data.child('status').val() !== 'bezig') || (data.exists() && newData.exists() && newData.child('uid').val() === data.child('uid').val() && newData.child('tekst').val() === data.child('tekst').val() && newData.child('type').val() === data.child('type').val() && newData.child('item').val() === data.child('item').val() && newData.child('soort').val() === data.child('soort').val() && newData.child('code').val() === data.child('code').val() && newData.child('aan').val() === data.child('aan').val()))",
@@ -411,4 +411,5 @@ Wijzigingslogboek
 - 2026-10-01 (blijf ingelogd): de site wacht eerst tot Firebase je opgeslagen login heeft hersteld voordat er een anoniem account wordt gemaakt.
 - 2026-10-01 (statuskaart): op het startscherm staat nu een kaart. Niet ingelogd: "Je bent niet ingelogd" met de knoppen Inloggen en Registreren (en dat is ook de uitleg van de slotjes 🔒). Ingelogd: "Ingelogd als <naam>" met de knoppen Uitloggen en Account verwijderen. Dezelfde knoppen staan ook nog in Profiel (zijbalk/onderbalk) > Jouw profiel.
 - 2026-10-01 (beeldvullend): alle vensters (profiel, vrienden, enz.) vullen nu het hele scherm, op laptop, tablet en telefoon. De tegels op het startscherm vullen het scherm. De kaart "Je bent niet ingelogd" staat er alleen als je niet bent ingelogd. De knop "Sitebeheer" onderaan is weg: sitebeheer koppel je bij Registreren met het vinkje "Sitebeheer account". Uitloggen en Account verwijderen staan in Profiel.
+- 2026-10-05 (bezoekmodus): als sitebeheer zie je bij een bezocht profiel nu ook de vrienden, verzoeken en alle chats (alleen meelezen; je kunt niet namens die persoon schrijven of iets accepteren). Nieuwe leesregels voor sitebeheer bij vrienden, vriendschapsverzoeken en chats: publiceer firebase-rules.json opnieuw. Let op: sitebeheer kan daarna alle chats lezen.
 - 2026-10-01 (account verwijderd in Firebase): de site controleert bij het laden, elke 20 seconden en als je terugkomt op de pagina of het account nog bestaat (Authentication + database). Is het account weggehaald, dan krijg je een melding, word je uitgelogd en wordt er niets teruggeschreven. Wat er in de database van het account over is (profiel, gebruikersnaam, vrienden, chats) wordt zo goed mogelijk opgeruimd, zodat je gebruikersnaam weer vrij komt. Daarna kun je opnieuw registreren.
