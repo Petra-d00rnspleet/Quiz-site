@@ -39,6 +39,17 @@ function verwijderApparaatAccount(uid) {
   else if (lijst.indexOf('?') !== -1) lijst.splice(lijst.indexOf('?'), 1);
   bewaarApparaatAccounts(lijst);
 }
+// ---------- Bezoekmodus (alleen sitebeheer) ----------
+// Bezoek je als sitebeheer een profiel, dan laden we alles van die persoon op dit apparaat
+// (munten, bezit, quizzen, poppetje...). Alles wat je dan doet, wordt bij die persoon opgeslagen.
+// Jouw eigen gegevens staan veilig in een reserve-kopie tot je op "Stoppen" drukt.
+const BEZOEK_SLEUTEL = 'beheerBezoek';
+const BEZOEK_BACKUP_SLEUTEL = 'beheerBezoekBackup';
+function bezoekInfo() {
+  try { const v = JSON.parse(localStorage.getItem(BEZOEK_SLEUTEL) || 'null'); return v && v.uid ? v : null; } catch (e) { return null; }
+}
+function bezoekUid() { const b = bezoekInfo(); return b ? b.uid : ''; }
+
 // Deze gegevens horen bij je account en worden online bewaard (accountData/<uid>).
 const ACCOUNT_DATA_SLEUTELS = ['quizAppMunten', 'eigenQuizzen', 'quizAppGekochteBoxen', 'quizAppWielLaatsteDraai', 'quizAppWielLaatsteResultaat'];
 // Alles wat bij uitloggen van dit apparaat verdwijnt (staat online veilig bij je account).
@@ -65,8 +76,10 @@ Storage.prototype.setItem = function (sleutel, waarde) {
 function syncAccountData() {
   clearTimeout(accountSyncTimer);
   if (accountWordtVerwijderd) return Promise.resolve();
-  const u = auth.currentUser;
-  if (!isSpelerAccount(u) || u.uid !== accountUid()) return Promise.resolve();
+  const bezoekDoel = bezoekUid();
+  const u = bezoekDoel ? { uid: bezoekDoel } : auth.currentUser;
+  if (bezoekDoel) { if (!auth.currentUser) return Promise.resolve(); }
+  else if (!isSpelerAccount(u) || u.uid !== accountUid()) return Promise.resolve();
   const data = {};
   ACCOUNT_DATA_SLEUTELS.forEach(k => {
     const v = localStorage.getItem(k);
@@ -313,7 +326,7 @@ auth.onAuthStateChanged(gebruiker => {
   // Is de online sessie een ander account dan wat dit apparaat denkt (bijv. uitgelogd of
   // beheerder ingelogd)? Dan loggen we lokaal netjes uit: je gegevens staan veilig online.
   const lokaalUid = accountUid();
-  if (lokaalUid && gebruiker && gebruiker.uid !== lokaalUid) {
+  if (lokaalUid && gebruiker && gebruiker.uid !== lokaalUid && !bezoekUid()) {
     wisLokaalAccount();
     accountDataGehaald = false;
     if (typeof werkProfielBadgeBij === 'function') { werkProfielBadgeBij(); werkVakSlotjesBij(); werkMuntenWeergaveBij(); }
@@ -3837,8 +3850,9 @@ function werkProfielPoppetjeWeergaveBij() {
   const overlayPoppetjeEl = document.getElementById('profiel-overlay-poppetje');
   const badgePoppetjeEl = document.getElementById('profiel-badge-poppetje');
 
-  if (heeftProfiel() && (sitebeheerActief || geldigDier(huidigProfielDier()))) {
-    const svg = sitebeheerActief ? BEHEER_LOGO_HTML : profielPoppetjeHtml();
+  const beheerLogo = sitebeheerActief && !bezoekUid();
+  if (heeftProfiel() && (beheerLogo || geldigDier(huidigProfielDier()))) {
+    const svg = beheerLogo ? BEHEER_LOGO_HTML : profielPoppetjeHtml();
     overlayPoppetjeEl.innerHTML = svg;
     badgePoppetjeEl.innerHTML = svg;
   } else {
@@ -4031,7 +4045,7 @@ document.getElementById('btn-pe-klaar').addEventListener('click', sluitPoppetjeE
 document.getElementById('btn-profiel-badge').addEventListener('click', () => {
   if (heeftProfiel()) {
     werkProfielOverlayNaamBij();
-    document.getElementById('btn-profiel-poppetje-wijzigen').hidden = !!sitebeheerActief;
+    document.getElementById('btn-profiel-poppetje-wijzigen').hidden = !!(sitebeheerActief && !bezoekUid());
     werkProfielPoppetjeWeergaveBij();
     sluitProfielPoppetjeKiezer();
     profielOverlayEl.classList.add('actief');
@@ -4073,6 +4087,8 @@ function normaliseerGebruikersnaam(naam) {
 }
 
 function profielFirebaseGebruiker() {
+  const bz = bezoekInfo();
+  if (bz && typeof auth !== 'undefined' && auth.currentUser) return { uid: bz.uid, isAnonymous: false, email: maakAccountEmail(bz.uid), bezoek: true };
   return typeof auth !== 'undefined' ? auth.currentUser : null;
 }
 
@@ -4136,7 +4152,7 @@ function syncSociaalBezit() {
 
 function registreerSociaalProfiel() {
   const gebruiker = profielFirebaseGebruiker();
-  if (accountWordtVerwijderd || !gebruiker || !heeftProfiel()) return Promise.resolve();
+  if (accountWordtVerwijderd || !gebruiker || gebruiker.bezoek || !heeftProfiel()) return Promise.resolve();
   const naam = huidigeMakerNaam();
   const zoeknaam = normaliseerGebruikersnaam(naam);
   const dier = geldigDier(huidigProfielDier()) || '';
@@ -4458,7 +4474,7 @@ function veiligeChatTekst(tekst) { return String(tekst || '').trim().slice(0, 50
 
 function laadVriendenEnVerzoeken() {
   const gebruiker = profielFirebaseGebruiker();
-  if (!gebruiker || !heeftProfiel()) return;
+  if (!gebruiker || gebruiker.bezoek || !heeftProfiel()) return;
   if (vriendenLuisteraarUid === gebruiker.uid) return; // luistert al (live)
   // Ander account (bijv. na inloggen als beheerder): oude luisteraars netjes stoppen.
   if (vriendenRef) vriendenRef.off();
@@ -5103,7 +5119,7 @@ function zorgVoorBeheerVrienden() {
 
 function isBeheerUid(uid) {
   const g = profielFirebaseGebruiker();
-  if (g && uid === g.uid) return !!sitebeheerActief;
+  if (g && uid === g.uid) return !!sitebeheerActief && !g.bezoek;
   const c = beheerCache[uid];
   return !!(c && c.waarde);
 }
@@ -5111,7 +5127,7 @@ function isBeheerUid(uid) {
 function laadBeheerStatus(uid) {
   if (!uid) return Promise.resolve(false);
   const g = profielFirebaseGebruiker();
-  if (g && uid === g.uid) return Promise.resolve(!!sitebeheerActief);
+  if (g && uid === g.uid) return Promise.resolve(!!sitebeheerActief && !g.bezoek);
   const c = beheerCache[uid];
   if (c && Date.now() - c.tijd < 60000) return Promise.resolve(c.waarde);
   if (beheerLaden[uid]) return beheerLaden[uid];
@@ -5148,7 +5164,7 @@ function werkProfielOverlayNaamBij() {
   const el = document.getElementById('profiel-overlay-naam');
   if (!el) return;
   const naam = huidigeMakerNaam();
-  if (sitebeheerActief) vulWeergaveNaam(el, (profielFirebaseGebruiker() || {}).uid, naam);
+  if (sitebeheerActief && !bezoekUid()) vulWeergaveNaam(el, (profielFirebaseGebruiker() || {}).uid, naam);
   else el.textContent = 'Ingelogd als ' + naam;
 }
 
@@ -5219,7 +5235,7 @@ function wisselBlokkade() {
 // Sitebeheer luistert live naar de eigen blokkadelijst.
 function werkBlokkadeLuisteraarBij() {
   const g = profielFirebaseGebruiker();
-  const uid = (g && sitebeheerActief) ? g.uid : '';
+  const uid = (g && sitebeheerActief && !g.bezoek) ? g.uid : '';
   if (uid === blokkadeUid) return;
   if (blokkadeRef) { blokkadeRef.off(); blokkadeRef = null; }
   blokkadeUid = uid;
@@ -6298,12 +6314,79 @@ let bezoekProfiel_ = null;   // {uid, naam}
 function bezoekProfiel(uid) {
   const p = beheerProfielen.find(x => x.uid === uid);
   if (!p || !sitebeheerActief) return;
-  bezoekProfiel_ = { uid: p.uid, naam: p.naam };
-  document.getElementById('beheer-profielen-overlay').classList.remove('actief');
-  toonScherm('scherm-beheer-bezoek');
-  window.scrollTo(0, 0);
-  laadBezoekQuizzen();
+  startBezoekModus(uid, p.naam).catch(err => alert('Bezoeken is niet gelukt: ' + (err && err.message ? err.message : accountFoutTekst(err))));
 }
+
+// Laadt het hele account van die persoon op dit apparaat en herlaadt de site.
+function startBezoekModus(uid, naam) {
+  if (!sitebeheerActief) return Promise.resolve();
+  return syncAccountData().catch(() => {}).then(() => Promise.all([
+    db.ref('gebruikers/' + uid).once('value'),
+    db.ref('accountData/' + uid).once('value')
+  ])).then(([ps, as]) => {
+    const p = ps.val();
+    const d = as.val() || {};
+    if (!p || !p.gebruikersnaam) throw new Error('Dit profiel bestaat niet meer.');
+    // Eerst een reserve-kopie van je eigen gegevens (alleen bij het eerste bezoek).
+    if (!bezoekUid()) {
+      const backup = {};
+      ACCOUNT_LOKALE_SLEUTELS.forEach(k => { backup[k] = localStorage.getItem(k); });
+      localStorage.setItem(BEZOEK_BACKUP_SLEUTEL, JSON.stringify(backup));
+    }
+    const zet = (k, v) => origineleSetItem.call(localStorage, k, v);
+    ACCOUNT_LOKALE_SLEUTELS.forEach(k => localStorage.removeItem(k));
+    ACCOUNT_DATA_SLEUTELS.forEach(k => { if (typeof d[k] === 'string') zet(k, d[k]); });
+    zet(MAKER_NAAM_SLEUTEL, p.gebruikersnaam);
+    zet(ACCOUNT_UID_SLEUTEL, uid);
+    if (p.dier) zet(PROFIEL_DIER_SLEUTEL, p.dier);
+    if (p.accessoires) zet(PROFIEL_ACCESSOIRES_SLEUTEL, JSON.stringify(p.accessoires));
+    const b = p.bezit || {};
+    const dieren = [], accessoires = [], aantallen = {};
+    Object.entries(b.dieren || {}).forEach(([item, n]) => { if (geldigDier(item) && Number(n) > 0) { dieren.push(item); aantallen['dier:' + item] = Number(n); } });
+    Object.entries(b.accessoires || {}).forEach(([item, n]) => { if (ACCESSOIRES[item] && Number(n) > 0) { accessoires.push(item); aantallen['accessoire:' + item] = Number(n); } });
+    if (dieren.length) zet(BEZIT_DIEREN_SLEUTEL, JSON.stringify(dieren));
+    if (accessoires.length) zet(BEZIT_ACCESSOIRES_SLEUTEL, JSON.stringify(accessoires));
+    if (Object.keys(aantallen).length) zet(BEZIT_AANTALLEN_SLEUTEL, JSON.stringify(aantallen));
+    zet(BEZOEK_SLEUTEL, JSON.stringify({ uid: uid, naam: p.gebruikersnaam }));
+    location.reload();
+  });
+}
+
+// Alles wat je deed is al bij die persoon opgeslagen. Hier komen je eigen gegevens terug.
+function stopBezoekModus() {
+  const knop = document.getElementById('btn-bezoek-stop');
+  if (knop) knop.disabled = true;
+  syncAccountData().catch(() => {}).then(() => {
+    let backup = {};
+    try { backup = JSON.parse(localStorage.getItem(BEZOEK_BACKUP_SLEUTEL) || '{}') || {}; } catch (e) {}
+    ACCOUNT_LOKALE_SLEUTELS.forEach(k => localStorage.removeItem(k));
+    ACCOUNT_LOKALE_SLEUTELS.forEach(k => { if (typeof backup[k] === 'string') origineleSetItem.call(localStorage, k, backup[k]); });
+    localStorage.removeItem(BEZOEK_SLEUTEL);
+    localStorage.removeItem(BEZOEK_BACKUP_SLEUTEL);
+    location.reload();
+  });
+}
+
+(function toonBezoekBalk() {
+  const b = bezoekInfo();
+  if (!b) return;
+  document.body.classList.add('bezoek-modus');
+  const balk = document.createElement('div');
+  balk.className = 'bezoek-balk';
+  const tekst = document.createElement('span');
+  tekst.textContent = '👁 Je bekijkt het account van ' + b.naam + ' · alles wat je doet gebeurt in dit account';
+  const stop = document.createElement('button');
+  stop.id = 'btn-bezoek-stop'; stop.type = 'button'; stop.textContent = 'Stoppen';
+  stop.addEventListener('click', stopBezoekModus);
+  balk.append(tekst, stop);
+  document.body.appendChild(balk);
+  // Uitloggen en verwijderen horen bij jouw eigen account, niet bij het bezochte account.
+  document.getElementById('btn-profiel-badge').addEventListener('click', () => {
+    document.getElementById('btn-profiel-uitloggen').hidden = true;
+    document.getElementById('btn-profiel-verwijderen').hidden = true;
+    document.getElementById('profiel-verwijder-paneel').hidden = true;
+  });
+})();
 
 document.getElementById('btn-beheer-bezoek-terug').addEventListener('click', () => {
   bezoekProfiel_ = null;
