@@ -4795,7 +4795,7 @@ const CHAT_ACHTERGRONDEN = [
 ];
 
 const CHAT_VAK_KLEUREN = ['#6d4fc2', '#8e44ad', '#1f6feb', '#0aa5c0', '#0f9d58', '#f6c945', '#ff9800', '#e91e63', '#e53935', '#ffffff', '#2b2b45', '#111111'];
-const CHAT_VAK_STANDAARD = { eigenVak: '#6d4fc2', vriendVak: '#2b2b45' };
+const CHAT_VAK_STANDAARD = { eigenVak: '#ffffff', vriendVak: '#111111' };   // jouw vakjes wit, die van de ander zwart
 
 let chatStijlPaneelOpen = false;
 let chatPoppetjeTab = 'dieren';
