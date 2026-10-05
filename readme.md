@@ -401,6 +401,21 @@ Plak dit in Realtime Database → Regels → Publiceren. Dezelfde tekst staat in
           ".validate": "newData.val() === true"
         }
       }
+    },
+    "namen": {
+      ".read": "auth != null",
+      "$naam": {
+        "$uid": {
+          ".write": "auth != null && (auth.uid === $uid || (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/))))",
+          ".validate": "newData.val() === true"
+        }
+      }
+    },
+    "instellingen": {
+      ".read": true,
+      "verdienlijst": {
+        ".write": "auth != null && (root.child('beheerders').child(auth.uid).val() === true || (auth.token.email != null && !auth.token.email.matches(/.*@quizzzzz\\.app/)))"
+      }
     }
   }
 }
@@ -419,6 +434,8 @@ Wat de regels doen (kort)
 - beheerders: elke ingelogde gebruiker mag de lijst met sitebeheer-uids lezen (nodig om automatisch vrienden te worden met sitebeheer en om "Beheerder" bij een naam te tonen).
 - geblokkeerd/<beheerder>/<gebruiker>: alleen die sitebeheerder zet of haalt een blokkade weg; de beheerder leest zijn hele lijst, de geblokkeerde alleen zijn eigen vakje.
 - vrienden/<beheerder>/<jij>: iedereen mag zichzelf toevoegen bij een sitebeheerder, zonder verzoek.
+- namen/<naam>/<uid>: dezelfde gebruikersnaam mag bij meerdere accounts staan. Iedereen (ingelogd) leest de lijst (nodig voor inloggen en vrienden zoeken); je schrijft alleen je eigen uid. Oude accounts staan nog in gebruikersnamen/<naam> en blijven werken.
+- instellingen/verdienlijst: iedereen leest hoeveel munten je verdient; alleen sitebeheer past dit aan.
 - Alles wat niet genoemd wordt is dicht.
 
 Bekende beperkingen (bewust zo gelaten)
@@ -439,3 +456,4 @@ Wijzigingslogboek
 - 2026-10-01 (account verwijderd in Firebase): de site controleert bij het laden, elke 20 seconden en als je terugkomt op de pagina of het account nog bestaat (Authentication + database). Is het account weggehaald, dan krijg je een melding, word je uitgelogd en wordt er niets teruggeschreven. Wat er in de database van het account over is (profiel, gebruikersnaam, vrienden, chats) wordt zo goed mogelijk opgeruimd, zodat je gebruikersnaam weer vrij komt. Daarna kun je opnieuw registreren.
 - 2026-10-05 (waarschuwing in de chat): sitebeheer heeft in elke chat een knop ⚠️ bovenin (ook tijdens meelezen bij een bezocht profiel). Het bericht staat als rood kaartje "Waarschuwing van sitebeheer" in de chat en is voor beide kanten zichtbaar; sitebeheer haalt het met 🗑 weg. Nieuw pad chats/<id>/waarschuwingen; de bestaande regels zijn ongewijzigd. Publiceer firebase-rules.json opnieuw. Gebruikersnaam wijzigen toont nu de echte foutcode en geeft een duidelijke melding tijdens bezoekmodus.
 - 2026-10-05 (regels hersteld): het regelblok in deze readme liep achter op de app: er ontbraken regels voor sitebeheer (profielenlijst, bezoeken, profiel verwijderen, naam wijzigen), voor blokkeren (geblokkeerd/) en voor het lezen van beheerders. Dit blok is nu volledig. Publiceer firebase-rules.json opnieuw.
+- 2026-10-05 (zelfde naam, verdienlijst): meerdere accounts mogen dezelfde gebruikersnaam hebben; bij inloggen bepaalt het wachtwoord welk account het is. Nieuwe namen staan in namen/<naam>/<uid>. Sitebeheer heeft een tabblad "🪙 Verdienen": per soort (alleen spelen, 1e/2e/3e plek bij een live quiz) regels "vanaf N vragen → M munten". Nieuwe regels: namen en instellingen. Publiceer firebase-rules.json opnieuw. Bestanden: app.js, index.html, style.css.
