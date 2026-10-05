@@ -686,6 +686,7 @@
       <div class="account-tabs">
         <button type="button" id="beheer-tab-profielen" class="btn btn-secondary actief">👥 Profielen</button>
         <button type="button" id="beheer-tab-overzicht" class="btn btn-secondary">🐾 Overzicht</button>
+        <button type="button" id="beheer-tab-verdienen" class="btn btn-secondary">🪙 Verdienen</button>
       </div>
 
       <div id="beheer-pane-profielen" class="beheer-pane">
@@ -700,6 +701,14 @@
         <div id="beheer-dieren-raster" class="beheer-raster"></div>
         <h4>Accessoires (<span id="beheer-accessoires-aantal">0</span>)</h4>
         <div id="beheer-accessoires-raster" class="beheer-raster"></div>
+      </div>
+
+      <div id="beheer-pane-verdienen" class="beheer-pane" hidden>
+        <p class="subtitel">Kies hoeveel munten spelers verdienen. Bij elke soort geldt de regel met het hoogste aantal vragen dat niet groter is dan het aantal vragen van de quiz. Voorbeeld: "vanaf 10 vragen → 100 munten" geldt bij een quiz van 10 of meer vragen. Bij "Alleen spelen" krijg je de munten als je alles goed hebt.</p>
+        <div id="verdien-editor"></div>
+        <p id="verdien-fout" class="foutmelding"></p>
+        <button id="btn-verdien-opslaan" class="btn btn-primary" type="button">Opslaan</button>
+        <button id="btn-verdien-standaard" class="btn btn-secondary" type="button">Standaardlijst terugzetten</button>
       </div>
 
       <button id="beheer-profielen-sluiten" class="btn btn-secondary" type="button">Sluiten</button>
