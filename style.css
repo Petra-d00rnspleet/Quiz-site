@@ -2768,8 +2768,8 @@ body.chat-open { overflow: hidden; }
 .chat-kop h3 .beheer-echte-naam { font-size: .62em; }
 .chat-beheer-melding {
   flex: 0 0 auto; margin: 8px 12px 0; padding: 10px 14px; border-radius: 12px; text-align: center;
-  font-weight: 800; color: #3a2a00; background: #f0c04d; border: 1px solid #b88a1c;
+  font-weight: 800; color: #fff; background: #4a54d6; border: 1px solid #8f98ff;
 }
 .chat-beheer-melding.geblokkeerd { color: #fff; background: #b3243a; border-color: #ff5c72; }
-.chat-beheer-melding[hidden], .chat-kop-knop[hidden] { display: none !important; }
+.chat-beheer-melding[hidden], .chat-kop-knop[hidden], .vriend-verwijder-knop[hidden] { display: none !important; }
 .chat-scherm .chat-invoer input:disabled, .chat-scherm .chat-invoer button:disabled { opacity: .5; cursor: not-allowed; }
