@@ -2804,3 +2804,18 @@ body.chat-open { overflow: hidden; }
 .chat-antwoord-inhoud { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding-left: 10px; border-left: 4px solid #8f98ff; font-size: .9rem; }
 .chat-antwoord-inhoud span { opacity: .8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-antwoord-sluit { width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(255,255,255,.14); color: #fff; font-size: 1rem; cursor: pointer; }
+
+/* ===== Bezoekmodus (sitebeheer bekijkt een account) ===== */
+.bezoek-balk {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 5000; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: calc(6px + env(safe-area-inset-top, 0px)) 12px 6px;
+  background: #b3243a; color: #fff; font-size: .85rem; font-weight: 700; line-height: 1.2;
+}
+.bezoek-balk button {
+  flex: 0 0 auto; border: 0; border-radius: 10px; padding: 8px 14px; cursor: pointer;
+  background: #fff; color: #b3243a; font: inherit; font-weight: 800;
+}
+body.bezoek-modus { padding-top: calc(52px + env(safe-area-inset-top, 0px)); }
+body.bezoek-modus #btn-vrienden-badge,
+body.bezoek-modus .telefoon-nav button[data-nav="vrienden"] { display: none !important; }
