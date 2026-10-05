@@ -2823,3 +2823,14 @@ body.bezoek-modus .sitebeheer-overlay,
 body.bezoek-modus .poppetje-editor,
 body.bezoek-modus .chat-scherm { top: calc(52px + env(safe-area-inset-top, 0px)); }
 html.breed body.bezoek-modus .telefoon-nav { top: calc(52px + env(safe-area-inset-top, 0px)) !important; }
+
+
+/* Waarschuwing van sitebeheer in de chat (voor beide kanten zichtbaar) */
+.chat-waarschuwing {
+  align-self: stretch; position: relative; margin: 6px 0; padding: 12px 40px 12px 14px;
+  border-radius: 14px; text-align: center; color: #fff;
+  background: #b3243a; border: 2px solid #ff5c72; box-shadow: 0 4px 16px rgba(179, 36, 58, .45);
+}
+.chat-waarschuwing-titel { font-weight: 800; font-size: .95rem; margin-bottom: 4px; }
+.chat-waarschuwing-tekst { overflow-wrap: anywhere; line-height: 1.35; white-space: pre-wrap; }
+.chat-waarschuwing-weg { position: absolute; top: 8px; right: 8px; color: #fff; }
