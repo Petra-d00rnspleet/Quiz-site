@@ -4920,6 +4920,81 @@ function chatPoppetjeGeldig(soort, item) {
   return soort === 'dier' ? !!geldigDier(item) : (soort === 'accessoire' && !!ACCESSOIRES[item]);
 }
 
+// ---------------- Een bericht beantwoorden (zoals in WhatsApp) ----------------
+let chatAntwoord = null;   // { key, uid, naam, tekst } van het bericht waarop je antwoordt
+
+function berichtSamenvatting(b) {
+  let t = String(b.tekst || '').trim();
+  if (!t && b.type === 'quiz') t = '📝 ' + (b.titel || 'Quiz');
+  if (!t) t = 'Bericht';
+  return t.length > 100 ? t.slice(0, 100) + '…' : t;
+}
+
+function bouwAntwoordBalk() {
+  if (document.getElementById('chat-antwoord-balk')) return;
+  const invoer = document.querySelector('#chat-overlay .chat-invoer');
+  if (!invoer) return;
+  const balk = document.createElement('div');
+  balk.id = 'chat-antwoord-balk';
+  balk.className = 'chat-antwoord-balk';
+  balk.hidden = true;
+  const inhoud = document.createElement('div');
+  inhoud.className = 'chat-antwoord-inhoud';
+  const naam = document.createElement('strong');
+  naam.id = 'chat-antwoord-naam';
+  const tekst = document.createElement('span');
+  tekst.id = 'chat-antwoord-tekst';
+  inhoud.append(naam, tekst);
+  const sluit = document.createElement('button');
+  sluit.type = 'button'; sluit.className = 'chat-antwoord-sluit'; sluit.textContent = '✕';
+  sluit.title = 'Antwoord annuleren'; sluit.setAttribute('aria-label', 'Antwoord annuleren');
+  sluit.addEventListener('click', stopAntwoord);
+  balk.append(inhoud, sluit);
+  invoer.before(balk);
+}
+
+function zetAntwoord(key, b) {
+  if (chatGeblokkeerd()) return;
+  const g = profielFirebaseGebruiker();
+  const eigen = g && b.uid === g.uid;
+  chatAntwoord = { key: key, uid: b.uid || '', naam: eigen ? 'Jij' : (b.gebruikersnaam || huidigChatNaam || 'Gebruiker'), tekst: berichtSamenvatting(b) };
+  bouwAntwoordBalk();
+  const naamEl = document.getElementById('chat-antwoord-naam');
+  if (eigen) naamEl.textContent = 'Jij'; else maakWeergaveNaam(naamEl, b.uid, chatAntwoord.naam);
+  document.getElementById('chat-antwoord-tekst').textContent = chatAntwoord.tekst;
+  document.getElementById('chat-antwoord-balk').hidden = false;
+  const input = document.getElementById('chat-input');
+  if (input) input.focus();
+}
+
+function stopAntwoord() {
+  chatAntwoord = null;
+  const balk = document.getElementById('chat-antwoord-balk');
+  if (balk) balk.hidden = true;
+}
+
+// Het geciteerde bericht bovenaan een antwoord. Klik erop om naar het origineel te springen.
+function maakAntwoordCitaat(a) {
+  const g = profielFirebaseGebruiker();
+  const eigen = g && a.uid === g.uid;
+  const c = document.createElement('div');
+  c.className = 'chat-citaat';
+  const naam = document.createElement('strong');
+  if (eigen) naam.textContent = 'Jij'; else maakWeergaveNaam(naam, a.uid, a.naam || 'Gebruiker');
+  const tekst = document.createElement('span');
+  tekst.textContent = String(a.tekst || '');
+  c.append(naam, tekst);
+  c.addEventListener('click', () => {
+    const lijst = document.getElementById('chat-berichten');
+    const doel = Array.prototype.find.call(lijst.children, el => el.dataset.key === a.key);
+    if (!doel) return;
+    doel.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    doel.classList.add('chat-bericht-licht');
+    setTimeout(() => doel.classList.remove('chat-bericht-licht'), 1400);
+  });
+  return c;
+}
+
 // ---------------- Emoties sturen in de chat ----------------
 const CHAT_EMOTIES = ['😀','😃','😄','😁','😆','😅','😂','🤣','🙂','😉','😊','😇','🥰','😍','🤩','😘','😋','😜','🤪','😎',
   '🤗','🤔','🤭','😐','😴','🥱','😮','😲','😳','🥺','😢','😭','😤','😠','😡','🤯','🥳','😱','🤒','🤕',
@@ -5090,6 +5165,7 @@ function werkChatBeheerBij() {
   const overlay = document.getElementById('chat-overlay');
   if (!overlay) return;
   bouwChatEmojiPaneel();
+  bouwAntwoordBalk();
   let melding = document.getElementById('chat-beheer-melding');
   if (!melding) {
     melding = document.createElement('div');
@@ -5243,6 +5319,7 @@ function openChat(uid, naam) {
   document.getElementById('chat-quiz-paneel').hidden = true;
   bouwChatEmojiPaneel();
   document.getElementById('chat-emoji-paneel').hidden = true;
+  stopAntwoord();
   chatGekozenPoppetje = null;
   document.getElementById('chat-poppetje-knop-plaatje').innerHTML =
     geldigDier(huidigProfielDier()) ? poppetjeSvg(huidigProfielDier(), {}) : '👤';
@@ -5257,6 +5334,7 @@ function openChat(uid, naam) {
 function sluitChat() {
   if (chatBerichtenQuery) { chatBerichtenQuery.off(); chatBerichtenQuery = null; }
   if (chatBlokRef) { chatBlokRef.off(); chatBlokRef = null; }
+  stopAntwoord();
   document.getElementById('chat-overlay').classList.remove('actief');
   document.body.classList.remove('chat-open');
   huidigChatUid = '';
@@ -5283,15 +5361,18 @@ function laadChatBerichten() {
       const b = child.val() || {};
       const eigen = b.uid === gebruiker.uid;
       if (!eigen && sitebeheerActief && geblokkeerdDoorMij[b.uid]) return;
-      if (b.type === 'poppetje') { lijst.appendChild(maakChatPoppetjeBericht(child.key, b, eigen, gebruiker)); return; }
-      if (b.type === 'quiz') { lijst.appendChild(maakChatQuizBericht(child.key, b, eigen, gebruiker)); return; }
+      if (b.type === 'poppetje') { const el = maakChatPoppetjeBericht(child.key, b, eigen, gebruiker); el.dataset.key = child.key; lijst.appendChild(el); return; }
+      if (b.type === 'quiz') { const el = maakChatQuizBericht(child.key, b, eigen, gebruiker); el.dataset.key = child.key; lijst.appendChild(el); return; }
       const p = document.createElement('div');
       p.className = 'chat-bericht' + (eigen ? ' eigen' : '') + (isAlleenEmoji(b.tekst) ? ' alleen-emoji' : '');
       const wie = maakChatWie(eigen, b);
       const tekst = document.createElement('span');
       tekst.className = 'chat-bericht-tekst';
       tekst.textContent = b.tekst || '';
-      p.append(maakChatBerichtKop(wie, child.key, b, eigen), tekst);
+      p.dataset.key = child.key;
+      p.append(maakChatBerichtKop(wie, child.key, b, eigen));
+      if (b.antwoordOp && typeof b.antwoordOp === 'object') p.appendChild(maakAntwoordCitaat(b.antwoordOp));
+      p.appendChild(tekst);
       lijst.appendChild(p);
     });
     if (onderaan) lijst.scrollTop = lijst.scrollHeight;
@@ -5303,6 +5384,17 @@ function maakChatBerichtKop(wie, key, b, eigen) {
   const kop = document.createElement('div');
   kop.className = 'chat-bericht-kop';
   kop.appendChild(wie);
+  const acties = document.createElement('span');
+  acties.className = 'chat-bericht-acties';
+  kop.appendChild(acties);
+  const antwoordKnop = document.createElement('button');
+  antwoordKnop.type = 'button';
+  antwoordKnop.className = 'chat-bericht-verwijder chat-bericht-antwoord';
+  antwoordKnop.title = 'Beantwoorden';
+  antwoordKnop.setAttribute('aria-label', 'Beantwoorden');
+  antwoordKnop.textContent = '↩';
+  antwoordKnop.addEventListener('click', () => zetAntwoord(key, b));
+  acties.appendChild(antwoordKnop);
   if (eigen && b.status !== 'bezig') {
     const knop = document.createElement('button');
     knop.type = 'button';
@@ -5311,7 +5403,7 @@ function maakChatBerichtKop(wie, key, b, eigen) {
     knop.setAttribute('aria-label', 'Bericht verwijderen');
     knop.textContent = '🗑';
     knop.addEventListener('click', () => verwijderChatBericht(key, b));
-    kop.appendChild(knop);
+    acties.appendChild(knop);
   }
   return kop;
 }
@@ -5423,9 +5515,14 @@ function verstuurChatBericht() {
   if (chatGeblokkeerd()) { werkChatBeheerBij(); return; }
   const ref = chatBerichtenRef();
   if (!gebruiker || !ref) { alert(socialeVerbindingsMelding()); zorgVoorSocialeGebruiker(); return; }
+  const antwoord = chatAntwoord ? { key: chatAntwoord.key, uid: chatAntwoord.uid, naam: chatAntwoord.naam === 'Jij' ? huidigeMakerNaam() : chatAntwoord.naam, tekst: chatAntwoord.tekst } : null;
   input.value = '';
-  ref.push().set({ uid: gebruiker.uid, gebruikersnaam: huidigeMakerNaam(), tekst: tekst, tijd: firebase.database.ServerValue.TIMESTAMP }).catch(err => {
+  stopAntwoord();
+  const nieuwBericht = { uid: gebruiker.uid, gebruikersnaam: huidigeMakerNaam(), tekst: tekst, tijd: firebase.database.ServerValue.TIMESTAMP };
+  if (antwoord) nieuwBericht.antwoordOp = antwoord;
+  ref.push().set(nieuwBericht).catch(err => {
     input.value = tekst;
+    if (antwoord) { chatAntwoord = antwoord; chatAntwoord.naam = antwoord.uid === gebruiker.uid ? 'Jij' : antwoord.naam; bouwAntwoordBalk(); document.getElementById('chat-antwoord-naam').textContent = chatAntwoord.naam; document.getElementById('chat-antwoord-tekst').textContent = antwoord.tekst; document.getElementById('chat-antwoord-balk').hidden = false; }
     const code = err && err.code ? ' (' + err.code + ')' : '';
     alert('Het bericht kon niet worden verstuurd' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd en of Anoniem aanmelden aan staat.');
   });
