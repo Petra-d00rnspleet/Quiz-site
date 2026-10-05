@@ -2757,3 +2757,19 @@ body.chat-open { overflow: hidden; }
   .vriend-rij .vriend-knoppen .chat-knop { flex: 1; }
   .vriend-rij .vriend-knoppen .vriend-verwijder-knop { width: auto; flex: 0 0 auto; }
 }
+
+
+/* ===== Beheerder: instellingen-logo, "Beheerder" met kleine naam, chatwaarschuwing ===== */
+.beheer-logo-svg { display: block; }
+.beheer-echte-naam {
+  display: block; font-size: .72em; font-weight: 400; line-height: 1.2; opacity: .75;
+  white-space: normal; overflow: hidden; text-overflow: ellipsis;
+}
+.chat-kop h3 .beheer-echte-naam { font-size: .62em; }
+.chat-beheer-melding {
+  flex: 0 0 auto; margin: 8px 12px 0; padding: 10px 14px; border-radius: 12px; text-align: center;
+  font-weight: 800; color: #3a2a00; background: #f0c04d; border: 1px solid #b88a1c;
+}
+.chat-beheer-melding.geblokkeerd { color: #fff; background: #b3243a; border-color: #ff5c72; }
+.chat-beheer-melding[hidden], .chat-kop-knop[hidden] { display: none !important; }
+.chat-scherm .chat-invoer input:disabled, .chat-scherm .chat-invoer button:disabled { opacity: .5; cursor: not-allowed; }
