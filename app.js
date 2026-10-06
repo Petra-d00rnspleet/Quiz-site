@@ -5819,6 +5819,10 @@ function accepteerChatPoppetje(key, b) {
 //           groepsberichten/<id>/<berichtId> (zoals een gewone chat).
 // ================================================================
 
+function groepIsBeheerder(g, uid) {
+  return !!g && !!uid && (g.maker === uid || !!(g.beheerders && g.beheerders[uid]));
+}
+
 function stopGroep(id) {
   if (groepRefs[id]) { groepRefs[id].off(); delete groepRefs[id]; }
   if (groepOngelezenQueries[id]) { groepOngelezenQueries[id].off(); delete groepOngelezenQueries[id]; }
@@ -6019,6 +6023,8 @@ function openGroepBeheer(id) {
   beheerdeGroepId = id;
   document.getElementById('groep-maak-blok').hidden = true;
   document.getElementById('groep-beheer-blok').hidden = false;
+  document.getElementById('input-groep-hernoem').value = socialeGroepen[id].naam || '';
+  document.getElementById('groep-hernoem-fout').textContent = '';
   bouwGroepBeheer();
   document.getElementById('groep-overlay').classList.add('actief');
 }
@@ -6028,7 +6034,9 @@ function bouwGroepBeheer() {
   const gebruiker = profielFirebaseGebruiker();
   if (!g || !gebruiker) return;
   const ikBenMaker = g.maker === gebruiker.uid && !bezoekUid();
+  const ikBenBeheerder = groepIsBeheerder(g, gebruiker.uid) && !bezoekUid();
   const alleen = !!bezoekUid();
+  document.getElementById('groep-hernoem-blok').hidden = !ikBenBeheerder;
   document.getElementById('groep-titel').textContent = '👥 ' + g.naam;
   const ledenEl = document.getElementById('groep-leden-lijst');
   ledenEl.innerHTML = '';
@@ -6037,10 +6045,20 @@ function bouwGroepBeheer() {
     rij.className = 'vriend-rij';
     const naam = document.createElement('strong');
     maakWeergaveNaam(naam, uid, (socialeVrienden[uid] && socialeVrienden[uid].gebruikersnaam) || String(g.leden[uid] || 'Lid'));
+    const lidIsBeheerder = !!(g.beheerders && g.beheerders[uid]);
     if (uid === g.maker) { const m = document.createElement('small'); m.className = 'beheer-echte-naam'; m.textContent = ' 👑 maker'; naam.appendChild(m); }
+    else if (lidIsBeheerder) { const m = document.createElement('small'); m.className = 'beheer-echte-naam'; m.textContent = ' ⭐ beheerder'; naam.appendChild(m); }
     if (uid === gebruiker.uid) { const m = document.createElement('small'); m.className = 'beheer-echte-naam'; m.textContent = ' (jij)'; naam.appendChild(m); }
     rij.append(maakMiniPoppetje(uid, 'vriend-mini-poppetje'), naam);
-    if (ikBenMaker && uid !== gebruiker.uid) {
+    if (ikBenMaker && uid !== g.maker) {
+      const ster = document.createElement('button');
+      ster.type = 'button'; ster.className = 'btn btn-secondary';
+      ster.textContent = lidIsBeheerder ? '⭐ Geen beheerder meer' : '⭐ Beheerder maken';
+      ster.addEventListener('click', () => { ster.disabled = true; zetGroepBeheerder(beheerdeGroepId, uid, !lidIsBeheerder); });
+      rij.appendChild(ster);
+    }
+    // Maker mag iedereen verwijderen; een beheerder alleen gewone leden.
+    if (uid !== gebruiker.uid && uid !== g.maker && (ikBenMaker || (ikBenBeheerder && !lidIsBeheerder))) {
       const weg = document.createElement('button');
       weg.type = 'button'; weg.className = 'btn btn-secondary'; weg.textContent = '✕ Verwijderen';
       weg.addEventListener('click', () => { weg.disabled = true; verwijderGroepLid(beheerdeGroepId, uid); });
@@ -6049,10 +6067,10 @@ function bouwGroepBeheer() {
     ledenEl.appendChild(rij);
   });
   const toevBlok = document.getElementById('groep-toevoegen-blok');
-  toevBlok.hidden = !ikBenMaker;
+  toevBlok.hidden = !ikBenBeheerder;
   const toevLijst = document.getElementById('groep-toevoegen-lijst');
   toevLijst.innerHTML = '';
-  if (ikBenMaker) {
+  if (ikBenBeheerder) {
     const kandidaten = Object.entries(socialeVrienden).filter(([uid]) => !(g.leden || {})[uid] && !isBeheerUid(uid));
     kandidaten.forEach(([uid, info]) => {
       const rij = document.createElement('div');
@@ -6087,12 +6105,42 @@ function voegGroepLidToe(id, uid, naam) {
     .catch(err => groepFoutMelding(err, 'Toevoegen'));
 }
 
+function zetGroepBeheerder(id, uid, wordt) {
+  const gebruiker = profielFirebaseGebruiker();
+  const g = socialeGroepen[id];
+  if (!gebruiker || !g || g.maker !== gebruiker.uid || uid === g.maker || !(g.leden || {})[uid]) return;
+  (wordt ? db.ref('groepen/' + id + '/beheerders/' + uid).set(true) : db.ref('groepen/' + id + '/beheerders/' + uid).remove())
+    .catch(err => groepFoutMelding(err, 'Beheerder wijzigen'));
+}
+
+function hernoemGroep() {
+  const gebruiker = profielFirebaseGebruiker();
+  const g = socialeGroepen[beheerdeGroepId];
+  const fout = document.getElementById('groep-hernoem-fout');
+  fout.textContent = '';
+  if (!gebruiker || !g || !groepIsBeheerder(g, gebruiker.uid) || bezoekUid()) return;
+  const naam = veiligeChatTekst(document.getElementById('input-groep-hernoem').value).slice(0, 30);
+  if (!naam) { fout.textContent = 'Geef de groep een naam.'; return; }
+  if (naam === g.naam) return;
+  const knop = document.getElementById('btn-groep-hernoem');
+  knop.disabled = true;
+  db.ref('groepen/' + beheerdeGroepId + '/naam').set(naam)
+    .then(() => { knop.disabled = false; fout.textContent = '✓ Naam aangepast'; })
+    .catch(err => {
+      knop.disabled = false;
+      const code = err && err.code ? ' (' + err.code + ')' : '';
+      fout.textContent = 'Aanpassen is mislukt' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.';
+    });
+}
+
 function verwijderGroepLid(id, uid) {
   const g = socialeGroepen[id];
   if (!g || !confirm('Dit lid uit de groep halen?')) return;
   const upd = {};
   upd['gebruikerGroepen/' + uid + '/' + id] = null;
+  const wasBeheerder = !!(g.beheerders && g.beheerders[uid]);
   db.ref().update(upd)
+    .then(() => (wasBeheerder ? db.ref('groepen/' + id + '/beheerders/' + uid).remove() : null))
     .then(() => db.ref('groepen/' + id + '/leden/' + uid).remove())
     .catch(err => groepFoutMelding(err, 'Verwijderen'));
 }
@@ -6102,7 +6150,9 @@ function verlaatGroep(id) {
   const g = socialeGroepen[id];
   if (!gebruiker || !g || bezoekUid()) return;
   if (!confirm('De groep "' + g.naam + '" verlaten?')) return;
-  db.ref('groepen/' + id + '/leden/' + gebruiker.uid).remove()
+  const wasBeheerder = !!(g.beheerders && g.beheerders[gebruiker.uid]);
+  Promise.resolve(wasBeheerder ? db.ref('groepen/' + id + '/beheerders/' + gebruiker.uid).remove() : null)
+    .then(() => db.ref('groepen/' + id + '/leden/' + gebruiker.uid).remove())
     .then(() => db.ref('gebruikerGroepen/' + gebruiker.uid + '/' + id).remove())
     .then(() => verdwijnGroepLokaal(id))
     .catch(err => groepFoutMelding(err, 'Verlaten'));
@@ -6128,6 +6178,8 @@ document.getElementById('btn-groep-sluiten').addEventListener('click', () => {
   document.getElementById('groep-overlay').classList.remove('actief');
 });
 document.getElementById('btn-chat-groep').addEventListener('click', () => { if (huidigGroepId) openGroepBeheer(huidigGroepId); });
+document.getElementById('btn-groep-hernoem').addEventListener('click', hernoemGroep);
+document.getElementById('input-groep-hernoem').addEventListener('keydown', e => { if (e.key === 'Enter') hernoemGroep(); });
 document.getElementById('btn-groep-verlaten').addEventListener('click', () => verlaatGroep(beheerdeGroepId));
 document.getElementById('btn-groep-verwijderen').addEventListener('click', () => verwijderGroep(beheerdeGroepId));
 
