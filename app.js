@@ -51,7 +51,7 @@ function bezoekInfo() {
 function bezoekUid() { const b = bezoekInfo(); return b ? b.uid : ''; }
 
 // Deze gegevens horen bij je account en worden online bewaard (accountData/<uid>).
-const ACCOUNT_DATA_SLEUTELS = ['quizAppMunten', 'eigenQuizzen', 'quizAppGekochteBoxen', 'quizAppWielLaatsteDraai', 'quizAppWielLaatsteResultaat'];
+const ACCOUNT_DATA_SLEUTELS = ['quizAppMunten', 'eigenQuizzen', 'quizAppGekochteBoxen', 'quizAppWielLaatsteDraai', 'quizAppWielLaatsteResultaat', 'quizAppWielVandaag'];
 // Alles wat bij uitloggen van dit apparaat verdwijnt (staat online veilig bij je account).
 const ACCOUNT_LOKALE_SLEUTELS = ['makerNaam', 'profielDier', 'profielAccessoires', 'quizAppBezitDieren', 'quizAppBezitAccessoires',
   'quizAppBezitAantallen', 'quizAppChatGelezen', 'quizAppChatStijl', ACCOUNT_UID_SLEUTEL].concat(ACCOUNT_DATA_SLEUTELS);
@@ -2740,6 +2740,27 @@ function stopWielExtraLuisteren() {
   if (wielExtraRef) { wielExtraRef.off(); wielExtraRef = null; }
 }
 
+// Alles wat je vandaag aan het rad won (gewone draai + extra draaien), als lijst.
+function wielVandaagLijst() {
+  const vandaag = huidigeDatumTekst();
+  try {
+    const v = JSON.parse(localStorage.getItem('quizAppWielVandaag') || 'null');
+    if (v && v.datum === vandaag && Array.isArray(v.lijst)) return v.lijst;
+  } catch (e) {}
+  const oud = localStorage.getItem(WIEL_LAATSTE_RESULTAAT_SLEUTEL);
+  return (localStorage.getItem(WIEL_LAATSTE_DRAAI_SLEUTEL) === vandaag && oud) ? [oud] : [];
+}
+function voegWielWinstToe(naam) {
+  const lijst = wielVandaagLijst().slice();
+  lijst.push(naam);
+  localStorage.setItem('quizAppWielVandaag', JSON.stringify({ datum: huidigeDatumTekst(), lijst: lijst }));
+}
+function wielWinstHtml() {
+  const lijst = wielVandaagLijst();
+  if (!lijst.length) return '';
+  return lijst.map((naam, i) => (i === 0 ? '🎉 Vandaag gewonnen: ' : '➕ Extra draai gewonnen: ') + escapeHtml(naam)).join('<br>');
+}
+
 function werkWielStatusBij() {
   const knopEl = document.getElementById('btn-wiel-draaien');
   const statusEl = document.getElementById('wiel-status');
@@ -2753,13 +2774,11 @@ function werkWielStatusBij() {
   if (alGedraaidVandaag && wielExtraAantal <= 0) {
     knopEl.disabled = true;
     statusEl.textContent = '⏳ Je hebt vandaag al gedraaid. Kom morgen terug voor een nieuwe beurt!';
-    const laatsteResultaat = localStorage.getItem(WIEL_LAATSTE_RESULTAAT_SLEUTEL);
-    if (!wielDraaitNu) resultaatEl.textContent = laatsteResultaat ? ('🎉 Vandaag gewonnen: ' + laatsteResultaat) : '';
   } else {
     knopEl.disabled = wielDraaitNu;
     statusEl.textContent = wielDraaitNu ? '' : extraTekst + 'Klik op de knop in het midden van het rad om te draaien!';
-    if (!wielDraaitNu && !alGedraaidVandaag) resultaatEl.textContent = '';
   }
+  if (!wielDraaitNu) resultaatEl.innerHTML = alGedraaidVandaag ? wielWinstHtml() : '';
 }
 
 function laadGeluksrad() {
@@ -2832,6 +2851,10 @@ function startWielDraai(vandaag, isExtra) {
     if (!isExtra) {
       localStorage.setItem(WIEL_LAATSTE_DRAAI_SLEUTEL, vandaag);
       localStorage.setItem(WIEL_LAATSTE_RESULTAAT_SLEUTEL, gekozenSegment.naam);
+      localStorage.setItem('quizAppWielVandaag', JSON.stringify({ datum: vandaag, lijst: [gekozenSegment.naam] }));
+    } else {
+      // Extra draai: komt er gewoon bij te staan onder "Vandaag gewonnen".
+      voegWielWinstToe(gekozenSegment.naam);
     }
     if (gekozenSegment.type === 'dier' && gekozenSegment.dier) {
       voegBezitToe([gekozenSegment.dier], []);
@@ -2840,7 +2863,6 @@ function startWielDraai(vandaag, isExtra) {
     } else if (gekozenSegment.munten) {
       geefMunten(gekozenSegment.munten);
     }
-    document.getElementById('wiel-resultaat').textContent = '🎉 Je hebt gewonnen: ' + gekozenSegment.naam + '!';
     werkWielStatusBij();
   }, WIEL_DRAAI_DUUR_MS);
 }
