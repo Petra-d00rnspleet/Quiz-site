@@ -5097,6 +5097,7 @@ let chatAntwoord = null;   // { key, uid, naam, tekst } van het bericht waarop j
 function berichtSamenvatting(b) {
   let t = String(b.tekst || '').trim();
   if (!t && b.type === 'quiz') t = '📝 ' + (b.titel || 'Quiz');
+  if (!t && b.type === 'munten') t = '🪙 ' + (b.bedrag || 0) + ' munten';
   if (!t) t = 'Bericht';
   return t.length > 100 ? t.slice(0, 100) + '…' : t;
 }
@@ -5204,11 +5205,11 @@ function bouwChatEmojiPaneel() {
   document.getElementById('chat-input').before(knop);
   knop.addEventListener('click', () => {
     const open = paneel.hidden;
-    ['chat-stijl-paneel', 'chat-poppetjes-paneel', 'chat-quiz-paneel'].forEach(id => { const el = document.getElementById(id); if (el) el.hidden = true; });
+    ['chat-stijl-paneel', 'chat-poppetjes-paneel', 'chat-quiz-paneel', 'chat-munten-paneel'].forEach(id => { const el = document.getElementById(id); if (el) el.hidden = true; });
     paneel.hidden = !open;
   });
   // Opent een ander paneel? Dan gaat dit dicht.
-  ['btn-chat-stijl', 'btn-chat-poppetje', 'btn-chat-quiz'].forEach(id => {
+  ['btn-chat-stijl', 'btn-chat-poppetje', 'btn-chat-quiz', 'btn-chat-munten'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('click', () => { paneel.hidden = true; });
   });
@@ -5383,7 +5384,7 @@ function werkChatBeheerBij() {
 
   // Geblokkeerd: het schrijfvak staat uit
   const input = document.getElementById('chat-input');
-  ['chat-input', 'btn-chat-sturen', 'btn-chat-poppetje', 'btn-chat-quiz', 'btn-chat-emoji'].forEach(id => {
+  ['chat-input', 'btn-chat-sturen', 'btn-chat-poppetje', 'btn-chat-quiz', 'btn-chat-munten', 'btn-chat-emoji'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.disabled = geblokkeerd || bezoek;
   });
@@ -5549,7 +5550,9 @@ function openChat(uid, naam) {
   chatStijlPaneelOpen = false;
   document.getElementById('chat-stijl-paneel').hidden = true;
   document.getElementById('chat-poppetjes-paneel').hidden = true;
+  document.getElementById('chat-munten-paneel').hidden = true;
   document.getElementById('chat-quiz-paneel').hidden = true;
+  document.getElementById('chat-munten-paneel').hidden = true;
   bouwChatEmojiPaneel();
   document.getElementById('chat-emoji-paneel').hidden = true;
   stopAntwoord();
@@ -5627,6 +5630,7 @@ function tekenChatBerichten() {
     if (!eigen && sitebeheerActief && geblokkeerdDoorMij[b.uid]) return;
     if (b.type === 'poppetje') { const el = maakChatPoppetjeBericht(key, b, eigen, gebruiker); el.dataset.key = key; lijst.appendChild(el); return; }
     if (b.type === 'quiz') { const el = maakChatQuizBericht(key, b, eigen, gebruiker); el.dataset.key = key; lijst.appendChild(el); return; }
+    if (b.type === 'munten') { const el = maakChatMuntenBericht(key, b, eigen, gebruiker); el.dataset.key = key; lijst.appendChild(el); if (eigen) betaalMuntenTerugAlsNodig(key, b); return; }
     const p = document.createElement('div');
     p.className = 'chat-bericht' + (eigen ? ' eigen' : '') + (isAlleenEmoji(b.tekst) ? ' alleen-emoji' : '');
     const wie = maakChatWie(eigen, b);
@@ -5675,11 +5679,14 @@ function maakChatBerichtKop(wie, key, b, eigen) {
 function verwijderChatBericht(key, b) {
   const ref = chatBerichtenRef();
   if (!ref) return;
-  const vraag = (b.type === 'poppetje' && b.status === 'open')
+  const vraag = ((b.type === 'poppetje' || b.type === 'munten') && b.status === 'open')
     ? 'Dit cadeau intrekken en het bericht verwijderen?'
     : 'Dit bericht verwijderen?';
   if (!confirm(vraag)) return;
-  ref.child(key).remove().catch(err => {
+  const klaarVoor = (b.type === 'munten' && (b.status === 'open' || b.status === 'geweigerd'))
+    ? wijzigChatPoppetjeStatus(key, 'geweigerd').then(() => betaalMuntenTerugAlsNodig(key, b, true))
+    : Promise.resolve();
+  klaarVoor.then(() => ref.child(key).remove()).catch(err => {
     const code = err && err.code ? ' (' + err.code + ')' : '';
     alert('Verwijderen is mislukt' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.');
   });
@@ -5769,6 +5776,152 @@ function accepteerChatPoppetje(key, b) {
     const code = err && err.code ? ' (' + err.code + ')' : '';
     alert('Accepteren is mislukt' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.');
   });
+}
+
+
+// ---------------- Munten sturen in de chat ----------------
+// Het bedrag gaat meteen van de verzender af (zo kun je niet meer sturen dan je hebt).
+// Accepteert de ontvanger, dan krijgt hij de munten. Weigert hij, of trekt de verzender het
+// terug, dan krijgt de verzender ze automatisch terug (één keer, zodra hij de chat opent).
+const muntenTerugbetaaldLokaal = {};
+
+function toggleMuntenPaneel() {
+  const paneel = document.getElementById('chat-munten-paneel');
+  const open = paneel.hidden;
+  ['chat-stijl-paneel', 'chat-poppetjes-paneel', 'chat-quiz-paneel'].forEach(id => { const el = document.getElementById(id); if (el) el.hidden = true; });
+  const emoji = document.getElementById('chat-emoji-paneel'); if (emoji) emoji.hidden = true;
+  paneel.hidden = !open;
+  if (open) {
+    document.getElementById('chat-munten-naam').textContent = huidigChatNaam || 'je vriend';
+    document.getElementById('chat-munten-saldo').textContent = String(haalMunten());
+    document.getElementById('chat-munten-aantal').value = '';
+    document.getElementById('chat-munten-aantal').focus();
+  }
+}
+
+function verstuurChatMunten() {
+  const gebruiker = profielFirebaseGebruiker();
+  const ref = chatBerichtenRef();
+  if (!gebruiker || !ref) { alert(socialeVerbindingsMelding()); return; }
+  if (bezoekUid()) return;
+  if (chatGeblokkeerd()) { werkChatBeheerBij(); return; }
+  if (!socialeVrienden[huidigChatUid]) { alert('Je kunt alleen munten naar vrienden sturen.'); return; }
+  const invoer = document.getElementById('chat-munten-aantal');
+  const bedrag = Math.floor(Number(invoer.value));
+  if (!(bedrag >= 1) || bedrag > 100000) { alert('Vul een aantal munten in (minstens 1).'); return; }
+  if (bedrag > haalMunten()) { alert('Je hebt maar ' + haalMunten() + ' munten.'); return; }
+  const knop = document.getElementById('btn-chat-munten-verzenden');
+  knop.disabled = true;
+  zetMunten(haalMunten() - bedrag);   // het bedrag is nu "onderweg"
+  ref.push().set({
+    uid: gebruiker.uid,
+    gebruikersnaam: huidigeMakerNaam(),
+    type: 'munten',
+    bedrag: bedrag,
+    aan: huidigChatUid,
+    status: 'open',
+    tekst: '🪙 ' + bedrag + ' munten',
+    tijd: firebase.database.ServerValue.TIMESTAMP
+  }).then(() => {
+    knop.disabled = false;
+    invoer.value = '';
+    document.getElementById('chat-munten-paneel').hidden = true;
+  }).catch(err => {
+    knop.disabled = false;
+    geefMunten(bedrag);   // niet verstuurd: je krijgt je munten terug
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    alert('Versturen is mislukt' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.');
+  });
+}
+
+function maakChatMuntenBericht(key, b, eigen, gebruiker) {
+  const kaart = document.createElement('div');
+  kaart.className = 'chat-bericht chat-poppetje-bericht chat-munten-bericht' + (eigen ? ' eigen' : '');
+  const wie = maakChatWie(eigen, b);
+  const plaatje = document.createElement('div');
+  plaatje.className = 'chat-poppetje-plaatje';
+  plaatje.textContent = '🪙';
+  plaatje.style.fontSize = '3rem';
+  const label = document.createElement('div');
+  label.className = 'chat-poppetje-label';
+  const bedrag = Number(b.bedrag) || 0;
+  label.textContent = '🎁 ' + (eigen ? 'Je stuurt ' : 'Cadeau: ') + bedrag + ' munten';
+  kaart.append(maakChatBerichtKop(wie, key, b, eigen), plaatje, label);
+
+  const status = document.createElement('div');
+  status.className = 'chat-poppetje-status';
+  if (b.status === 'geaccepteerd') {
+    status.textContent = '✓ Geaccepteerd';
+  } else if (b.status === 'geweigerd') {
+    status.textContent = eigen ? '✕ Geweigerd — je munten zijn terug' : '✕ Geweigerd';
+  } else if (b.status === 'mislukt') {
+    status.textContent = 'Niet gelukt';
+  } else if (b.status === 'bezig') {
+    status.textContent = 'Bezig...';
+  } else if (!eigen && b.aan === gebruiker.uid && bedrag >= 1) {
+    const ja = document.createElement('button');
+    ja.type = 'button'; ja.className = 'btn btn-primary'; ja.textContent = '✓ Accepteren';
+    ja.addEventListener('click', () => { ja.disabled = true; accepteerChatMunten(key, b); });
+    const nee = document.createElement('button');
+    nee.type = 'button'; nee.className = 'btn btn-secondary'; nee.textContent = '✕ Weigeren';
+    nee.addEventListener('click', () => { nee.disabled = true; wijzigChatPoppetjeStatus(key, 'geweigerd'); });
+    status.append(ja, nee);
+  } else if (eigen) {
+    const wacht = document.createElement('span');
+    wacht.textContent = '⏳ Wacht op acceptatie';
+    const annuleer = document.createElement('button');
+    annuleer.type = 'button'; annuleer.className = 'btn btn-secondary'; annuleer.textContent = 'Terugtrekken';
+    annuleer.addEventListener('click', () => { annuleer.disabled = true; wijzigChatPoppetjeStatus(key, 'geweigerd'); });
+    status.append(wacht, annuleer);
+  }
+  kaart.appendChild(status);
+  return kaart;
+}
+
+// Ontvanger accepteert: de munten komen bij hem erbij (bij de verzender waren ze al af).
+function accepteerChatMunten(key, b) {
+  const gebruiker = profielFirebaseGebruiker();
+  const ref = chatBerichtenRef();
+  if (!gebruiker || !ref || bezoekUid()) return;
+  const bedrag = Math.floor(Number(b.bedrag));
+  if (b.aan !== gebruiker.uid || b.uid !== huidigChatUid || !(bedrag >= 1)) return;
+  const statusRef = ref.child(key).child('status');
+  let geclaimd = false;
+  statusRef.transaction(v => {
+    if (v === 'open') { geclaimd = true; return 'bezig'; }
+    geclaimd = false;
+    return v;
+  }).then(res => {
+    if (!res.committed || !geclaimd) return null;
+    geefMunten(bedrag);
+    return statusRef.set('geaccepteerd');
+  }).catch(err => {
+    console.error('Munten accepteren mislukt:', err);
+    statusRef.transaction(v => (v === 'bezig' ? 'open' : v)).catch(() => {});
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    alert('Accepteren is mislukt' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.');
+  });
+}
+
+// Verzender krijgt de munten van een geweigerd/teruggetrokken bericht precies één keer terug.
+function betaalMuntenTerugAlsNodig(key, b, nu) {
+  const ref = chatBerichtenRef();
+  if (!ref || bezoekUid() || b.type !== 'munten' || b.status !== 'geweigerd' || b.terugbetaald) return Promise.resolve();
+  const gebruiker = profielFirebaseGebruiker();
+  if (!gebruiker || b.uid !== gebruiker.uid) return Promise.resolve();
+  const slot = huidigChatUid + '/' + key;
+  if (muntenTerugbetaaldLokaal[slot]) return Promise.resolve();
+  muntenTerugbetaaldLokaal[slot] = true;
+  const bedrag = Math.floor(Number(b.bedrag));
+  if (!(bedrag >= 1)) return Promise.resolve();
+  let geclaimd = false;
+  return ref.child(key).child('terugbetaald').transaction(v => {
+    if (!v) { geclaimd = true; return true; }
+    geclaimd = false;
+    return v;
+  }).then(res => {
+    if (res.committed && geclaimd) geefMunten(bedrag);
+  }).catch(() => { delete muntenTerugbetaaldLokaal[slot]; });
 }
 
 function verstuurChatBericht() {
@@ -5861,6 +6014,7 @@ function togglePoppetjesPaneel() {
   if (open) {
     document.getElementById('chat-stijl-paneel').hidden = true;
     document.getElementById('chat-quiz-paneel').hidden = true;
+    document.getElementById('chat-munten-paneel').hidden = true;
     chatGekozenPoppetje = null;
     // Tel open verzoeken van mij, zodat je niet meer aanbiedt dan je hebt.
     const gebruiker = profielFirebaseGebruiker();
@@ -6293,10 +6447,17 @@ document.getElementById('btn-chat-stijl').addEventListener('click', () => {
   if (!paneel.hidden) {
     document.getElementById('chat-poppetjes-paneel').hidden = true;
     document.getElementById('chat-quiz-paneel').hidden = true;
+    document.getElementById('chat-munten-paneel').hidden = true;
   }
 });
 document.getElementById('btn-chat-poppetje').addEventListener('click', togglePoppetjesPaneel);
 document.getElementById('btn-chat-quiz').addEventListener('click', toggleQuizPaneel);
+document.getElementById('btn-chat-munten').addEventListener('click', toggleMuntenPaneel);
+document.getElementById('btn-chat-munten-verzenden').addEventListener('click', verstuurChatMunten);
+document.getElementById('chat-munten-aantal').addEventListener('keydown', e => { if (e.key === 'Enter') verstuurChatMunten(); });
+document.querySelectorAll('#chat-munten-paneel [data-munten]').forEach(k => k.addEventListener('click', () => {
+  document.getElementById('chat-munten-aantal').value = k.getAttribute('data-munten');
+}));
 document.getElementById('chat-tab-dieren').addEventListener('click', () => zetChatTab('dieren'));
 document.getElementById('chat-tab-accessoires').addEventListener('click', () => zetChatTab('accessoires'));
 document.getElementById('btn-chat-poppetje-verzenden').addEventListener('click', verstuurChatPoppetje);
