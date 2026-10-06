@@ -2842,3 +2842,10 @@ html.breed body.bezoek-modus .telefoon-nav { top: calc(52px + env(safe-area-inse
 .verdien-rij { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .verdien-getal { width: 90px; text-align: center; }
 .verdien-weg { flex: 0 0 auto; width: auto !important; min-height: 44px; padding: 0 14px; }
+
+/* ---------- Munten sturen in de chat ---------- */
+.chat-munten-snel { display: flex; gap: 8px; flex-wrap: wrap; }
+.chat-munten-snel .btn { flex: 1 1 60px; padding: 8px 10px; }
+.chat-munten-actie { display: flex; gap: 8px; align-items: center; }
+.chat-munten-actie input { flex: 1; min-width: 0; }
+.chat-munten-actie .btn { flex: 0 0 auto; }
