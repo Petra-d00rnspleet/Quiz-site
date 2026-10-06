@@ -24,10 +24,10 @@
     })();
   </script>
   <title>Quiz Maker</title>
-  <link rel="stylesheet" href="style.css?v=20261005b">
-  <link rel="stylesheet" href="telefoon.css?v=20261005b">
-  <link rel="stylesheet" href="breed.css?v=20261005b">
-  <link rel="stylesheet" href="account.css?v=20261005b">
+  <link rel="stylesheet" href="style.css?v=20261006a">
+  <link rel="stylesheet" href="telefoon.css?v=20261006a">
+  <link rel="stylesheet" href="breed.css?v=20261006a">
+  <link rel="stylesheet" href="account.css?v=20261006a">
 </head>
 <body>
 
@@ -823,6 +823,14 @@
         <button id="btn-groep-maken" class="btn btn-primary" type="button">✓ Groep maken</button>
       </div>
       <div id="groep-beheer-blok" class="account-blok" hidden>
+        <div id="groep-hernoem-blok" class="account-blok">
+          <label for="input-groep-hernoem">Naam van de groep</label>
+          <div class="vrienden-zoekrij">
+            <input type="text" id="input-groep-hernoem" maxlength="30" autocomplete="off">
+            <button id="btn-groep-hernoem" class="btn btn-primary" type="button">Opslaan</button>
+          </div>
+          <p id="groep-hernoem-fout" class="foutmelding"></p>
+        </div>
         <h4 class="vrienden-sectie-titel">Leden</h4>
         <div id="groep-leden-lijst" class="vrienden-lijst"></div>
         <div id="groep-toevoegen-blok" class="account-blok">
@@ -852,9 +860,9 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 
-  <script src="firebase-config.js?v=20261005b"></script>
-  <script src="poppetjes.js?v=20261005b"></script>
-  <script src="app.js?v=20261005b"></script>
-  <script src="telefoon.js?v=20261005b"></script>
+  <script src="firebase-config.js?v=20261006a"></script>
+  <script src="poppetjes.js?v=20261006a"></script>
+  <script src="app.js?v=20261006a"></script>
+  <script src="telefoon.js?v=20261006a"></script>
 </body>
 </html>
