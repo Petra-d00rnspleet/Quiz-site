@@ -770,6 +770,21 @@
       <div id="chat-quiz-lijst" class="chat-quiz-lijst"></div>
     </div>
 
+    <div id="chat-munten-paneel" class="chat-paneel chat-munten-paneel" hidden>
+      <p class="chat-paneel-titel">Stuur munten naar <span id="chat-munten-naam"></span></p>
+      <p class="chat-paneel-uitleg">Je hebt <strong id="chat-munten-saldo">0</strong> munten. Het bedrag gaat meteen van je af. Accepteert je vriend, dan krijgt hij ze; weigert hij of trek je het terug, dan krijg je ze terug.</p>
+      <div class="chat-munten-snel">
+        <button type="button" class="btn btn-secondary" data-munten="10">10</button>
+        <button type="button" class="btn btn-secondary" data-munten="50">50</button>
+        <button type="button" class="btn btn-secondary" data-munten="100">100</button>
+        <button type="button" class="btn btn-secondary" data-munten="500">500</button>
+      </div>
+      <div class="chat-munten-actie">
+        <input id="chat-munten-aantal" type="number" min="1" step="1" inputmode="numeric" placeholder="Aantal munten">
+        <button id="btn-chat-munten-verzenden" class="btn btn-primary" type="button">🪙 Verzenden</button>
+      </div>
+    </div>
+
     <div class="chat-invoer">
       <button id="btn-chat-poppetje" class="chat-poppetje-knop" type="button" title="Poppetje versturen">
         <span class="chat-poppetje-knop-plaatje" id="chat-poppetje-knop-plaatje"></span>
@@ -777,6 +792,10 @@
       </button>
       <button id="btn-chat-quiz" class="chat-poppetje-knop" type="button" title="Quiz versturen">
         <span class="chat-poppetje-knop-plaatje">📝</span>
+        <span class="chat-poppetje-knop-plus">+</span>
+      </button>
+      <button id="btn-chat-munten" class="chat-poppetje-knop" type="button" title="Munten versturen">
+        <span class="chat-poppetje-knop-plaatje">🪙</span>
         <span class="chat-poppetje-knop-plus">+</span>
       </button>
       <input id="chat-input" type="text" maxlength="500" placeholder="Typ een bericht..." autocomplete="off">
