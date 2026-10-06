@@ -5968,7 +5968,7 @@ function openGroepMaken() {
   document.getElementById('groep-foutmelding').textContent = '';
   const lijst = document.getElementById('groep-maak-vrienden');
   lijst.innerHTML = '';
-  const vrienden = Object.entries(socialeVrienden).filter(([uid]) => !isBeheerUid(uid));
+  const vrienden = Object.entries(socialeVrienden);
   vrienden.forEach(([uid, info]) => {
     const rij = document.createElement('label');
     rij.className = 'vriend-rij groep-kies-rij';
@@ -5976,6 +5976,7 @@ function openGroepMaken() {
     vink.type = 'checkbox'; vink.value = uid;
     const naam = document.createElement('strong');
     maakWeergaveNaam(naam, uid, info.gebruikersnaam || 'Vriend');
+    if (isBeheerUid(uid)) { const m = document.createElement('small'); m.className = 'beheer-echte-naam'; m.textContent = ' ⚙ Sitebeheer'; naam.appendChild(m); }
     rij.append(vink, maakMiniPoppetje(uid, 'vriend-mini-poppetje'), naam);
     lijst.appendChild(rij);
   });
@@ -6033,8 +6034,9 @@ function bouwGroepBeheer() {
   const g = socialeGroepen[beheerdeGroepId];
   const gebruiker = profielFirebaseGebruiker();
   if (!g || !gebruiker) return;
-  const ikBenMaker = g.maker === gebruiker.uid && !bezoekUid();
-  const ikBenBeheerder = groepIsBeheerder(g, gebruiker.uid) && !bezoekUid();
+  const ikBenEchteMaker = g.maker === gebruiker.uid;
+  const ikBenMaker = (ikBenEchteMaker || !!sitebeheerActief) && !bezoekUid();   // sitebeheer mag in elke groep waar hij in zit alles
+  const ikBenBeheerder = (groepIsBeheerder(g, gebruiker.uid) || !!sitebeheerActief) && !bezoekUid();
   const alleen = !!bezoekUid();
   document.getElementById('groep-hernoem-blok').hidden = !ikBenBeheerder;
   document.getElementById('groep-titel').textContent = '👥 ' + g.naam;
@@ -6047,6 +6049,7 @@ function bouwGroepBeheer() {
     maakWeergaveNaam(naam, uid, (socialeVrienden[uid] && socialeVrienden[uid].gebruikersnaam) || String(g.leden[uid] || 'Lid'));
     const lidIsBeheerder = !!(g.beheerders && g.beheerders[uid]);
     if (uid === g.maker) { const m = document.createElement('small'); m.className = 'beheer-echte-naam'; m.textContent = ' 👑 maker'; naam.appendChild(m); }
+    else if (isBeheerUid(uid)) { const m = document.createElement('small'); m.className = 'beheer-echte-naam'; m.textContent = ' ⚙ Sitebeheer'; naam.appendChild(m); }
     else if (lidIsBeheerder) { const m = document.createElement('small'); m.className = 'beheer-echte-naam'; m.textContent = ' ⭐ beheerder'; naam.appendChild(m); }
     if (uid === gebruiker.uid) { const m = document.createElement('small'); m.className = 'beheer-echte-naam'; m.textContent = ' (jij)'; naam.appendChild(m); }
     rij.append(maakMiniPoppetje(uid, 'vriend-mini-poppetje'), naam);
@@ -6071,12 +6074,13 @@ function bouwGroepBeheer() {
   const toevLijst = document.getElementById('groep-toevoegen-lijst');
   toevLijst.innerHTML = '';
   if (ikBenBeheerder) {
-    const kandidaten = Object.entries(socialeVrienden).filter(([uid]) => !(g.leden || {})[uid] && !isBeheerUid(uid));
+    const kandidaten = Object.entries(socialeVrienden).filter(([uid]) => !(g.leden || {})[uid]);
     kandidaten.forEach(([uid, info]) => {
       const rij = document.createElement('div');
       rij.className = 'vriend-rij';
       const naam = document.createElement('strong');
       maakWeergaveNaam(naam, uid, info.gebruikersnaam || 'Vriend');
+      if (isBeheerUid(uid)) { const m = document.createElement('small'); m.className = 'beheer-echte-naam'; m.textContent = ' ⚙ Sitebeheer'; naam.appendChild(m); }
       const plus = document.createElement('button');
       plus.type = 'button'; plus.className = 'btn btn-primary'; plus.textContent = '➕ Toevoegen';
       plus.addEventListener('click', () => { plus.disabled = true; voegGroepLidToe(beheerdeGroepId, uid, String(info.gebruikersnaam || 'Vriend')); });
@@ -6086,7 +6090,7 @@ function bouwGroepBeheer() {
     if (!kandidaten.length) toevLijst.innerHTML = '<p class="subtitel">Al je vrienden zitten al in deze groep.</p>';
     if (Object.keys(g.leden || {}).length >= 50) toevLijst.innerHTML = '<p class="subtitel">Een groep kan maximaal 50 leden hebben.</p>';
   }
-  document.getElementById('btn-groep-verlaten').hidden = alleen || ikBenMaker;
+  document.getElementById('btn-groep-verlaten').hidden = alleen || ikBenEchteMaker;
   document.getElementById('btn-groep-verwijderen').hidden = !ikBenMaker;
 }
 
@@ -6108,7 +6112,7 @@ function voegGroepLidToe(id, uid, naam) {
 function zetGroepBeheerder(id, uid, wordt) {
   const gebruiker = profielFirebaseGebruiker();
   const g = socialeGroepen[id];
-  if (!gebruiker || !g || g.maker !== gebruiker.uid || uid === g.maker || !(g.leden || {})[uid]) return;
+  if (!gebruiker || !g || (g.maker !== gebruiker.uid && !sitebeheerActief) || uid === g.maker || !(g.leden || {})[uid]) return;
   (wordt ? db.ref('groepen/' + id + '/beheerders/' + uid).set(true) : db.ref('groepen/' + id + '/beheerders/' + uid).remove())
     .catch(err => groepFoutMelding(err, 'Beheerder wijzigen'));
 }
@@ -6118,7 +6122,7 @@ function hernoemGroep() {
   const g = socialeGroepen[beheerdeGroepId];
   const fout = document.getElementById('groep-hernoem-fout');
   fout.textContent = '';
-  if (!gebruiker || !g || !groepIsBeheerder(g, gebruiker.uid) || bezoekUid()) return;
+  if (!gebruiker || !g || !(groepIsBeheerder(g, gebruiker.uid) || sitebeheerActief) || bezoekUid()) return;
   const naam = veiligeChatTekst(document.getElementById('input-groep-hernoem').value).slice(0, 30);
   if (!naam) { fout.textContent = 'Geef de groep een naam.'; return; }
   if (naam === g.naam) return;
@@ -6161,7 +6165,7 @@ function verlaatGroep(id) {
 function verwijderGroep(id) {
   const gebruiker = profielFirebaseGebruiker();
   const g = socialeGroepen[id];
-  if (!gebruiker || !g || g.maker !== gebruiker.uid || bezoekUid()) return;
+  if (!gebruiker || !g || (g.maker !== gebruiker.uid && !sitebeheerActief) || bezoekUid()) return;
   if (!confirm('De groep "' + g.naam + '" voor iedereen verwijderen, met alle berichten?')) return;
   const upd = {};
   Object.keys(g.leden || {}).forEach(u => { upd['gebruikerGroepen/' + u + '/' + id] = null; });
