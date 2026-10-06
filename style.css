@@ -2849,3 +2849,11 @@ html.breed body.bezoek-modus .telefoon-nav { top: calc(52px + env(safe-area-inse
 .chat-munten-actie { display: flex; gap: 8px; align-items: center; }
 .chat-munten-actie input { flex: 1; min-width: 0; }
 .chat-munten-actie .btn { flex: 0 0 auto; }
+
+/* ---------- Groepen ---------- */
+.groep-overlay { z-index: 1200; }
+body.groep-chat #btn-chat-poppetje,
+body.groep-chat #btn-chat-quiz,
+body.groep-chat #btn-chat-munten { display: none !important; }
+.groep-kies-rij { cursor: pointer; }
+.groep-kies-rij input[type="checkbox"] { width: 22px; height: 22px; min-height: 0; flex: 0 0 auto; accent-color: #f0c04d; }
