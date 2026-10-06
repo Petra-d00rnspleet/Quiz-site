@@ -5660,9 +5660,20 @@ function tekenChatBerichten() {
     if (it.soort === 'waarschuwing') { lijst.appendChild(maakChatWaarschuwing(key, b)); return; }
     const eigen = b.uid === gebruiker.uid;
     if (!eigen && sitebeheerActief && geblokkeerdDoorMij[b.uid]) return;
-    if (b.type === 'poppetje') { const el = maakChatPoppetjeBericht(key, b, eigen, gebruiker); el.dataset.key = key; lijst.appendChild(el); return; }
-    if (b.type === 'quiz') { const el = maakChatQuizBericht(key, b, eigen, gebruiker); el.dataset.key = key; lijst.appendChild(el); return; }
-    if (b.type === 'munten') { const el = maakChatMuntenBericht(key, b, eigen, gebruiker); el.dataset.key = key; lijst.appendChild(el); if (eigen) betaalMuntenTerugAlsNodig(key, b); return; }
+    if (b.type === 'poppetje' || b.type === 'quiz' || b.type === 'munten') {
+      const el = b.type === 'poppetje' ? maakChatPoppetjeBericht(key, b, eigen, gebruiker)
+        : (b.type === 'quiz' ? maakChatQuizBericht(key, b, eigen, gebruiker) : maakChatMuntenBericht(key, b, eigen, gebruiker));
+      el.dataset.key = key;
+      if (huidigGroepId && b.aan) {
+        const voor = document.createElement('div');
+        voor.className = 'chat-quiz-sub';
+        voor.textContent = '🎯 Voor ' + (b.aan === gebruiker.uid ? 'jou' : groepLidNaam(b.aan));
+        el.insertBefore(voor, el.children[1] || null);
+      }
+      lijst.appendChild(el);
+      if (b.type === 'munten' && eigen) betaalMuntenTerugAlsNodig(key, b);
+      return;
+    }
     const p = document.createElement('div');
     p.className = 'chat-bericht' + (eigen ? ' eigen' : '') + (isAlleenEmoji(b.tekst) ? ' alleen-emoji' : '');
     const wie = maakChatWie(eigen, b);
@@ -5779,7 +5790,7 @@ function accepteerChatPoppetje(key, b) {
   const gebruiker = profielFirebaseGebruiker();
   const ref = chatBerichtenRef();
   if (!gebruiker || !ref) return;
-  if (b.aan !== gebruiker.uid || b.uid !== huidigChatUid || !chatPoppetjeGeldig(b.soort, b.item)) return;
+  if (b.aan !== gebruiker.uid || (!huidigGroepId && b.uid !== huidigChatUid) || !chatPoppetjeGeldig(b.soort, b.item)) return;
   const pad = b.soort === 'dier' ? 'dieren/' : 'accessoires/';
   const vanRef = db.ref(SOCIAAL_PROFIEL_PAD + '/' + b.uid + '/bezit/' + pad + b.item);
   const naarRef = db.ref(SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid + '/bezit/' + pad + b.item);
@@ -5861,7 +5872,7 @@ function laadGroepen(uid) {
         if (!v.leden || !v.leden[uid]) { verdwijnGroepLokaal(id); return; }
         socialeGroepen[id] = v;
         luisterGroepOngelezen(id, uid);
-        if (huidigGroepId === id) { huidigChatNaam = v.naam; document.getElementById('chat-titel').textContent = '👥 ' + v.naam; }
+        if (huidigGroepId === id) { huidigChatNaam = v.naam; document.getElementById('chat-titel').textContent = '👥 ' + v.naam; werkGroepAanBij(); }
         if (beheerdeGroepId === id && document.getElementById('groep-overlay').classList.contains('actief')) bouwGroepBeheer();
         renderVrienden();
       }, () => verdwijnGroepLokaal(id));   // geen toegang meer (bijv. uit de groep gehaald)
@@ -5948,6 +5959,7 @@ function openGroepChat(id) {
   bouwChatEmojiPaneel();
   stopAntwoord();
   chatGekozenPoppetje = null;
+  groepOntvanger = '';
   document.body.classList.add('groep-chat');
   document.getElementById('btn-chat-groep').hidden = false;
   document.getElementById('chat-overlay').classList.add('actief');
@@ -6187,6 +6199,54 @@ document.getElementById('input-groep-hernoem').addEventListener('keydown', e => 
 document.getElementById('btn-groep-verlaten').addEventListener('click', () => verlaatGroep(beheerdeGroepId));
 document.getElementById('btn-groep-verwijderen').addEventListener('click', () => verwijderGroep(beheerdeGroepId));
 
+
+// ---- Cadeaus (poppetjes, quizzen, munten) in een groep: je kiest aan welk lid je ze stuurt ----
+let groepOntvanger = '';
+function groepLidNaam(uid) {
+  const g = socialeGroepen[huidigGroepId];
+  return (socialeVrienden[uid] && socialeVrienden[uid].gebruikersnaam) || (g && g.leden && g.leden[uid]) || 'lid';
+}
+function chatOntvanger() { return huidigGroepId ? groepOntvanger : huidigChatUid; }
+function chatOntvangerNaam() { return huidigGroepId ? groepLidNaam(groepOntvanger) : huidigChatNaam; }
+function chatOntvangerGeldig() {
+  if (huidigGroepId) {
+    const g = socialeGroepen[huidigGroepId];
+    const gebruiker = profielFirebaseGebruiker();
+    return !!(g && gebruiker && groepOntvanger && groepOntvanger !== gebruiker.uid && g.leden && g.leden[groepOntvanger]);
+  }
+  return !!socialeVrienden[huidigChatUid];
+}
+function ontvangerFoutTekst(wat) {
+  return huidigGroepId ? 'Kies eerst aan welk lid je ' + wat + ' wilt sturen.' : 'Je kunt alleen ' + wat + ' naar vrienden sturen.';
+}
+function werkGroepAanBij() {
+  const balk = document.getElementById('chat-groep-aan');
+  const keuze = document.getElementById('select-groep-aan');
+  if (!balk || !keuze) return;
+  const open = ['chat-poppetjes-paneel', 'chat-quiz-paneel', 'chat-munten-paneel'].some(id => { const p = document.getElementById(id); return p && !p.hidden; });
+  balk.hidden = !(huidigGroepId && open);
+  if (!huidigGroepId) return;
+  const g = socialeGroepen[huidigGroepId];
+  const gebruiker = profielFirebaseGebruiker();
+  if (!g || !gebruiker) return;
+  const uids = Object.keys(g.leden || {}).filter(u => u !== gebruiker.uid);
+  if (uids.indexOf(groepOntvanger) < 0) groepOntvanger = uids[0] || '';
+  keuze.innerHTML = '';
+  uids.forEach(u => {
+    const o = document.createElement('option');
+    o.value = u; o.textContent = groepLidNaam(u);
+    if (u === groepOntvanger) o.selected = true;
+    keuze.appendChild(o);
+  });
+  const qn = document.getElementById('chat-quiz-naam'); if (qn) qn.textContent = chatOntvangerNaam();
+  const mn = document.getElementById('chat-munten-naam'); if (mn) mn.textContent = chatOntvangerNaam();
+  if (typeof werkChatKeuzeBij === 'function') werkChatKeuzeBij();
+}
+document.getElementById('select-groep-aan').addEventListener('change', e => { groepOntvanger = e.target.value; werkGroepAanBij(); });
+['chat-poppetjes-paneel', 'chat-quiz-paneel', 'chat-munten-paneel'].forEach(id => {
+  new MutationObserver(werkGroepAanBij).observe(document.getElementById(id), { attributes: true, attributeFilter: ['hidden'] });
+});
+
 // ---------------- Munten sturen in de chat ----------------
 // Het bedrag gaat meteen van de verzender af (zo kun je niet meer sturen dan je hebt).
 // Accepteert de ontvanger, dan krijgt hij de munten. Weigert hij, of trekt de verzender het
@@ -6200,7 +6260,7 @@ function toggleMuntenPaneel() {
   const emoji = document.getElementById('chat-emoji-paneel'); if (emoji) emoji.hidden = true;
   paneel.hidden = !open;
   if (open) {
-    document.getElementById('chat-munten-naam').textContent = huidigChatNaam || 'je vriend';
+    document.getElementById('chat-munten-naam').textContent = chatOntvangerNaam() || 'je vriend';
     document.getElementById('chat-munten-saldo').textContent = String(haalMunten());
     document.getElementById('chat-munten-aantal').value = '';
     document.getElementById('chat-munten-aantal').focus();
@@ -6213,7 +6273,7 @@ function verstuurChatMunten() {
   if (!gebruiker || !ref) { alert(socialeVerbindingsMelding()); return; }
   if (bezoekUid()) return;
   if (chatGeblokkeerd()) { werkChatBeheerBij(); return; }
-  if (!socialeVrienden[huidigChatUid]) { alert('Je kunt alleen munten naar vrienden sturen.'); return; }
+  if (!chatOntvangerGeldig()) { alert(ontvangerFoutTekst('munten')); return; }
   const invoer = document.getElementById('chat-munten-aantal');
   const bedrag = Math.floor(Number(invoer.value));
   if (!(bedrag >= 1) || bedrag > 100000) { alert('Vul een aantal munten in (minstens 1).'); return; }
@@ -6226,7 +6286,7 @@ function verstuurChatMunten() {
     gebruikersnaam: huidigeMakerNaam(),
     type: 'munten',
     bedrag: bedrag,
-    aan: huidigChatUid,
+    aan: chatOntvanger(),
     status: 'open',
     tekst: '🪙 ' + bedrag + ' munten',
     tijd: firebase.database.ServerValue.TIMESTAMP
@@ -6292,7 +6352,7 @@ function accepteerChatMunten(key, b) {
   const ref = chatBerichtenRef();
   if (!gebruiker || !ref || bezoekUid()) return;
   const bedrag = Math.floor(Number(b.bedrag));
-  if (b.aan !== gebruiker.uid || b.uid !== huidigChatUid || !(bedrag >= 1)) return;
+  if (b.aan !== gebruiker.uid || (!huidigGroepId && b.uid !== huidigChatUid) || !(bedrag >= 1)) return;
   const statusRef = ref.child(key).child('status');
   let geclaimd = false;
   statusRef.transaction(v => {
@@ -6317,7 +6377,7 @@ function betaalMuntenTerugAlsNodig(key, b, nu) {
   if (!ref || bezoekUid() || b.type !== 'munten' || b.status !== 'geweigerd' || b.terugbetaald) return Promise.resolve();
   const gebruiker = profielFirebaseGebruiker();
   if (!gebruiker || b.uid !== gebruiker.uid) return Promise.resolve();
-  const slot = huidigChatUid + '/' + key;
+  const slot = (huidigGroepId || huidigChatUid) + '/' + key;
   if (muntenTerugbetaaldLokaal[slot]) return Promise.resolve();
   muntenTerugbetaaldLokaal[slot] = true;
   const bedrag = Math.floor(Number(b.bedrag));
@@ -6400,7 +6460,7 @@ function werkChatKeuzeBij() {
   const tekst = document.getElementById('chat-poppetjes-keuze');
   const knop = document.getElementById('btn-chat-poppetje-verzenden');
   if (chatGekozenPoppetje) {
-    tekst.textContent = chatPoppetjeNaam(chatGekozenPoppetje.soort, chatGekozenPoppetje.item) + ' → ' + huidigChatNaam;
+    tekst.textContent = chatPoppetjeNaam(chatGekozenPoppetje.soort, chatGekozenPoppetje.item) + ' → ' + chatOntvangerNaam();
     knop.disabled = false;
   } else {
     tekst.textContent = 'Kies een poppetje om te versturen';
@@ -6450,7 +6510,7 @@ function verstuurChatPoppetje() {
   const keuze = chatGekozenPoppetje;
   if (!gebruiker || !ref || !keuze) return;
   if (chatGeblokkeerd()) { werkChatBeheerBij(); return; }
-  if (!socialeVrienden[huidigChatUid]) { alert('Je kunt alleen poppetjes naar vrienden sturen.'); return; }
+  if (!chatOntvangerGeldig()) { alert(ontvangerFoutTekst('poppetjes')); return; }
   if (!chatPoppetjeGeldig(keuze.soort, keuze.item) || chatBeschikbaarAantal(keuze.soort, keuze.item) < 1) {
     alert('Je hebt dit poppetje niet (meer).'); return;
   }
@@ -6461,7 +6521,7 @@ function verstuurChatPoppetje() {
     type: 'poppetje',
     soort: keuze.soort,
     item: keuze.item,
-    aan: huidigChatUid,
+    aan: chatOntvanger(),
     status: 'open',
     tekst: tekst,
     tijd: firebase.database.ServerValue.TIMESTAMP
@@ -6512,7 +6572,7 @@ function toggleQuizPaneel() {
   document.getElementById('chat-stijl-paneel').hidden = true;
   document.getElementById('chat-poppetjes-paneel').hidden = true;
   chatGekozenPoppetje = null;
-  document.getElementById('chat-quiz-naam').textContent = huidigChatNaam;
+  document.getElementById('chat-quiz-naam').textContent = chatOntvangerNaam();
   bouwChatQuizLijst();
 }
 
@@ -6553,7 +6613,7 @@ function verstuurChatQuiz(q) {
   const ref = chatBerichtenRef();
   if (!gebruiker || !ref) return;
   if (chatGeblokkeerd()) { werkChatBeheerBij(); return; }
-  if (!socialeVrienden[huidigChatUid]) { alert('Je kunt alleen quizzen naar vrienden sturen.'); return; }
+  if (!chatOntvangerGeldig()) { alert(ontvangerFoutTekst('quizzen')); return; }
   db.ref('quizzen/' + q.code + '/titel').once('value').then(snap => {
     if (!snap.exists()) throw new Error('Deze quiz bestaat niet meer.');
     return ref.push().set({
@@ -6563,7 +6623,7 @@ function verstuurChatQuiz(q) {
       code: q.code,
       titel: snap.val(),
       aantalVragen: q.aantalVragen || 0,
-      aan: huidigChatUid,
+      aan: chatOntvanger(),
       status: 'open',
       tekst: '📝 ' + snap.val(),
       tijd: firebase.database.ServerValue.TIMESTAMP
@@ -6650,7 +6710,7 @@ function accepteerChatQuiz(key, b) {
   const gebruiker = profielFirebaseGebruiker();
   const ref = chatBerichtenRef();
   if (!gebruiker || !ref) return;
-  if (b.aan !== gebruiker.uid || b.uid !== huidigChatUid || !b.code) return;
+  if (b.aan !== gebruiker.uid || (!huidigGroepId && b.uid !== huidigChatUid) || !b.code) return;
   const statusRef = ref.child(key).child('status');
   let geclaimd = false;
   statusRef.transaction(v => {
