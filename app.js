@@ -2713,27 +2713,58 @@ function bouwWielSvg(segmentenMetHoek) {
 
 // Werkt de knop-tekst en de statusregel onder het rad bij, afhankelijk van of er vandaag
 // al gedraaid is.
+// ---- Extra draaien (cadeau van sitebeheer) ----
+// Staat online bij het account (accountData/<uid>/wielExtraDraaien), NIET in de gewone
+// synchronisatie, zodat een apparaat dat nog "0" heeft het cadeau niet kan overschrijven.
+let wielExtraAantal = 0;
+let wielExtraRef = null;
+function wielExtraUid() {
+  const b = bezoekUid();
+  if (b) return b;
+  const u = auth.currentUser;
+  return (u && isSpelerAccount(u) && u.uid === accountUid()) ? u.uid : '';
+}
+function luisterNaarWielExtra() {
+  if (wielExtraRef) { wielExtraRef.off(); wielExtraRef = null; }
+  wielExtraAantal = 0;
+  const uid = wielExtraUid();
+  if (!uid) return;
+  wielExtraRef = db.ref('accountData/' + uid + '/wielExtraDraaien');
+  wielExtraRef.on('value', snap => {
+    const n = parseInt(snap.val(), 10);
+    wielExtraAantal = n > 0 ? n : 0;
+    werkWielStatusBij();
+  }, () => {});
+}
+function stopWielExtraLuisteren() {
+  if (wielExtraRef) { wielExtraRef.off(); wielExtraRef = null; }
+}
+
 function werkWielStatusBij() {
   const knopEl = document.getElementById('btn-wiel-draaien');
   const statusEl = document.getElementById('wiel-status');
   const resultaatEl = document.getElementById('wiel-resultaat');
   const vandaag = huidigeDatumTekst();
   const alGedraaidVandaag = localStorage.getItem(WIEL_LAATSTE_DRAAI_SLEUTEL) === vandaag;
+  const extraTekst = wielExtraAantal > 0
+    ? '🎁 Sitebeheer gaf je ' + wielExtraAantal + ' extra ' + (wielExtraAantal === 1 ? 'draai' : 'draaien') + '! '
+    : '';
 
-  if (alGedraaidVandaag) {
+  if (alGedraaidVandaag && wielExtraAantal <= 0) {
     knopEl.disabled = true;
     statusEl.textContent = '⏳ Je hebt vandaag al gedraaid. Kom morgen terug voor een nieuwe beurt!';
     const laatsteResultaat = localStorage.getItem(WIEL_LAATSTE_RESULTAAT_SLEUTEL);
-    resultaatEl.textContent = laatsteResultaat ? ('🎉 Vandaag gewonnen: ' + laatsteResultaat) : '';
+    if (!wielDraaitNu) resultaatEl.textContent = laatsteResultaat ? ('🎉 Vandaag gewonnen: ' + laatsteResultaat) : '';
   } else {
     knopEl.disabled = wielDraaitNu;
-    statusEl.textContent = wielDraaitNu ? '' : 'Klik op de knop in het midden van het rad om te draaien!';
-    if (!wielDraaitNu) resultaatEl.textContent = '';
+    statusEl.textContent = wielDraaitNu ? '' : extraTekst + 'Klik op de knop in het midden van het rad om te draaien!';
+    if (!wielDraaitNu && !alGedraaidVandaag) resultaatEl.textContent = '';
   }
 }
 
 function laadGeluksrad() {
   werkMuntenWeergaveBij();
+  luisterNaarWielExtra();
   document.getElementById('btn-wiel-aanpassen').style.display = sitebeheerActief ? 'inline-block' : 'none';
   wielHuidigeRotatie = 0;
   const schijfEl = document.getElementById('wiel-schijf');
@@ -2761,9 +2792,25 @@ function laadGeluksrad() {
 function draaiRad() {
   if (wielDraaitNu) return;
   const vandaag = huidigeDatumTekst();
-  if (localStorage.getItem(WIEL_LAATSTE_DRAAI_SLEUTEL) === vandaag) return;
+  const alGedraaidVandaag = localStorage.getItem(WIEL_LAATSTE_DRAAI_SLEUTEL) === vandaag;
   if (!wielSegmentenMetHoek.length) return;
+  if (!alGedraaidVandaag) { startWielDraai(vandaag, false); return; }
+  // Vandaag al gedraaid: alleen met een extra draai van sitebeheer.
+  const uid = wielExtraUid();
+  if (!uid || wielExtraAantal <= 0) return;
+  wielDraaitNu = true;
+  werkWielStatusBij();
+  db.ref('accountData/' + uid + '/wielExtraDraaien').transaction(huidig => {
+    const n = parseInt(huidig, 10);
+    return n > 0 ? String(n - 1) : undefined;   // niets meer over: afbreken
+  }).then(res => {
+    wielDraaitNu = false;
+    if (!res.committed) { wielExtraAantal = 0; werkWielStatusBij(); return; }
+    startWielDraai(vandaag, true);
+  }).catch(() => { wielDraaitNu = false; werkWielStatusBij(); });
+}
 
+function startWielDraai(vandaag, isExtra) {
   wielDraaitNu = true;
   werkWielStatusBij();
 
@@ -2781,8 +2828,11 @@ function draaiRad() {
 
   setTimeout(() => {
     wielDraaitNu = false;
-    localStorage.setItem(WIEL_LAATSTE_DRAAI_SLEUTEL, vandaag);
-    localStorage.setItem(WIEL_LAATSTE_RESULTAAT_SLEUTEL, gekozenSegment.naam);
+    // Een extra draai verandert niets aan je dagelijkse beurt.
+    if (!isExtra) {
+      localStorage.setItem(WIEL_LAATSTE_DRAAI_SLEUTEL, vandaag);
+      localStorage.setItem(WIEL_LAATSTE_RESULTAAT_SLEUTEL, gekozenSegment.naam);
+    }
     if (gekozenSegment.type === 'dier' && gekozenSegment.dier) {
       voegBezitToe([gekozenSegment.dier], []);
     } else if (gekozenSegment.type === 'accessoire' && gekozenSegment.accessoire) {
@@ -6359,6 +6409,7 @@ function bouwBeheerProfielenHtml(zoek) {
       '<strong>' + escapeHtml(p.naam) + '</strong>' + (p.beheer ? '<span class="subtitel"> Sitebeheer</span>' : '') +
       '<div class="beheer-knoppen">' +
       '<button type="button" class="btn btn-secondary beheer-profiel-bezoek" data-uid="' + escapeHtml(p.uid) + '">👀 Bezoeken</button>' +
+      '<button type="button" class="btn btn-secondary beheer-profiel-extradraai" data-uid="' + escapeHtml(p.uid) + '">🎡 Extra draai</button>' +
       (isIk ? '' : '<button type="button" class="btn btn-secondary beheer-profiel-verwijder" data-uid="' + escapeHtml(p.uid) + '">🗑 Verwijderen</button>') +
       '</div>' +
       '</div>';
@@ -6453,6 +6504,25 @@ function openBeheerProfielen() {
   laadBeheerProfielen();
 }
 
+// Sitebeheer geeft iemand een extra draai aan het geluksrad (telt op; wordt bij draaien 1 minder).
+function geefExtraWielDraai(knop) {
+  const uid = knop.dataset.uid;
+  const p = beheerProfielen.find(x => x.uid === uid);
+  const naam = p ? p.naam : 'deze persoon';
+  if (!confirm('Wil je ' + naam + ' een extra draai aan het geluksrad geven?')) return;
+  knop.disabled = true;
+  db.ref('accountData/' + uid + '/wielExtraDraaien').transaction(huidig => {
+    const n = parseInt(huidig, 10);
+    return String((n > 0 ? n : 0) + 1);
+  }).then(res => {
+    knop.disabled = false;
+    alert('🎡 ' + naam + ' heeft nu ' + res.snapshot.val() + ' extra ' + (parseInt(res.snapshot.val(), 10) === 1 ? 'draai' : 'draaien') + '.');
+  }).catch(err => {
+    knop.disabled = false;
+    alert('Extra draai geven is niet gelukt: ' + accountFoutTekst(err));
+  });
+}
+
 document.getElementById('beheer-profielen-sluiten').addEventListener('click', () => {
   document.getElementById('beheer-profielen-overlay').classList.remove('actief');
 });
@@ -6460,6 +6530,8 @@ document.getElementById('input-beheer-zoek').addEventListener('input', toonBehee
 document.getElementById('beheer-profielen-lijst').addEventListener('click', e => {
   const bezoek = e.target.closest('.beheer-profiel-bezoek');
   if (bezoek) { bezoekProfiel(bezoek.dataset.uid); return; }
+  const extraKnop = e.target.closest('.beheer-profiel-extradraai');
+  if (extraKnop) { geefExtraWielDraai(extraKnop); return; }
   const knop = e.target.closest('.beheer-profiel-verwijder');
   if (!knop) return;
   knop.disabled = true;
