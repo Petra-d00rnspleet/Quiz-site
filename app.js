@@ -4602,6 +4602,14 @@ let socialeVrienden = {};
 let socialeVerzoeken = {};
 let socialeZoekTimer = null;
 let huidigChatUid = '';
+let huidigGroepId = '';             // is dit gevuld, dan is de open chat een groepschat
+let socialeGroepen = {};          // id -> { naam, maker, leden }
+let groepOngelezen = {};          // id -> aantal ongelezen berichten
+let groepIndexRef = null;
+let groepRefs = {};               // id -> ref van de groep
+let groepOngelezenQueries = {};   // id -> luisteraar voor nieuwe berichten
+let groepLuisteraarUid = '';
+let beheerdeGroepId = '';         // groep in het beheervenster
 let huidigChatNaam = '';
 let chatBerichtenQuery = null;      // de open chat (zodat we hem netjes kunnen stoppen)
 let chatWaarschuwingQuery = null;   // waarschuwingen van sitebeheer in de open chat
@@ -4628,6 +4636,7 @@ function laadVriendenEnVerzoeken() {
   Object.keys(chatOngelezenQueries).forEach(fuid => { chatOngelezenQueries[fuid].off(); });
   chatOngelezenQueries = {}; chatOngelezen = {};
   vriendenLuisteraarUid = gebruiker.uid;
+  laadGroepen(gebruiker.uid);
 
   vriendenRef = db.ref('vrienden/' + gebruiker.uid);
   vriendenRef.on('value', snap => {
@@ -4660,7 +4669,9 @@ function zetChatGelezen(chatId, tijd) {
 }
 
 function totaalOngelezenChatBerichten() {
-  return Object.keys(chatOngelezen).reduce((som, uid) => som + (socialeVrienden[uid] ? (chatOngelezen[uid] || 0) : 0), 0);
+  const vrienden = Object.keys(chatOngelezen).reduce((som, uid) => som + (socialeVrienden[uid] ? (chatOngelezen[uid] || 0) : 0), 0);
+  const groepen = Object.keys(groepOngelezen).reduce((som, id) => som + (socialeGroepen[id] ? (groepOngelezen[id] || 0) : 0), 0);
+  return vrienden + groepen;
 }
 
 // Luistert bij elke vriend naar nieuwe berichten en telt wat je nog niet hebt gelezen.
@@ -4704,9 +4715,14 @@ function synchroniseerChatOngelezen() {
 // Wordt aangeroepen zodra de open chat berichten binnenkrijgt: alles is dan gelezen.
 function markeerChatGelezen(snap) {
   const gebruiker = profielFirebaseGebruiker();
-  if (!gebruiker || !huidigChatUid) return;
+  if (!gebruiker || (!huidigChatUid && !huidigGroepId)) return;
   let nieuwste = 0;
   snap.forEach(c => { const t = Number((c.val() || {}).tijd) || 0; if (t > nieuwste) nieuwste = t; });
+  if (huidigGroepId) {
+    zetChatGelezen('groep_' + huidigGroepId, nieuwste);
+    if (groepOngelezen[huidigGroepId]) { groepOngelezen[huidigGroepId] = 0; renderVrienden(); }
+    return;
+  }
   zetChatGelezen(chatIdVoor(gebruiker.uid, huidigChatUid), nieuwste);
   if (chatOngelezen[huidigChatUid]) {
     chatOngelezen[huidigChatUid] = 0;
@@ -4938,6 +4954,7 @@ function renderVrienden() {
     const toev = document.getElementById('btn-vrienden-toevoegen'); if (toev) toev.hidden = true;
     const pan = document.getElementById('vrienden-toevoegen-paneel'); if (pan) pan.hidden = true;
   }
+  renderGroepen();
   updateVriendenBadge();
 }
 
@@ -4983,10 +5000,15 @@ function geldigeHex(hex) {
   return /^#[0-9a-f]{6}$/i.test(String(hex || '')) ? String(hex) : '';
 }
 
+function chatStijlId(gebruiker) {
+  if (huidigGroepId) return 'groep_' + huidigGroepId;
+  return (gebruiker && huidigChatUid) ? chatIdVoor(gebruiker.uid, huidigChatUid) : '';
+}
+
 function huidigeChatStijl() {
   const gebruiker = profielFirebaseGebruiker();
   const alle = laadChatStijlen();
-  const stijl = (gebruiker && huidigChatUid && alle[chatIdVoor(gebruiker.uid, huidigChatUid)]) || {};
+  const stijl = (gebruiker && chatStijlId(gebruiker) && alle[chatStijlId(gebruiker)]) || {};
   return {
     achtergrond: stijl.achtergrond || 'nacht',
     eigenVak: geldigeHex(stijl.eigenVak) || CHAT_VAK_STANDAARD.eigenVak,
@@ -4996,9 +5018,9 @@ function huidigeChatStijl() {
 
 function slaChatStijlOp(deel) {
   const gebruiker = profielFirebaseGebruiker();
-  if (!gebruiker || !huidigChatUid) return;
+  if (!gebruiker || !chatStijlId(gebruiker)) return;
   const alle = laadChatStijlen();
-  const id = chatIdVoor(gebruiker.uid, huidigChatUid);
+  const id = chatStijlId(gebruiker);
   alle[id] = Object.assign({}, huidigeChatStijl(), deel);
   try { localStorage.setItem(CHAT_STIJL_SLEUTEL, JSON.stringify(alle)); } catch (e) {}
   pasChatStijlToe();
@@ -5464,7 +5486,7 @@ function werkBlokkadeLuisteraarBij() {
     geblokkeerdDoorMij = snap.val() || {};
     werkChatBeheerBij();
     renderVrienden();
-    if (huidigChatUid && document.getElementById('chat-overlay').classList.contains('actief')) laadChatBerichten();
+    if ((huidigChatUid || huidigGroepId) && document.getElementById('chat-overlay').classList.contains('actief')) laadChatBerichten();
     updateVriendenBadge();
   }, () => {});
 }
@@ -5541,7 +5563,9 @@ function maakChatWie(eigen, b) {
 }
 
 function openChat(uid, naam) {
-  huidigChatUid = uid; huidigChatNaam = naam;
+  huidigChatUid = uid; huidigChatNaam = naam; huidigGroepId = '';
+  document.body.classList.remove('groep-chat');
+  document.getElementById('btn-chat-groep').hidden = true;
   const overlay = document.getElementById('chat-overlay');
   maakWeergaveNaam(document.getElementById('chat-titel'), uid, naam);
   const kopPop = document.getElementById('chat-kop-poppetje');
@@ -5575,17 +5599,22 @@ function sluitChat() {
   stopAntwoord();
   document.getElementById('chat-overlay').classList.remove('actief');
   document.body.classList.remove('chat-open');
+  document.body.classList.remove('groep-chat');
+  document.getElementById('btn-chat-groep').hidden = true;
   huidigChatUid = '';
+  huidigGroepId = '';
 }
 
 function chatBerichtenRef() {
   const gebruiker = profielFirebaseGebruiker();
+  if (gebruiker && huidigGroepId) return db.ref('groepsberichten/' + huidigGroepId);
   if (!gebruiker || !huidigChatUid) return null;
   return db.ref('chats/' + chatIdVoor(gebruiker.uid, huidigChatUid) + '/berichten');
 }
 
 function chatWaarschuwingenRef() {
   const gebruiker = profielFirebaseGebruiker();
+  if (huidigGroepId) return null;
   if (!gebruiker || !huidigChatUid) return null;
   return db.ref('chats/' + chatIdVoor(gebruiker.uid, huidigChatUid) + '/waarschuwingen');
 }
@@ -5603,12 +5632,15 @@ function laadChatBerichten() {
     chatLaatsteSnap = snap;
     tekenChatBerichten();
   });
-  chatWaarschuwingQuery = chatWaarschuwingenRef().limitToLast(20);
-  chatWaarschuwingQuery.on('value', snap => {
-    chatWaarschuwingen = [];
-    snap.forEach(c => { chatWaarschuwingen.push({ key: c.key, b: c.val() || {} }); });
-    tekenChatBerichten();
-  }, () => {});
+  const wRef = chatWaarschuwingenRef();
+  if (wRef) {
+    chatWaarschuwingQuery = wRef.limitToLast(20);
+    chatWaarschuwingQuery.on('value', snap => {
+      chatWaarschuwingen = [];
+      snap.forEach(c => { chatWaarschuwingen.push({ key: c.key, b: c.val() || {} }); });
+      tekenChatBerichten();
+    }, () => {});
+  }
 }
 
 function tekenChatBerichten() {
@@ -5778,6 +5810,326 @@ function accepteerChatPoppetje(key, b) {
   });
 }
 
+
+
+// ================================================================
+// GROEPEN: een groepschat met meerdere vrienden
+// Firebase: groepen/<id> { naam, maker, tijd, leden: { uid: naam } },
+//           gebruikerGroepen/<uid>/<id> = true (welke groepen ik heb),
+//           groepsberichten/<id>/<berichtId> (zoals een gewone chat).
+// ================================================================
+
+function stopGroep(id) {
+  if (groepRefs[id]) { groepRefs[id].off(); delete groepRefs[id]; }
+  if (groepOngelezenQueries[id]) { groepOngelezenQueries[id].off(); delete groepOngelezenQueries[id]; }
+  delete groepOngelezen[id];
+}
+
+function verdwijnGroepLokaal(id) {
+  delete socialeGroepen[id];
+  stopGroep(id);
+  if (huidigGroepId === id) sluitChat();
+  if (beheerdeGroepId === id) document.getElementById('groep-overlay').classList.remove('actief');
+  renderVrienden();
+}
+
+function laadGroepen(uid) {
+  if (groepLuisteraarUid === uid) return;
+  if (groepIndexRef) { groepIndexRef.off(); groepIndexRef = null; }
+  Object.keys(groepRefs).concat(Object.keys(groepOngelezenQueries)).forEach(stopGroep);
+  socialeGroepen = {}; groepOngelezen = {};
+  groepLuisteraarUid = uid;
+  groepIndexRef = db.ref('gebruikerGroepen/' + uid);
+  groepIndexRef.on('value', snap => {
+    const ids = Object.keys(snap.val() || {});
+    Object.keys(groepRefs).forEach(id => { if (ids.indexOf(id) < 0) verdwijnGroepLokaal(id); });
+    ids.forEach(id => {
+      if (groepRefs[id]) return;
+      const r = db.ref('groepen/' + id);
+      groepRefs[id] = r;
+      r.on('value', s => {
+        const v = s.val();
+        if (!v) {
+          if (!bezoekUid()) db.ref('gebruikerGroepen/' + uid + '/' + id).remove().catch(() => {});
+          verdwijnGroepLokaal(id);
+          return;
+        }
+        if (!v.leden || !v.leden[uid]) { verdwijnGroepLokaal(id); return; }
+        socialeGroepen[id] = v;
+        luisterGroepOngelezen(id, uid);
+        if (huidigGroepId === id) { huidigChatNaam = v.naam; document.getElementById('chat-titel').textContent = '👥 ' + v.naam; }
+        if (beheerdeGroepId === id && document.getElementById('groep-overlay').classList.contains('actief')) bouwGroepBeheer();
+        renderVrienden();
+      }, () => verdwijnGroepLokaal(id));   // geen toegang meer (bijv. uit de groep gehaald)
+    });
+    renderVrienden();
+  }, () => {});
+}
+
+function luisterGroepOngelezen(id, uid) {
+  if (groepOngelezenQueries[id]) return;
+  const sleutel = 'groep_' + id;
+  const query = db.ref('groepsberichten/' + id).limitToLast(50);
+  groepOngelezenQueries[id] = query;
+  query.on('value', snap => {
+    let nieuwste = 0, aantal = 0;
+    const gelezenAlles = laadChatGelezen();
+    const gelezen = Number(gelezenAlles[sleutel]) || 0;
+    const eersteKeer = gelezenAlles[sleutel] === undefined;
+    snap.forEach(c => {
+      const b = c.val() || {};
+      const t = Number(b.tijd) || 0;
+      if (t > nieuwste) nieuwste = t;
+      if (b.uid !== uid && t > gelezen && !(sitebeheerActief && geblokkeerdDoorMij[b.uid])) aantal++;
+    });
+    if (eersteKeer) { zetChatGelezen(sleutel, nieuwste || 1); aantal = 0; }
+    const open = huidigGroepId === id && document.getElementById('chat-overlay').classList.contains('actief');
+    if (open) { zetChatGelezen(sleutel, nieuwste); aantal = 0; }
+    groepOngelezen[id] = aantal;
+    renderVrienden();
+  }, () => {});
+}
+
+function renderGroepen() {
+  const lijst = document.getElementById('groepen-lijst');
+  if (!lijst) return;
+  lijst.innerHTML = '';
+  const ids = Object.keys(socialeGroepen)
+    .sort((x, y) => (groepOngelezen[y] || 0) - (groepOngelezen[x] || 0) || String(socialeGroepen[x].naam).localeCompare(String(socialeGroepen[y].naam), 'nl'));
+  ids.forEach(id => {
+    const g = socialeGroepen[id];
+    const rij = document.createElement('div');
+    rij.className = 'vriend-rij';
+    const plaatje = document.createElement('span');
+    plaatje.className = 'vriend-mini-poppetje'; plaatje.setAttribute('aria-hidden', 'true'); plaatje.textContent = '👥';
+    const naam = document.createElement('strong');
+    naam.textContent = g.naam;
+    const sub = document.createElement('small');
+    sub.className = 'beheer-echte-naam';
+    const n = Object.keys(g.leden || {}).length;
+    sub.textContent = ' ' + n + (n === 1 ? ' lid' : ' leden');
+    naam.appendChild(sub);
+    const chat = document.createElement('button');
+    chat.type = 'button'; chat.className = 'btn btn-secondary chat-knop'; chat.textContent = '💬 Chat';
+    const ongelezen = groepOngelezen[id] || 0;
+    if (ongelezen > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'chat-knop-badge';
+      badge.textContent = ongelezen > 99 ? '99+' : String(ongelezen);
+      chat.appendChild(badge);
+    }
+    chat.addEventListener('click', () => openGroepChat(id));
+    const knoppen = document.createElement('div');
+    knoppen.className = 'vriend-knoppen';
+    knoppen.appendChild(chat);
+    rij.append(plaatje, naam, knoppen);
+    lijst.appendChild(rij);
+  });
+  if (!ids.length) lijst.innerHTML = '<p class="subtitel">Je zit nog in geen enkele groep.</p>';
+  const nieuw = document.getElementById('btn-groep-nieuw');
+  if (nieuw) nieuw.hidden = !!bezoekUid();
+}
+
+function openGroepChat(id) {
+  const g = socialeGroepen[id];
+  if (!g) return;
+  huidigChatUid = ''; huidigGroepId = id; huidigChatNaam = g.naam;
+  if (chatBlokRef) { chatBlokRef.off(); chatBlokRef = null; }
+  document.getElementById('chat-titel').textContent = '👥 ' + g.naam;
+  document.getElementById('chat-kop-poppetje').innerHTML = '<span class="mini-poppetje-leeg">👥</span>';
+  chatStijlPaneelOpen = false;
+  ['chat-stijl-paneel', 'chat-poppetjes-paneel', 'chat-quiz-paneel', 'chat-munten-paneel', 'chat-emoji-paneel'].forEach(pid => {
+    const el = document.getElementById(pid); if (el) el.hidden = true;
+  });
+  bouwChatEmojiPaneel();
+  stopAntwoord();
+  chatGekozenPoppetje = null;
+  document.body.classList.add('groep-chat');
+  document.getElementById('btn-chat-groep').hidden = false;
+  document.getElementById('chat-overlay').classList.add('actief');
+  document.body.classList.add('chat-open');
+  pasChatStijlToe();
+  werkChatBeheerBij();
+  laadChatBerichten();
+}
+
+// ---- Groep maken ----
+function openGroepMaken() {
+  if (bezoekUid()) return;
+  beheerdeGroepId = '';
+  document.getElementById('groep-titel').textContent = 'Nieuwe groep';
+  document.getElementById('groep-maak-blok').hidden = false;
+  document.getElementById('groep-beheer-blok').hidden = true;
+  document.getElementById('input-groep-naam').value = '';
+  document.getElementById('groep-foutmelding').textContent = '';
+  const lijst = document.getElementById('groep-maak-vrienden');
+  lijst.innerHTML = '';
+  const vrienden = Object.entries(socialeVrienden).filter(([uid]) => !isBeheerUid(uid));
+  vrienden.forEach(([uid, info]) => {
+    const rij = document.createElement('label');
+    rij.className = 'vriend-rij groep-kies-rij';
+    const vink = document.createElement('input');
+    vink.type = 'checkbox'; vink.value = uid;
+    const naam = document.createElement('strong');
+    maakWeergaveNaam(naam, uid, info.gebruikersnaam || 'Vriend');
+    rij.append(vink, maakMiniPoppetje(uid, 'vriend-mini-poppetje'), naam);
+    lijst.appendChild(rij);
+  });
+  if (!vrienden.length) lijst.innerHTML = '<p class="subtitel">Je hebt nog geen vrienden om toe te voegen.</p>';
+  document.getElementById('btn-groep-maken').disabled = false;
+  document.getElementById('groep-overlay').classList.add('actief');
+}
+
+function maakGroepAan() {
+  const gebruiker = profielFirebaseGebruiker();
+  const fout = document.getElementById('groep-foutmelding');
+  fout.textContent = '';
+  if (!gebruiker || bezoekUid()) return;
+  const naam = veiligeChatTekst(document.getElementById('input-groep-naam').value).slice(0, 30);
+  if (!naam) { fout.textContent = 'Geef de groep een naam.'; return; }
+  const gekozen = Array.from(document.querySelectorAll('#groep-maak-vrienden input:checked')).map(i => i.value).filter(u => socialeVrienden[u]);
+  if (!gekozen.length) { fout.textContent = 'Kies minstens één vriend.'; return; }
+  if (gekozen.length > 49) { fout.textContent = 'Een groep kan maximaal 50 leden hebben.'; return; }
+  const leden = {};
+  leden[gebruiker.uid] = huidigeMakerNaam() || 'Ik';
+  gekozen.forEach(u => { leden[u] = String(socialeVrienden[u].gebruikersnaam || 'Vriend'); });
+  const id = db.ref('groepen').push().key;
+  const knop = document.getElementById('btn-groep-maken');
+  knop.disabled = true;
+  db.ref('groepen/' + id).set({ naam: naam, maker: gebruiker.uid, tijd: firebase.database.ServerValue.TIMESTAMP, leden: leden })
+    .then(() => {
+      const upd = {};
+      Object.keys(leden).forEach(u => { upd['gebruikerGroepen/' + u + '/' + id] = true; });
+      return db.ref().update(upd);
+    })
+    .then(() => {
+      knop.disabled = false;
+      document.getElementById('groep-overlay').classList.remove('actief');
+    })
+    .catch(err => {
+      knop.disabled = false;
+      const code = err && err.code ? ' (' + err.code + ')' : '';
+      fout.textContent = 'Groep maken is mislukt' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.';
+    });
+}
+
+// ---- Groep beheren (leden bekijken, toevoegen, verwijderen, verlaten) ----
+function openGroepBeheer(id) {
+  if (!socialeGroepen[id]) return;
+  beheerdeGroepId = id;
+  document.getElementById('groep-maak-blok').hidden = true;
+  document.getElementById('groep-beheer-blok').hidden = false;
+  bouwGroepBeheer();
+  document.getElementById('groep-overlay').classList.add('actief');
+}
+
+function bouwGroepBeheer() {
+  const g = socialeGroepen[beheerdeGroepId];
+  const gebruiker = profielFirebaseGebruiker();
+  if (!g || !gebruiker) return;
+  const ikBenMaker = g.maker === gebruiker.uid && !bezoekUid();
+  const alleen = !!bezoekUid();
+  document.getElementById('groep-titel').textContent = '👥 ' + g.naam;
+  const ledenEl = document.getElementById('groep-leden-lijst');
+  ledenEl.innerHTML = '';
+  Object.keys(g.leden || {}).sort((a, b) => (a === g.maker ? -1 : b === g.maker ? 1 : String(g.leden[a]).localeCompare(String(g.leden[b]), 'nl'))).forEach(uid => {
+    const rij = document.createElement('div');
+    rij.className = 'vriend-rij';
+    const naam = document.createElement('strong');
+    maakWeergaveNaam(naam, uid, (socialeVrienden[uid] && socialeVrienden[uid].gebruikersnaam) || String(g.leden[uid] || 'Lid'));
+    if (uid === g.maker) { const m = document.createElement('small'); m.className = 'beheer-echte-naam'; m.textContent = ' 👑 maker'; naam.appendChild(m); }
+    if (uid === gebruiker.uid) { const m = document.createElement('small'); m.className = 'beheer-echte-naam'; m.textContent = ' (jij)'; naam.appendChild(m); }
+    rij.append(maakMiniPoppetje(uid, 'vriend-mini-poppetje'), naam);
+    if (ikBenMaker && uid !== gebruiker.uid) {
+      const weg = document.createElement('button');
+      weg.type = 'button'; weg.className = 'btn btn-secondary'; weg.textContent = '✕ Verwijderen';
+      weg.addEventListener('click', () => { weg.disabled = true; verwijderGroepLid(beheerdeGroepId, uid); });
+      rij.appendChild(weg);
+    }
+    ledenEl.appendChild(rij);
+  });
+  const toevBlok = document.getElementById('groep-toevoegen-blok');
+  toevBlok.hidden = !ikBenMaker;
+  const toevLijst = document.getElementById('groep-toevoegen-lijst');
+  toevLijst.innerHTML = '';
+  if (ikBenMaker) {
+    const kandidaten = Object.entries(socialeVrienden).filter(([uid]) => !(g.leden || {})[uid] && !isBeheerUid(uid));
+    kandidaten.forEach(([uid, info]) => {
+      const rij = document.createElement('div');
+      rij.className = 'vriend-rij';
+      const naam = document.createElement('strong');
+      maakWeergaveNaam(naam, uid, info.gebruikersnaam || 'Vriend');
+      const plus = document.createElement('button');
+      plus.type = 'button'; plus.className = 'btn btn-primary'; plus.textContent = '➕ Toevoegen';
+      plus.addEventListener('click', () => { plus.disabled = true; voegGroepLidToe(beheerdeGroepId, uid, String(info.gebruikersnaam || 'Vriend')); });
+      rij.append(maakMiniPoppetje(uid, 'vriend-mini-poppetje'), naam, plus);
+      toevLijst.appendChild(rij);
+    });
+    if (!kandidaten.length) toevLijst.innerHTML = '<p class="subtitel">Al je vrienden zitten al in deze groep.</p>';
+    if (Object.keys(g.leden || {}).length >= 50) toevLijst.innerHTML = '<p class="subtitel">Een groep kan maximaal 50 leden hebben.</p>';
+  }
+  document.getElementById('btn-groep-verlaten').hidden = alleen || ikBenMaker;
+  document.getElementById('btn-groep-verwijderen').hidden = !ikBenMaker;
+}
+
+function groepFoutMelding(err, wat) {
+  const code = err && err.code ? ' (' + err.code + ')' : '';
+  alert(wat + ' is niet gelukt' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.');
+}
+
+function voegGroepLidToe(id, uid, naam) {
+  const g = socialeGroepen[id];
+  if (!g || !socialeVrienden[uid] || Object.keys(g.leden || {}).length >= 50) return;
+  const upd = {};
+  upd['groepen/' + id + '/leden/' + uid] = naam;
+  db.ref().update(upd)
+    .then(() => db.ref('gebruikerGroepen/' + uid + '/' + id).set(true))
+    .catch(err => groepFoutMelding(err, 'Toevoegen'));
+}
+
+function verwijderGroepLid(id, uid) {
+  const g = socialeGroepen[id];
+  if (!g || !confirm('Dit lid uit de groep halen?')) return;
+  const upd = {};
+  upd['gebruikerGroepen/' + uid + '/' + id] = null;
+  db.ref().update(upd)
+    .then(() => db.ref('groepen/' + id + '/leden/' + uid).remove())
+    .catch(err => groepFoutMelding(err, 'Verwijderen'));
+}
+
+function verlaatGroep(id) {
+  const gebruiker = profielFirebaseGebruiker();
+  const g = socialeGroepen[id];
+  if (!gebruiker || !g || bezoekUid()) return;
+  if (!confirm('De groep "' + g.naam + '" verlaten?')) return;
+  db.ref('groepen/' + id + '/leden/' + gebruiker.uid).remove()
+    .then(() => db.ref('gebruikerGroepen/' + gebruiker.uid + '/' + id).remove())
+    .then(() => verdwijnGroepLokaal(id))
+    .catch(err => groepFoutMelding(err, 'Verlaten'));
+}
+
+function verwijderGroep(id) {
+  const gebruiker = profielFirebaseGebruiker();
+  const g = socialeGroepen[id];
+  if (!gebruiker || !g || g.maker !== gebruiker.uid || bezoekUid()) return;
+  if (!confirm('De groep "' + g.naam + '" voor iedereen verwijderen, met alle berichten?')) return;
+  const upd = {};
+  Object.keys(g.leden || {}).forEach(u => { upd['gebruikerGroepen/' + u + '/' + id] = null; });
+  db.ref().update(upd)
+    .then(() => db.ref('groepsberichten/' + id).remove())
+    .then(() => db.ref('groepen/' + id).remove())
+    .then(() => verdwijnGroepLokaal(id))
+    .catch(err => groepFoutMelding(err, 'Verwijderen'));
+}
+
+document.getElementById('btn-groep-nieuw').addEventListener('click', openGroepMaken);
+document.getElementById('btn-groep-maken').addEventListener('click', maakGroepAan);
+document.getElementById('btn-groep-sluiten').addEventListener('click', () => {
+  document.getElementById('groep-overlay').classList.remove('actief');
+});
+document.getElementById('btn-chat-groep').addEventListener('click', () => { if (huidigGroepId) openGroepBeheer(huidigGroepId); });
+document.getElementById('btn-groep-verlaten').addEventListener('click', () => verlaatGroep(beheerdeGroepId));
+document.getElementById('btn-groep-verwijderen').addEventListener('click', () => verwijderGroep(beheerdeGroepId));
 
 // ---------------- Munten sturen in de chat ----------------
 // Het bedrag gaat meteen van de verzender af (zo kun je niet meer sturen dan je hebt).
