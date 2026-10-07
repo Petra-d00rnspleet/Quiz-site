@@ -54,7 +54,7 @@ function bezoekUid() { const b = bezoekInfo(); return b ? b.uid : ''; }
 const ACCOUNT_DATA_SLEUTELS = ['quizAppMunten', 'eigenQuizzen', 'quizAppGekochteBoxen', 'quizAppWielLaatsteDraai', 'quizAppWielLaatsteResultaat', 'quizAppWielVandaag'];
 // Alles wat bij uitloggen van dit apparaat verdwijnt (staat online veilig bij je account).
 const ACCOUNT_LOKALE_SLEUTELS = ['makerNaam', 'profielDier', 'profielAccessoires', 'quizAppBezitDieren', 'quizAppBezitAccessoires',
-  'quizAppBezitAantallen', 'quizAppChatGelezen', 'quizAppChatStijl', ACCOUNT_UID_SLEUTEL].concat(ACCOUNT_DATA_SLEUTELS);
+  'quizAppBezitAantallen', 'quizAppChatGelezen', 'quizAppChatStijl', 'beheerTijdGezien', ACCOUNT_UID_SLEUTEL].concat(ACCOUNT_DATA_SLEUTELS);
 
 function maakAccountEmail(uid) { return String(uid).toLowerCase() + ACCOUNT_DOMEIN; }
 function isSpelerAccount(u) { return !!u && !u.isAnonymous && typeof u.email === 'string' && u.email.slice(-ACCOUNT_DOMEIN.length) === ACCOUNT_DOMEIN; }
@@ -4309,6 +4309,15 @@ function syncSociaalBezit() {
 function registreerSociaalProfiel() {
   const gebruiker = profielFirebaseGebruiker();
   if (accountWordtVerwijderd || !gebruiker || gebruiker.bezoek || !heeftProfiel()) return Promise.resolve();
+  // Heeft sitebeheer je naam of poppetje veranderd? Neem dat dan eerst over.
+  return db.ref(SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid).once('value')
+    .then(snap => { neemBeheerWijzigingOver(snap.val()); }, () => {})
+    .then(() => registreerSociaalProfielNu());
+}
+
+function registreerSociaalProfielNu() {
+  const gebruiker = profielFirebaseGebruiker();
+  if (accountWordtVerwijderd || !gebruiker || gebruiker.bezoek || !heeftProfiel()) return Promise.resolve();
   const naam = huidigeMakerNaam();
   const zoeknaam = normaliseerGebruikersnaam(naam);
   const dier = geldigDier(huidigProfielDier()) || '';
@@ -7035,7 +7044,7 @@ werkProfielBadgeBij = function() {
 // anonieme Firebase-auth klaar is.
 huidigeBezitAantallen();
 if (heeftProfiel()) {
-  setTimeout(() => { registreerSociaalProfiel(); laadOnlineBezitVoorEigenProfiel(); }, 0);
+  setTimeout(() => { registreerSociaalProfiel().then(volgBeheerWijzigingen); laadOnlineBezitVoorEigenProfiel(); }, 0);
 }
 
 
@@ -7152,6 +7161,8 @@ function bouwBeheerProfielenHtml(zoek) {
       '<strong>' + escapeHtml(p.naam) + '</strong>' + (p.beheer ? '<span class="subtitel"> Sitebeheer</span>' : '') +
       '<div class="beheer-knoppen">' +
       '<button type="button" class="btn btn-secondary beheer-profiel-bezoek" data-uid="' + escapeHtml(p.uid) + '">👀 Bezoeken</button>' +
+      '<button type="button" class="btn btn-secondary beheer-profiel-naam" data-uid="' + escapeHtml(p.uid) + '">✏️ Naam</button>' +
+      '<button type="button" class="btn btn-secondary beheer-profiel-poppetje" data-uid="' + escapeHtml(p.uid) + '">🎨 Poppetje</button>' +
       '<button type="button" class="btn btn-secondary beheer-profiel-extradraai" data-uid="' + escapeHtml(p.uid) + '">🎡 Extra draai</button>' +
       (isIk ? '' : '<button type="button" class="btn btn-secondary beheer-profiel-verwijder" data-uid="' + escapeHtml(p.uid) + '">🗑 Verwijderen</button>') +
       '</div>' +
@@ -7273,6 +7284,10 @@ document.getElementById('input-beheer-zoek').addEventListener('input', toonBehee
 document.getElementById('beheer-profielen-lijst').addEventListener('click', e => {
   const bezoek = e.target.closest('.beheer-profiel-bezoek');
   if (bezoek) { bezoekProfiel(bezoek.dataset.uid); return; }
+  const naamKnop = e.target.closest('.beheer-profiel-naam');
+  if (naamKnop) { wijzigNaamAlsBeheer(naamKnop); return; }
+  const popKnop = e.target.closest('.beheer-profiel-poppetje');
+  if (popKnop) { openBeheerPoppetje(popKnop.dataset.uid); return; }
   const extraKnop = e.target.closest('.beheer-profiel-extradraai');
   if (extraKnop) { geefExtraWielDraai(extraKnop); return; }
   const knop = e.target.closest('.beheer-profiel-verwijder');
@@ -7314,6 +7329,209 @@ werkBeheerNavBij();
 // ================================================================
 
 let bezoekProfiel_ = null;   // {uid, naam}
+
+
+// ---------- Sitebeheer: naam en poppetje van iemand anders aanpassen ----------
+let beheerNaamUid = '';
+
+function wijzigNaamAlsBeheer(knop) {
+  if (!sitebeheerActief) return;
+  const p = beheerProfielen.find(x => x.uid === knop.dataset.uid);
+  if (!p) return;
+  beheerNaamUid = p.uid;
+  document.getElementById('beheer-naam-titel').textContent = 'Naam van ' + p.naam + ' wijzigen';
+  const invoer = document.getElementById('input-beheer-naam');
+  invoer.value = p.naam;
+  document.getElementById('beheer-naam-status').textContent = '';
+  document.getElementById('btn-beheer-naam-opslaan').disabled = false;
+  document.getElementById('beheer-naam-overlay').classList.add('actief');
+  setTimeout(() => { invoer.focus(); invoer.select(); }, 50);
+}
+
+function slaBeheerNaamOp() {
+  const uid = beheerNaamUid;
+  const p = beheerProfielen.find(x => x.uid === uid);
+  const status = document.getElementById('beheer-naam-status');
+  const knop = document.getElementById('btn-beheer-naam-opslaan');
+  status.textContent = '';
+  if (!sitebeheerActief || !p) { status.textContent = 'Je bent geen sitebeheer meer, of dit profiel bestaat niet meer.'; return; }
+  const nieuweNaam = String(document.getElementById('input-beheer-naam').value || '').trim().replace(/\s+/g, ' ').slice(0, 30);
+  if (!nieuweNaam) { status.textContent = 'Vul een gebruikersnaam in.'; return; }
+  if (nieuweNaam === p.naam) { status.textContent = 'Dit is al de naam.'; return; }
+  const oudeNaam = p.naam;
+  const nieuweZoek = normaliseerGebruikersnaam(nieuweNaam);
+  const oudeZoek = normaliseerGebruikersnaam(oudeNaam);
+  knop.disabled = true;
+  status.textContent = 'Bezig...';
+  const stap = (naam, belofte) => Promise.resolve(belofte).catch(err => { if (err && !err.stap) err.stap = naam; throw err; });
+
+  stap('namen', nieuweZoek === oudeZoek ? null : naamRegistreer(uid, nieuweZoek))
+    .then(() => stap('profiel (gebruikers/' + uid + ')', db.ref(SOCIAAL_PROFIEL_PAD + '/' + uid).update({
+      gebruikersnaam: nieuweNaam,
+      gebruikersnaamZoek: nieuweZoek,
+      beheerTijd: firebase.database.ServerValue.TIMESTAMP
+    })))
+    .then(() => (oudeZoek && oudeZoek !== nieuweZoek) ? naamVrijgeven(uid, oudeZoek).catch(() => {}) : null)
+    .then(() => {
+      // De naam is nu veranderd. De rest is netjes bijwerken; mislukt dat, dan blijft de naam toch veranderd.
+      return Promise.all([
+        db.ref('vrienden/' + uid).once('value').catch(() => null),
+        db.ref('gebruikerGroepen/' + uid).once('value').catch(() => null),
+        db.ref('accountData/' + uid + '/eigenQuizzen').once('value').catch(() => null)
+      ]).then(([vs, gs, qs]) => {
+        const upd = {};
+        if (vs) Object.keys(vs.val() || {}).forEach(f => { upd['vrienden/' + f + '/' + uid + '/gebruikersnaam'] = nieuweNaam; });
+        if (gs) Object.keys(gs.val() || {}).forEach(g => { upd['groepen/' + g + '/leden/' + uid] = nieuweNaam; });
+        const taken = [];
+        if (Object.keys(upd).length) taken.push(db.ref().update(upd).catch(() => {}));
+        let quizzen = [];
+        try { quizzen = JSON.parse((qs && qs.val()) || '[]'); } catch (e) {}
+        quizzen.filter(q => q && q.code && !q.gedeeldVan).forEach(q => {
+          taken.push(db.ref('quizzen/' + q.code).once('value').then(snap => {
+            if (!snap.child('titel').exists()) return null;
+            const huidig = snap.child('makerNaam').val();
+            if (!huidig || huidig === oudeNaam) return db.ref('quizzen/' + q.code + '/makerNaam').set(nieuweNaam);
+            return null;
+          }).catch(() => {}));
+        });
+        return Promise.all(taken);
+      }).catch(() => {});
+    })
+    .then(() => {
+      knop.disabled = false;
+      p.naam = nieuweNaam;
+      beheerProfielen.sort((a, b) => a.naam.localeCompare(b.naam, 'nl', { sensitivity: 'base' }));
+      toonBeheerProfielen();
+      document.getElementById('beheer-naam-titel').textContent = 'Naam van ' + nieuweNaam + ' wijzigen';
+      status.textContent = '✓ De naam is veranderd in "' + nieuweNaam + '".';
+    })
+    .catch(err => {
+      knop.disabled = false;
+      const code = err && (err.code || err.message) ? ' (' + (err.code || err.message) + ')' : '';
+      const rechten = String((err && (err.code || err.message)) || '').toUpperCase().indexOf('PERMISSION') !== -1;
+      status.textContent = 'Naam wijzigen is mislukt bij "' + ((err && err.stap) || 'onbekend') + '"' + code + '.' +
+        (rechten ? ' Firebase weigert dit: publiceer de nieuwste regels uit firebase-rules.json en controleer dat dit account echt sitebeheer is.' : '');
+    });
+}
+document.getElementById('btn-beheer-naam-opslaan').addEventListener('click', slaBeheerNaamOp);
+document.getElementById('input-beheer-naam').addEventListener('keydown', e => { if (e.key === 'Enter') slaBeheerNaamOp(); });
+document.getElementById('btn-beheer-naam-sluiten').addEventListener('click', () => {
+  document.getElementById('beheer-naam-overlay').classList.remove('actief');
+});
+
+let beheerPopUid = '';
+let beheerPopConcept = null;
+let beheerPopTab = 'dieren';
+
+function openBeheerPoppetje(uid) {
+  if (!sitebeheerActief) return;
+  const p = beheerProfielen.find(x => x.uid === uid);
+  if (!p) return;
+  beheerPopUid = uid; beheerPopTab = 'dieren'; beheerPopConcept = null;
+  document.getElementById('beheer-poppetje-titel').textContent = 'Poppetje van ' + p.naam;
+  document.getElementById('beheer-poppetje-fout').textContent = '';
+  document.getElementById('beheer-poppetje-overlay').classList.add('actief');
+  db.ref(SOCIAAL_PROFIEL_PAD + '/' + uid).once('value').then(snap => {
+    const v = snap.val() || {};
+    beheerPopConcept = { dier: geldigDier(v.dier) || DIEREN[0], acc: geldigeAccessoires(v.accessoires || {}) };
+    bouwBeheerPoppetje();
+  }).catch(err => { document.getElementById('beheer-poppetje-fout').textContent = accountFoutTekst(err); });
+}
+
+function bouwBeheerPoppetje() {
+  const k = beheerPopConcept;
+  if (!k) return;
+  document.getElementById('beheer-poppetje-voorbeeld').innerHTML = poppetjeSvg(k.dier, k.acc);
+  const tabs = document.getElementById('beheer-poppetje-tabs');
+  tabs.innerHTML = '';
+  [{ id: 'dieren', naam: 'Dieren' }].concat(ACCESSOIRE_GROEPEN.map(gr => ({ id: gr.plek, naam: PE_TAB_NAMEN[gr.plek] || gr.titel }))).forEach(t => {
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'pe-tab' + (t.id === beheerPopTab ? ' actief' : '');
+    knop.innerHTML = '<span class="pe-tab-icoon">' + PE_TAB_ICONEN[t.id] + '</span><span>' + t.naam + '</span>';
+    knop.addEventListener('click', () => { beheerPopTab = t.id; bouwBeheerPoppetje(); });
+    tabs.appendChild(knop);
+  });
+  const raster = document.getElementById('beheer-poppetje-raster');
+  raster.innerHTML = '';
+  if (beheerPopTab === 'dieren') {
+    DIEREN.forEach(d => {
+      raster.appendChild(peKaart(poppetjeSvg(d, k.acc), '', d === k.dier, () => { k.dier = d; bouwBeheerPoppetje(); }));
+    });
+  } else {
+    const groep = ACCESSOIRE_GROEPEN.find(gr => gr.plek === beheerPopTab);
+    if (groep) {
+      const zonder = Object.assign({}, k.acc); delete zonder[groep.plek];
+      raster.appendChild(peKaart(poppetjeSvg(k.dier, zonder), 'Geen', !k.acc[groep.plek], () => { delete k.acc[groep.plek]; bouwBeheerPoppetje(); }));
+      groep.items.forEach(emoji => {
+        const proef = Object.assign({}, k.acc); proef[groep.plek] = emoji;
+        raster.appendChild(peKaart(poppetjeSvg(k.dier, proef), (ACCESSOIRES[emoji] && ACCESSOIRES[emoji].naam) || '', k.acc[groep.plek] === emoji, () => { k.acc[groep.plek] = emoji; bouwBeheerPoppetje(); }));
+      });
+    }
+  }
+}
+
+function slaBeheerPoppetjeOp() {
+  const k = beheerPopConcept;
+  const uid = beheerPopUid;
+  const fout = document.getElementById('beheer-poppetje-fout');
+  const knop = document.getElementById('btn-beheer-poppetje-opslaan');
+  if (!sitebeheerActief || !k || !uid) return;
+  fout.textContent = '';
+  knop.disabled = true;
+  const acc = geldigeAccessoires(k.acc);
+  // Wat je kiest komt ook bij die persoon in de verzameling (minstens 1 van elk).
+  const items = [['dieren', k.dier]].concat(Object.keys(acc).map(plek => ['accessoires', acc[plek]]));
+  Promise.all(items.map(([soort, item]) => {
+    const r = db.ref(SOCIAAL_PROFIEL_PAD + '/' + uid + '/bezit/' + soort + '/' + item);
+    return r.once('value').then(sn => (Number(sn.val()) > 0 ? null : r.set(1)));
+  }))
+    .then(() => db.ref(SOCIAAL_PROFIEL_PAD + '/' + uid).update({
+      dier: k.dier,
+      accessoires: acc,
+      beheerTijd: firebase.database.ServerValue.TIMESTAMP
+    }))
+    .then(() => {
+      knop.disabled = false;
+      const p = beheerProfielen.find(x => x.uid === uid);
+      if (p) { p.dier = k.dier; toonBeheerProfielen(); }
+      fout.textContent = '✓ Poppetje opgeslagen';
+    })
+    .catch(err => {
+      knop.disabled = false;
+      const code = err && err.code ? ' (' + err.code + ')' : '';
+      fout.textContent = 'Opslaan is mislukt' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.';
+    });
+}
+document.getElementById('btn-beheer-poppetje-opslaan').addEventListener('click', slaBeheerPoppetjeOp);
+document.getElementById('btn-beheer-poppetje-sluiten').addEventListener('click', () => {
+  document.getElementById('beheer-poppetje-overlay').classList.remove('actief');
+});
+
+// Heeft sitebeheer jouw naam of poppetje veranderd, dan neem je dat over (en overschrijf je het niet meer).
+const BEHEER_TIJD_GEZIEN_SLEUTEL = 'beheerTijdGezien';
+let beheerWijzigingRef = null;
+let beheerWijzigingUid = '';
+function neemBeheerWijzigingOver(p) {
+  if (!p || !p.beheerTijd) return false;
+  if (Number(p.beheerTijd) <= Number(localStorage.getItem(BEHEER_TIJD_GEZIEN_SLEUTEL) || 0)) return false;
+  localStorage.setItem(BEHEER_TIJD_GEZIEN_SLEUTEL, String(p.beheerTijd));
+  if (p.gebruikersnaam) localStorage.setItem(MAKER_NAAM_SLEUTEL, String(p.gebruikersnaam));
+  if (geldigDier(p.dier)) localStorage.setItem(PROFIEL_DIER_SLEUTEL, p.dier);
+  localStorage.setItem(PROFIEL_ACCESSOIRES_SLEUTEL, JSON.stringify(geldigeAccessoires(p.accessoires || {})));
+  socialeNamenCache = null;
+  try { werkProfielBadgeBij(); werkProfielPoppetjeWeergaveBij(); werkProfielOverlayNaamBij(); bouwVerzamelingKiezer(); } catch (e) {}
+  return true;
+}
+function volgBeheerWijzigingen() {
+  const g = profielFirebaseGebruiker();
+  if (!g || g.bezoek || !heeftProfiel()) return;
+  if (beheerWijzigingRef && beheerWijzigingUid === g.uid) return;
+  if (beheerWijzigingRef) beheerWijzigingRef.off();
+  beheerWijzigingUid = g.uid;
+  beheerWijzigingRef = db.ref(SOCIAAL_PROFIEL_PAD + '/' + g.uid);
+  beheerWijzigingRef.on('value', snap => { neemBeheerWijzigingOver(snap.val()); }, () => {});
+}
 
 function bezoekProfiel(uid) {
   const p = beheerProfielen.find(x => x.uid === uid);
