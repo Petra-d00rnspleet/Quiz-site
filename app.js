@@ -5664,10 +5664,10 @@ function tekenChatBerichten() {
       const el = b.type === 'poppetje' ? maakChatPoppetjeBericht(key, b, eigen, gebruiker)
         : (b.type === 'quiz' ? maakChatQuizBericht(key, b, eigen, gebruiker) : maakChatMuntenBericht(key, b, eigen, gebruiker));
       el.dataset.key = key;
-      if (huidigGroepId && b.aan) {
+      if (huidigGroepId) {
         const voor = document.createElement('div');
         voor.className = 'chat-quiz-sub';
-        voor.textContent = '🎯 Voor ' + (b.aan === gebruiker.uid ? 'jou' : groepLidNaam(b.aan));
+        voor.textContent = b.aan ? ('🎯 Voor ' + (b.aan === gebruiker.uid ? 'jou' : groepLidNaam(b.aan))) : '🎁 Voor iedereen';
         el.insertBefore(voor, el.children[1] || null);
       }
       lijst.appendChild(el);
@@ -5759,14 +5759,14 @@ function maakChatPoppetjeBericht(key, b, eigen, gebruiker) {
     status.textContent = 'Niet gelukt: dit poppetje is er niet meer';
   } else if (b.status === 'bezig') {
     status.textContent = 'Bezig...';
-  } else if (!eigen && b.aan === gebruiker.uid && geldig) {
+  } else if (magCadeauAccepteren(b, gebruiker) && geldig) {
     const ja = document.createElement('button');
     ja.type = 'button'; ja.className = 'btn btn-primary'; ja.textContent = '✓ Accepteren';
     ja.addEventListener('click', () => { ja.disabled = true; accepteerChatPoppetje(key, b); });
     const nee = document.createElement('button');
     nee.type = 'button'; nee.className = 'btn btn-secondary'; nee.textContent = '✕ Weigeren';
     nee.addEventListener('click', () => { nee.disabled = true; wijzigChatPoppetjeStatus(key, 'geweigerd'); });
-    status.append(ja, nee);
+    if (b.aan) status.append(ja, nee); else status.append(ja);   // een cadeau "voor iedereen" kun je niet voor de rest weigeren
   } else if (eigen) {
     const wacht = document.createElement('span');
     wacht.textContent = '⏳ Wacht op acceptatie';
@@ -5790,7 +5790,7 @@ function accepteerChatPoppetje(key, b) {
   const gebruiker = profielFirebaseGebruiker();
   const ref = chatBerichtenRef();
   if (!gebruiker || !ref) return;
-  if (b.aan !== gebruiker.uid || (!huidigGroepId && b.uid !== huidigChatUid) || !chatPoppetjeGeldig(b.soort, b.item)) return;
+  if (!magCadeauAccepteren(b, gebruiker) || (!huidigGroepId && b.uid !== huidigChatUid) || !chatPoppetjeGeldig(b.soort, b.item)) return;
   const pad = b.soort === 'dier' ? 'dieren/' : 'accessoires/';
   const vanRef = db.ref(SOCIAAL_PROFIEL_PAD + '/' + b.uid + '/bezit/' + pad + b.item);
   const naarRef = db.ref(SOCIAAL_PROFIEL_PAD + '/' + gebruiker.uid + '/bezit/' + pad + b.item);
@@ -5829,6 +5829,12 @@ function accepteerChatPoppetje(key, b) {
 //           gebruikerGroepen/<uid>/<id> = true (welke groepen ik heb),
 //           groepsberichten/<id>/<berichtId> (zoals een gewone chat).
 // ================================================================
+
+// Het plaatje van een groep: het gekozen poppetje, of 👥 als er geen is gekozen.
+function groepPoppetjeHtml(g) {
+  if (g && geldigDier(g.dier)) return poppetjeSvg(g.dier, geldigeAccessoires(g.accessoires || {}));
+  return '👥';
+}
 
 function groepIsBeheerder(g, uid) {
   return !!g && !!uid && (g.maker === uid || !!(g.beheerders && g.beheerders[uid]));
@@ -5872,7 +5878,7 @@ function laadGroepen(uid) {
         if (!v.leden || !v.leden[uid]) { verdwijnGroepLokaal(id); return; }
         socialeGroepen[id] = v;
         luisterGroepOngelezen(id, uid);
-        if (huidigGroepId === id) { huidigChatNaam = v.naam; document.getElementById('chat-titel').textContent = '👥 ' + v.naam; werkGroepAanBij(); }
+        if (huidigGroepId === id) { huidigChatNaam = v.naam; document.getElementById('chat-titel').textContent = '👥 ' + v.naam; document.getElementById('chat-kop-poppetje').innerHTML = groepPoppetjeHtml(v); werkGroepAanBij(); }
         if (beheerdeGroepId === id && document.getElementById('groep-overlay').classList.contains('actief')) bouwGroepBeheer();
         renderVrienden();
       }, () => verdwijnGroepLokaal(id));   // geen toegang meer (bijv. uit de groep gehaald)
@@ -5916,7 +5922,7 @@ function renderGroepen() {
     const rij = document.createElement('div');
     rij.className = 'vriend-rij';
     const plaatje = document.createElement('span');
-    plaatje.className = 'vriend-mini-poppetje'; plaatje.setAttribute('aria-hidden', 'true'); plaatje.textContent = '👥';
+    plaatje.className = 'vriend-mini-poppetje'; plaatje.setAttribute('aria-hidden', 'true'); plaatje.innerHTML = groepPoppetjeHtml(g);
     const naam = document.createElement('strong');
     naam.textContent = g.naam;
     const sub = document.createElement('small');
@@ -5951,7 +5957,7 @@ function openGroepChat(id) {
   huidigChatUid = ''; huidigGroepId = id; huidigChatNaam = g.naam;
   if (chatBlokRef) { chatBlokRef.off(); chatBlokRef = null; }
   document.getElementById('chat-titel').textContent = '👥 ' + g.naam;
-  document.getElementById('chat-kop-poppetje').innerHTML = '<span class="mini-poppetje-leeg">👥</span>';
+  document.getElementById('chat-kop-poppetje').innerHTML = groepPoppetjeHtml(g);
   chatStijlPaneelOpen = false;
   ['chat-stijl-paneel', 'chat-poppetjes-paneel', 'chat-quiz-paneel', 'chat-munten-paneel', 'chat-emoji-paneel'].forEach(pid => {
     const el = document.getElementById(pid); if (el) el.hidden = true;
@@ -6051,6 +6057,8 @@ function bouwGroepBeheer() {
   const ikBenBeheerder = (groepIsBeheerder(g, gebruiker.uid) || !!sitebeheerActief) && !bezoekUid();
   const alleen = !!bezoekUid();
   document.getElementById('groep-hernoem-blok').hidden = !ikBenBeheerder;
+  document.getElementById('groep-foto-blok').hidden = !ikBenBeheerder;
+  if (ikBenBeheerder) bouwGroepFoto(g);
   document.getElementById('groep-titel').textContent = '👥 ' + g.naam;
   const ledenEl = document.getElementById('groep-leden-lijst');
   ledenEl.innerHTML = '';
@@ -6119,6 +6127,41 @@ function voegGroepLidToe(id, uid, naam) {
   db.ref().update(upd)
     .then(() => db.ref('gebruikerGroepen/' + uid + '/' + id).set(true))
     .catch(err => groepFoutMelding(err, 'Toevoegen'));
+}
+
+function bouwGroepFoto(g) {
+  document.getElementById('groep-foto-voorbeeld').innerHTML = groepPoppetjeHtml(g);
+  const lijst = document.getElementById('groep-foto-lijst');
+  lijst.innerHTML = '';
+  const dieren = haalBezitDieren().filter(d => geldigDier(d));
+  dieren.forEach(dier => {
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    const gekozen = g.dier === dier && !Object.keys(g.accessoires || {}).length;
+    knop.className = 'dier-knop verzameling-item in-bezit' + (gekozen ? ' gekozen' : '');
+    knop.innerHTML = chatPoppetjeSvgVoor('dier', dier);
+    knop.title = chatPoppetjeNaam('dier', dier);
+    knop.addEventListener('click', () => zetGroepFoto(dier, {}));
+    lijst.appendChild(knop);
+  });
+  if (!dieren.length) lijst.innerHTML = '<p class="subtitel">Je hebt nog geen dieren.</p>';
+}
+
+function zetGroepFoto(dier, accessoires) {
+  const id = beheerdeGroepId;
+  const g = socialeGroepen[id];
+  const gebruiker = profielFirebaseGebruiker();
+  const fout = document.getElementById('groep-foto-fout');
+  fout.textContent = '';
+  if (!g || !gebruiker || bezoekUid() || !(groepIsBeheerder(g, gebruiker.uid) || sitebeheerActief)) return;
+  const acc = geldigeAccessoires(accessoires || {});
+  const upd = {};
+  upd['groepen/' + id + '/dier'] = dier && geldigDier(dier) ? dier : null;
+  upd['groepen/' + id + '/accessoires'] = (dier && Object.keys(acc).length) ? acc : null;
+  db.ref().update(upd).catch(err => {
+    const code = err && err.code ? ' (' + err.code + ')' : '';
+    fout.textContent = 'Foto aanpassen is mislukt' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.';
+  });
 }
 
 function zetGroepBeheerder(id, uid, wordt) {
@@ -6194,6 +6237,12 @@ document.getElementById('btn-groep-sluiten').addEventListener('click', () => {
   document.getElementById('groep-overlay').classList.remove('actief');
 });
 document.getElementById('btn-chat-groep').addEventListener('click', () => { if (huidigGroepId) openGroepBeheer(huidigGroepId); });
+document.getElementById('btn-groep-foto-eigen').addEventListener('click', () => {
+  const dier = huidigProfielDier();
+  if (!geldigDier(dier)) { document.getElementById('groep-foto-fout').textContent = 'Je hebt zelf nog geen poppetje.'; return; }
+  zetGroepFoto(dier, huidigeProfielAccessoires());
+});
+document.getElementById('btn-groep-foto-weg').addEventListener('click', () => zetGroepFoto(null, {}));
 document.getElementById('btn-groep-hernoem').addEventListener('click', hernoemGroep);
 document.getElementById('input-groep-hernoem').addEventListener('keydown', e => { if (e.key === 'Enter') hernoemGroep(); });
 document.getElementById('btn-groep-verlaten').addEventListener('click', () => verlaatGroep(beheerdeGroepId));
@@ -6206,18 +6255,25 @@ function groepLidNaam(uid) {
   const g = socialeGroepen[huidigGroepId];
   return (socialeVrienden[uid] && socialeVrienden[uid].gebruikersnaam) || (g && g.leden && g.leden[uid]) || 'lid';
 }
+// In een groep mag een cadeau "voor iedereen" zijn: dan kan elk ander lid het accepteren (wie het eerst is).
+function magCadeauAccepteren(b, gebruiker) {
+  if (!gebruiker || b.uid === gebruiker.uid) return false;
+  if (b.aan) return b.aan === gebruiker.uid;
+  return !!huidigGroepId;
+}
 function chatOntvanger() { return huidigGroepId ? groepOntvanger : huidigChatUid; }
-function chatOntvangerNaam() { return huidigGroepId ? groepLidNaam(groepOntvanger) : huidigChatNaam; }
+function chatOntvangerNaam() { return huidigGroepId ? (groepOntvanger ? groepLidNaam(groepOntvanger) : 'de groep') : huidigChatNaam; }
 function chatOntvangerGeldig() {
   if (huidigGroepId) {
     const g = socialeGroepen[huidigGroepId];
     const gebruiker = profielFirebaseGebruiker();
-    return !!(g && gebruiker && groepOntvanger && groepOntvanger !== gebruiker.uid && g.leden && g.leden[groepOntvanger]);
+    if (!g || !gebruiker) return false;
+    return !groepOntvanger || !!(groepOntvanger !== gebruiker.uid && g.leden && g.leden[groepOntvanger]);
   }
   return !!socialeVrienden[huidigChatUid];
 }
 function ontvangerFoutTekst(wat) {
-  return huidigGroepId ? 'Kies eerst aan welk lid je ' + wat + ' wilt sturen.' : 'Je kunt alleen ' + wat + ' naar vrienden sturen.';
+  return huidigGroepId ? 'Kies een geldig lid om ' + wat + ' naar te sturen.' : 'Je kunt alleen ' + wat + ' naar vrienden sturen.';
 }
 function werkGroepAanBij() {
   const balk = document.getElementById('chat-groep-aan');
@@ -6230,8 +6286,12 @@ function werkGroepAanBij() {
   const gebruiker = profielFirebaseGebruiker();
   if (!g || !gebruiker) return;
   const uids = Object.keys(g.leden || {}).filter(u => u !== gebruiker.uid);
-  if (uids.indexOf(groepOntvanger) < 0) groepOntvanger = uids[0] || '';
+  if (groepOntvanger && uids.indexOf(groepOntvanger) < 0) groepOntvanger = '';
   keuze.innerHTML = '';
+  const iedereen = document.createElement('option');
+  iedereen.value = ''; iedereen.textContent = '🎁 Voor iedereen (wie het eerst accepteert)';
+  if (!groepOntvanger) iedereen.selected = true;
+  keuze.appendChild(iedereen);
   uids.forEach(u => {
     const o = document.createElement('option');
     o.value = u; o.textContent = groepLidNaam(u);
@@ -6286,7 +6346,7 @@ function verstuurChatMunten() {
     gebruikersnaam: huidigeMakerNaam(),
     type: 'munten',
     bedrag: bedrag,
-    aan: chatOntvanger(),
+    aan: chatOntvanger() || null,
     status: 'open',
     tekst: '🪙 ' + bedrag + ' munten',
     tijd: firebase.database.ServerValue.TIMESTAMP
@@ -6326,14 +6386,14 @@ function maakChatMuntenBericht(key, b, eigen, gebruiker) {
     status.textContent = 'Niet gelukt';
   } else if (b.status === 'bezig') {
     status.textContent = 'Bezig...';
-  } else if (!eigen && b.aan === gebruiker.uid && bedrag >= 1) {
+  } else if (magCadeauAccepteren(b, gebruiker) && bedrag >= 1) {
     const ja = document.createElement('button');
     ja.type = 'button'; ja.className = 'btn btn-primary'; ja.textContent = '✓ Accepteren';
     ja.addEventListener('click', () => { ja.disabled = true; accepteerChatMunten(key, b); });
     const nee = document.createElement('button');
     nee.type = 'button'; nee.className = 'btn btn-secondary'; nee.textContent = '✕ Weigeren';
     nee.addEventListener('click', () => { nee.disabled = true; wijzigChatPoppetjeStatus(key, 'geweigerd'); });
-    status.append(ja, nee);
+    if (b.aan) status.append(ja, nee); else status.append(ja);   // een cadeau "voor iedereen" kun je niet voor de rest weigeren
   } else if (eigen) {
     const wacht = document.createElement('span');
     wacht.textContent = '⏳ Wacht op acceptatie';
@@ -6352,7 +6412,7 @@ function accepteerChatMunten(key, b) {
   const ref = chatBerichtenRef();
   if (!gebruiker || !ref || bezoekUid()) return;
   const bedrag = Math.floor(Number(b.bedrag));
-  if (b.aan !== gebruiker.uid || (!huidigGroepId && b.uid !== huidigChatUid) || !(bedrag >= 1)) return;
+  if (!magCadeauAccepteren(b, gebruiker) || (!huidigGroepId && b.uid !== huidigChatUid) || !(bedrag >= 1)) return;
   const statusRef = ref.child(key).child('status');
   let geclaimd = false;
   statusRef.transaction(v => {
@@ -6521,7 +6581,7 @@ function verstuurChatPoppetje() {
     type: 'poppetje',
     soort: keuze.soort,
     item: keuze.item,
-    aan: chatOntvanger(),
+    aan: chatOntvanger() || null,
     status: 'open',
     tekst: tekst,
     tijd: firebase.database.ServerValue.TIMESTAMP
@@ -6623,7 +6683,7 @@ function verstuurChatQuiz(q) {
       code: q.code,
       titel: snap.val(),
       aantalVragen: q.aantalVragen || 0,
-      aan: chatOntvanger(),
+      aan: chatOntvanger() || null,
       status: 'open',
       tekst: '📝 ' + snap.val(),
       tijd: firebase.database.ServerValue.TIMESTAMP
@@ -6654,7 +6714,7 @@ function maakChatQuizBericht(key, b, eigen, gebruiker) {
 
   const status = document.createElement('div');
   status.className = 'chat-poppetje-status';
-  const bendOntvanger = !eigen && b.aan === gebruiker.uid;
+  const bendOntvanger = magCadeauAccepteren(b, gebruiker);
   if (b.status === 'geaccepteerd') {
     const ok = document.createElement('span');
     ok.textContent = '✓ Geaccepteerd';
@@ -6692,7 +6752,7 @@ function maakChatQuizBericht(key, b, eigen, gebruiker) {
     const nee = document.createElement('button');
     nee.type = 'button'; nee.className = 'btn btn-secondary'; nee.textContent = '✕ Weigeren';
     nee.addEventListener('click', () => { nee.disabled = true; wijzigChatPoppetjeStatus(key, 'geweigerd'); });
-    status.append(ja, nee);
+    if (b.aan) status.append(ja, nee); else status.append(ja);   // een cadeau "voor iedereen" kun je niet voor de rest weigeren
   } else if (eigen) {
     const wacht = document.createElement('span');
     wacht.textContent = '⏳ Wacht op acceptatie';
@@ -6710,7 +6770,7 @@ function accepteerChatQuiz(key, b) {
   const gebruiker = profielFirebaseGebruiker();
   const ref = chatBerichtenRef();
   if (!gebruiker || !ref) return;
-  if (b.aan !== gebruiker.uid || (!huidigGroepId && b.uid !== huidigChatUid) || !b.code) return;
+  if (!magCadeauAccepteren(b, gebruiker) || (!huidigGroepId && b.uid !== huidigChatUid) || !b.code) return;
   const statusRef = ref.child(key).child('status');
   let geclaimd = false;
   statusRef.transaction(v => {
