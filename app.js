@@ -6042,6 +6042,7 @@ function openGroepBeheer(id) {
   beheerdeGroepId = id;
   document.getElementById('groep-maak-blok').hidden = true;
   document.getElementById('groep-beheer-blok').hidden = false;
+  groepFotoConcept = null; groepFotoTab = 'dieren';
   document.getElementById('input-groep-hernoem').value = socialeGroepen[id].naam || '';
   document.getElementById('groep-hernoem-fout').textContent = '';
   bouwGroepBeheer();
@@ -6129,22 +6130,53 @@ function voegGroepLidToe(id, uid, naam) {
     .catch(err => groepFoutMelding(err, 'Toevoegen'));
 }
 
+let groepFotoConcept = null;   // { groepId, dier, acc } = wat je nu aan het kiezen bent
+let groepFotoTab = 'dieren';
+
 function bouwGroepFoto(g) {
-  document.getElementById('groep-foto-voorbeeld').innerHTML = groepPoppetjeHtml(g);
-  const lijst = document.getElementById('groep-foto-lijst');
-  lijst.innerHTML = '';
-  const dieren = haalBezitDieren().filter(d => geldigDier(d));
-  dieren.forEach(dier => {
+  if (!groepFotoConcept || groepFotoConcept.groepId !== beheerdeGroepId) {
+    groepFotoConcept = {
+      groepId: beheerdeGroepId,
+      dier: geldigDier(g.dier) ? g.dier : '',
+      acc: geldigeAccessoires(g.accessoires || {})
+    };
+  }
+  const k = groepFotoConcept;
+  const bezitDieren = haalBezitDieren().filter(d => geldigDier(d));
+  const bezitAcc = haalBezitAccessoires();
+  document.getElementById('groep-foto-voorbeeld').innerHTML = k.dier ? poppetjeSvg(k.dier, k.acc) : '👥';
+
+  const tabs = document.getElementById('groep-foto-tabs');
+  tabs.innerHTML = '';
+  [{ id: 'dieren', naam: 'Dieren' }].concat(ACCESSOIRE_GROEPEN.map(gr => ({ id: gr.plek, naam: PE_TAB_NAMEN[gr.plek] || gr.titel }))).forEach(t => {
     const knop = document.createElement('button');
     knop.type = 'button';
-    const gekozen = g.dier === dier && !Object.keys(g.accessoires || {}).length;
-    knop.className = 'dier-knop verzameling-item in-bezit' + (gekozen ? ' gekozen' : '');
-    knop.innerHTML = chatPoppetjeSvgVoor('dier', dier);
-    knop.title = chatPoppetjeNaam('dier', dier);
-    knop.addEventListener('click', () => zetGroepFoto(dier, {}));
-    lijst.appendChild(knop);
+    knop.className = 'pe-tab' + (t.id === groepFotoTab ? ' actief' : '');
+    knop.innerHTML = '<span class="pe-tab-icoon">' + PE_TAB_ICONEN[t.id] + '</span><span>' + t.naam + '</span>';
+    knop.addEventListener('click', () => { groepFotoTab = t.id; bouwGroepFoto(socialeGroepen[beheerdeGroepId] || g); });
+    tabs.appendChild(knop);
   });
-  if (!dieren.length) lijst.innerHTML = '<p class="subtitel">Je hebt nog geen dieren.</p>';
+
+  const raster = document.getElementById('groep-foto-raster');
+  raster.innerHTML = '';
+  const opnieuw = () => bouwGroepFoto(socialeGroepen[beheerdeGroepId] || g);
+  if (groepFotoTab === 'dieren') {
+    bezitDieren.forEach(d => {
+      raster.appendChild(peKaart(poppetjeSvg(d, k.acc), '', d === k.dier, () => { k.dier = d; opnieuw(); }));
+    });
+    if (!bezitDieren.length) raster.innerHTML = '<p class="subtitel">Je hebt nog geen dieren.</p>';
+  } else {
+    const groep = ACCESSOIRE_GROEPEN.find(gr => gr.plek === groepFotoTab);
+    if (groep) {
+      const basis = k.dier || bezitDieren[0] || '';
+      const zonder = Object.assign({}, k.acc); delete zonder[groep.plek];
+      raster.appendChild(peKaart(basis ? poppetjeSvg(basis, zonder) : '🚫', 'Geen', !k.acc[groep.plek], () => { delete k.acc[groep.plek]; opnieuw(); }));
+      groep.items.filter(i => bezitAcc.indexOf(i) !== -1).forEach(emoji => {
+        const proef = Object.assign({}, k.acc); proef[groep.plek] = emoji;
+        raster.appendChild(peKaart(basis ? poppetjeSvg(basis, proef) : emoji, (ACCESSOIRES[emoji] && ACCESSOIRES[emoji].naam) || '', k.acc[groep.plek] === emoji, () => { k.acc[groep.plek] = emoji; opnieuw(); }));
+      });
+    }
+  }
 }
 
 function zetGroepFoto(dier, accessoires) {
@@ -6158,7 +6190,7 @@ function zetGroepFoto(dier, accessoires) {
   const upd = {};
   upd['groepen/' + id + '/dier'] = dier && geldigDier(dier) ? dier : null;
   upd['groepen/' + id + '/accessoires'] = (dier && Object.keys(acc).length) ? acc : null;
-  db.ref().update(upd).catch(err => {
+  db.ref().update(upd).then(() => { fout.textContent = dier ? '✓ Groepsfoto opgeslagen' : '✓ Groepsfoto weggehaald'; }).catch(err => {
     const code = err && err.code ? ' (' + err.code + ')' : '';
     fout.textContent = 'Foto aanpassen is mislukt' + code + '. Controleer of de nieuwste Firebase-regels zijn gepubliceerd.';
   });
@@ -6237,12 +6269,12 @@ document.getElementById('btn-groep-sluiten').addEventListener('click', () => {
   document.getElementById('groep-overlay').classList.remove('actief');
 });
 document.getElementById('btn-chat-groep').addEventListener('click', () => { if (huidigGroepId) openGroepBeheer(huidigGroepId); });
-document.getElementById('btn-groep-foto-eigen').addEventListener('click', () => {
-  const dier = huidigProfielDier();
-  if (!geldigDier(dier)) { document.getElementById('groep-foto-fout').textContent = 'Je hebt zelf nog geen poppetje.'; return; }
-  zetGroepFoto(dier, huidigeProfielAccessoires());
+document.getElementById('btn-groep-foto-opslaan').addEventListener('click', () => {
+  const k = groepFotoConcept;
+  if (!k || !k.dier) { document.getElementById('groep-foto-fout').textContent = 'Kies eerst een dier.'; return; }
+  zetGroepFoto(k.dier, k.acc);
 });
-document.getElementById('btn-groep-foto-weg').addEventListener('click', () => zetGroepFoto(null, {}));
+document.getElementById('btn-groep-foto-weg').addEventListener('click', () => { groepFotoConcept = { groepId: beheerdeGroepId, dier: '', acc: {} }; zetGroepFoto(null, {}); });
 document.getElementById('btn-groep-hernoem').addEventListener('click', hernoemGroep);
 document.getElementById('input-groep-hernoem').addEventListener('keydown', e => { if (e.key === 'Enter') hernoemGroep(); });
 document.getElementById('btn-groep-verlaten').addEventListener('click', () => verlaatGroep(beheerdeGroepId));
