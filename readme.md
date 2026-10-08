@@ -135,9 +135,7 @@ Bij het maken van een vraag kies je bij "Aantal antwoorden" voor 2 (bijv. waar/n
 
 Bij elk antwoord staat een vinkje. Je kunt meer dan 1 antwoord als goed aanvinken — een vraag kan dus 1 of meerdere juiste antwoorden hebben.
 
-Spelers zien bij zo'n vraag geen directe klik-en-klaar meer: ze vinken alle antwoorden aan die ze goed vinden en klikken daarna op "Antwoord versturen". Pas na dat klikken staat hun antwoord vast.
-
-Een vraag telt alleen als goed beantwoord als een speler precies alle juiste antwoorden heeft aangevinkt (niet meer en niet minder).
+Spelers tikken gewoon op één antwoord; dat is meteen hun antwoord. Is dat één van de antwoorden die jij als goed hebt aangevinkt, dan hebben ze de vraag goed. Aan het eind staan alle goede antwoorden in beeld.
 
 Poppetje kiezen: dieren en accessoires (aangepast: nu met een winkel)
 
@@ -166,7 +164,7 @@ Puntentelling en scorebord (nieuw)
 
 Bij het maken (of aanpassen) van een quiz kies je per vraag bij "Punten voor een goed antwoord" hoeveel punten die vraag oplevert (standaard 1000, zelf aan te passen in stapjes van 50). Tijdens live hosten ziet zowel de quizmaster als de spelers boven de vraag hoeveel punten hij waard is. Oudere vragen zonder deze instelling tellen gewoon als 1000 punten, zoals voorheen.
 
-Staat het na een vraag gelijk in punten, dan wint degene die (over alle beantwoorde vragen samen) het snelst klikte — dus hoe eerder je op "Antwoord versturen" klikt bij een goed antwoord, hoe beter je rangschikt bij een gelijke stand.
+Staat het na een vraag gelijk in punten, dan wint degene die (over alle beantwoorde vragen samen) het snelst klikte — dus hoe eerder je een goed antwoord aantikt, hoe beter je rangschikt bij een gelijke stand.
 
 Het scorebord toont iedereen gerangschikt van hoog naar laag, met plek, dier en naam; spelers zien hun eigen rij gemarkeerd.
 
@@ -266,7 +264,7 @@ Bij een gelijke eindstand op #1 krijgt nu maar één speler de winnaarsmunten (d
 
 Punten laten afnemen naarmate je langzamer antwoordt (in plaats van altijd vlak 1000 punten).
 
-Gedeeltelijke punten geven als een speler bij een vraag met meerdere goede antwoorden er een paar goed heeft, maar niet allemaal.
+(Gedeeltelijke punten zijn niet meer nodig: één goed antwoord is genoeg.)
 
 Nieuwe functie: eigen poppetjes en accessoires
 
