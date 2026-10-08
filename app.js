@@ -1059,7 +1059,7 @@ function openAntwoordGoed(vraag, tekst) {
 function isAntwoordGoed(vraag, antwoord) {
   if (!antwoord) return false;
   if (vraag.type === 'open') return openAntwoordGoed(vraag, antwoord.antwoordTekst);
-  return setsGelijk(antwoord.antwoordIndexen || [], vraag.goedAntwoorden);
+  return heeftGoedAntwoordGekozen(antwoord.antwoordIndexen, vraag.goedAntwoorden);
 }
 
 // ---------- Vraag-intro: eerst de vraag groot met een laadteken, daarna pas de antwoorden ----------
@@ -1105,6 +1105,13 @@ function leesPuntenWaarde(blokEl) {
 function zetPuntenWaarde(blokEl, getal) {
   const veilig = Math.max(0, getal);
   blokEl.querySelector('.veld-punten').value = formatPunten(veilig);
+}
+
+// Is het gekozen antwoord er één van de goede? Meerdere antwoorden mogen goed zijn;
+// een speler heeft de vraag goed als hij er één van kiest.
+function heeftGoedAntwoordGekozen(gekozen, goede) {
+  if (!gekozen || !goede) return false;
+  return gekozen.some(g => goede.includes(g));
 }
 
 // Vergelijkt twee lijsten met antwoordnummers zonder rekening te houden met volgorde.
@@ -1836,8 +1843,7 @@ if (inputZoekSpeelbareQuizzenEl) {
 //
 // Een vraag kan 2 of 4 antwoorden hebben en 1 of meerdere daarvan kunnen goed
 // zijn (zie goedAntwoorden in normaliseerVraag hierboven). Een speler moet
-// precies de goede antwoorden aanvinken (niet meer, niet minder) om de vraag
-// goed te hebben.
+// één van de goede antwoorden kiezen om de vraag goed te hebben.
 //
 // Puntentelling: een goed antwoord levert 1000 punten op. Bij een gelijke
 // stand wint degene die (opgeteld over de vragen) het snelst klikte.
@@ -3661,12 +3667,6 @@ function renderSessieVoorSpeler(sessie) {
       document.getElementById('speler-vraag-weergave').textContent = vraag.vraag;
       toonVraagFoto('speler-vraag-foto', vraag.afbeelding);
 
-      // Bij precies 1 goed antwoord werkt het net als vroeger: 1 tik = meteen
-      // versturen. Alleen als er meerdere antwoorden goed kunnen zijn, moet de
-      // speler eerst aanvinken en daarna bewust op "Antwoord versturen" klikken
-      // (anders is het niet uit te drukken welke combinatie bedoeld is).
-      const meerdereGoedMogelijk = vraag.goedAntwoorden.length > 1;
-
       const verstuurKnop = document.getElementById('btn-speler-antwoord-versturen');
       const instructieEl = document.getElementById('speler-vraag-instructie');
       const antwoordenEl = document.getElementById('speler-antwoorden-weergave');
@@ -3699,37 +3699,6 @@ function renderSessieVoorSpeler(sessie) {
           const tekst = invoer.value.trim();
           if (!tekst) return;
           verstuurAntwoord(undefined, tekst);
-        };
-      } else if (meerdereGoedMogelijk) {
-        instructieEl.textContent = 'Tik op alle antwoorden die je goed denkt dat zijn en klik daarna op "Antwoord versturen".';
-        verstuurKnop.style.display = '';
-        verstuurKnop.disabled = spelerGeselecteerdeAntwoorden.length === 0;
-
-        vraag.antwoorden.forEach((tekst, index) => {
-          const antwoordIndex = index + 1;
-          const optie = document.createElement('div');
-          optie.className = 'antwoord-optie' + (spelerGeselecteerdeAntwoorden.includes(antwoordIndex) ? ' geselecteerd' : '');
-          optie.textContent = tekst;
-
-          optie.addEventListener('click', () => {
-            if (spelerHeeftGeantwoord) return;
-
-            const positie = spelerGeselecteerdeAntwoorden.indexOf(antwoordIndex);
-            if (positie === -1) {
-              spelerGeselecteerdeAntwoorden.push(antwoordIndex);
-            } else {
-              spelerGeselecteerdeAntwoorden.splice(positie, 1);
-            }
-            optie.classList.toggle('geselecteerd');
-            verstuurKnop.disabled = spelerGeselecteerdeAntwoorden.length === 0;
-          });
-
-          antwoordenEl.appendChild(optie);
-        });
-
-        verstuurKnop.onclick = () => {
-          if (spelerGeselecteerdeAntwoorden.length === 0) return;
-          verstuurAntwoord(spelerGeselecteerdeAntwoorden.slice());
         };
       } else {
         instructieEl.textContent = 'Tik op het antwoord dat je goed denkt dat is.';
@@ -3943,7 +3912,6 @@ function toonSoloVraagNaIntro() {
   document.getElementById('solo-vraag-weergave').textContent = vraag.vraag;
   toonVraagFoto('solo-vraag-foto', vraag.afbeelding);
 
-  const meerdereGoedMogelijk = vraag.goedAntwoorden.length > 1;
   const verstuurKnop = document.getElementById('btn-solo-antwoord-versturen');
   const instructieEl = document.getElementById('solo-vraag-instructie');
   const antwoordenEl = document.getElementById('solo-antwoorden-weergave');
@@ -3964,34 +3932,6 @@ function toonSoloVraagNaIntro() {
       verstuurSoloAntwoord(undefined, tekst);
     };
     setTimeout(() => invoer.focus(), 80);
-  } else if (meerdereGoedMogelijk) {
-    instructieEl.textContent = 'Tik op alle antwoorden die je goed denkt dat zijn en klik daarna op "Antwoord versturen".';
-    verstuurKnop.style.display = '';
-    verstuurKnop.disabled = true;
-
-    vraag.antwoorden.forEach((tekst, index) => {
-      const antwoordIndex = index + 1;
-      const optie = document.createElement('div');
-      optie.className = 'antwoord-optie';
-      optie.textContent = tekst;
-      optie.addEventListener('click', () => {
-        if (soloHeeftGeantwoord) return;
-        const positie = soloGeselecteerdeAntwoorden.indexOf(antwoordIndex);
-        if (positie === -1) {
-          soloGeselecteerdeAntwoorden.push(antwoordIndex);
-        } else {
-          soloGeselecteerdeAntwoorden.splice(positie, 1);
-        }
-        optie.classList.toggle('geselecteerd');
-        verstuurKnop.disabled = soloGeselecteerdeAntwoorden.length === 0;
-      });
-      antwoordenEl.appendChild(optie);
-    });
-
-    verstuurKnop.onclick = () => {
-      if (soloGeselecteerdeAntwoorden.length === 0) return;
-      verstuurSoloAntwoord(soloGeselecteerdeAntwoorden.slice());
-    };
   } else {
     instructieEl.textContent = 'Tik op het antwoord dat je goed denkt dat is.';
     verstuurKnop.style.display = 'none';
@@ -4016,7 +3956,7 @@ function verstuurSoloAntwoord(indexen, tekst) {
   soloHeeftGeantwoord = true;
 
   const vraag = soloVragen[soloIndex];
-  const goed = vraag.type === 'open' ? openAntwoordGoed(vraag, tekst) : setsGelijk(indexen, vraag.goedAntwoorden);
+  const goed = vraag.type === 'open' ? openAntwoordGoed(vraag, tekst) : heeftGoedAntwoordGekozen(indexen, vraag.goedAntwoorden);
   if (goed) soloAantalGoed++;
 
   const resultaatEl = document.getElementById('solo-resultaat-tekst');
