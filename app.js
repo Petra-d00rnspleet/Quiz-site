@@ -1037,11 +1037,50 @@ function normaliseerVraag(vraag) {
   const punten = (typeof vraag.punten === 'number' && vraag.punten >= 0) ? vraag.punten : 1000;
   return {
     vraag: vraag.vraag,
+    type: vraag.type === 'open' ? 'open' : 'keuze',
     antwoorden: vraag.antwoorden || [],
     goedAntwoorden: goedAntwoorden,
     afbeelding: vraag.afbeelding || '',
     punten: punten
   };
+}
+
+// ---------- Open vragen (spelers typen het antwoord) ----------
+// Bij een open vraag zijn `antwoorden` de goede schrijfwijzen (de eerste is het hoofdantwoord).
+// Hoofdletters en extra spaties maken niet uit; verder moet het precies kloppen.
+function normaliseerOpenTekst(t) {
+  return String(t == null ? '' : t).normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+function openAntwoordGoed(vraag, tekst) {
+  const n = normaliseerOpenTekst(tekst);
+  return !!n && (vraag.antwoorden || []).some(g => normaliseerOpenTekst(g) === n);
+}
+// Was dit antwoord (van een speler) goed? Werkt voor meerkeuze en open vragen.
+function isAntwoordGoed(vraag, antwoord) {
+  if (!antwoord) return false;
+  if (vraag.type === 'open') return openAntwoordGoed(vraag, antwoord.antwoordTekst);
+  return setsGelijk(antwoord.antwoordIndexen || [], vraag.goedAntwoorden);
+}
+
+// ---------- Vraag-intro: eerst de vraag groot met een laadteken, daarna pas de antwoorden ----------
+// Elk apparaat telt vanaf het moment dat het de vraag voor het eerst ziet (zo maakt een
+// klok die niet gelijk loopt niets uit). Lange vragen krijgen iets meer leestijd.
+const introEersteKeer = {};
+function introDuurVoor(vraag) {
+  const lengte = String((vraag && vraag.vraag) || '').length;
+  return Math.min(8000, Math.max(3000, 2500 + lengte * 55));
+}
+function introEindeVoor(sleutel, vraag) {
+  if (!introEersteKeer[sleutel]) introEersteKeer[sleutel] = Date.now();
+  return introEersteKeer[sleutel] + introDuurVoor(vraag);
+}
+function introRestMs(sleutel, vraag) {
+  return Math.max(0, introEindeVoor(sleutel, vraag) - Date.now());
+}
+function vulIntroScherm(prefix, vraag, voortgangTekst) {
+  document.getElementById(prefix + '-intro-voortgang').textContent = voortgangTekst;
+  document.getElementById(prefix + '-intro-vraag').textContent = vraag.vraag;
+  toonVraagFoto(prefix + '-intro-foto', vraag.afbeelding);
 }
 
 // Zet een getal om naar een leesbare tekst met duizendtal-punten (Nederlandse notatie),
@@ -1151,7 +1190,13 @@ function voegVraagBlokToe(vraagData) {
 
   if (vraagData) {
     const genormaliseerd = normaliseerVraag(vraagData);
-    const aantalAntwoorden = genormaliseerd.antwoorden.length === 2 ? 2 : 4;
+    const isOpen = genormaliseerd.type === 'open';
+    const aantalAntwoorden = (!isOpen && genormaliseerd.antwoorden.length === 2) ? 2 : 4;
+    blokEl.querySelector('.veld-soort').value = isOpen ? 'open' : 'keuze';
+    if (isOpen) {
+      blokEl.querySelector('.veld-open-antwoord').value = genormaliseerd.antwoorden[0] || '';
+      blokEl.querySelector('.veld-open-extra').value = genormaliseerd.antwoorden.slice(1).join('; ');
+    }
 
     blokEl.querySelector('.veld-vraag').value = genormaliseerd.vraag;
     blokEl.querySelector('.veld-aantal-antwoorden').value = String(aantalAntwoorden);
@@ -1160,10 +1205,10 @@ function voegVraagBlokToe(vraagData) {
     const antwoordVelden = blokEl.querySelectorAll('.veld-antwoord');
     const goedVinkjes = blokEl.querySelectorAll('.veld-goed-vinkje');
     antwoordVelden.forEach((veld, i) => {
-      veld.value = genormaliseerd.antwoorden[i] || '';
+      veld.value = isOpen ? '' : (genormaliseerd.antwoorden[i] || '');
     });
     goedVinkjes.forEach((vinkje, i) => {
-      vinkje.checked = genormaliseerd.goedAntwoorden.includes(i + 1);
+      vinkje.checked = isOpen ? false : genormaliseerd.goedAntwoorden.includes(i + 1);
     });
 
     werkAantalAntwoordenZichtbaarheidBij(blokEl, aantalAntwoorden);
@@ -1217,6 +1262,16 @@ function voegVraagBlokToe(vraagData) {
   blokEl.querySelector('.veld-aantal-antwoorden').addEventListener('change', (e) => {
     werkAantalAntwoordenZichtbaarheidBij(blokEl, parseInt(e.target.value, 10));
   });
+
+  // Soort vraag: meerkeuze of open (typen)
+  const soortEl = blokEl.querySelector('.veld-soort');
+  const werkSoortBij = () => {
+    const open = soortEl.value === 'open';
+    blokEl.querySelector('.open-blok').hidden = !open;
+    blokEl.querySelector('.keuze-blok').hidden = open;
+  };
+  soortEl.addEventListener('change', werkSoortBij);
+  werkSoortBij();
 
   blokEl.querySelector('.btn-verwijder-vraag').addEventListener('click', () => {
     const aantalBlokken = vragenContainer.querySelectorAll('.vraag-blok').length;
@@ -1337,6 +1392,18 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
 
   for (const blok of blokken) {
     const vraagTekst = blok.querySelector('.veld-vraag').value.trim();
+    if (blok.querySelector('.veld-soort').value === 'open') {
+      const hoofd = blok.querySelector('.veld-open-antwoord').value.trim();
+      const extra = blok.querySelector('.veld-open-extra').value.split(';').map(t => t.trim()).filter(Boolean);
+      if (!vraagTekst || !hoofd) {
+        foutmelding.textContent = 'Vul bij elke open vraag de vraagtekst en het goede antwoord in.';
+        return;
+      }
+      const openData = { vraag: vraagTekst, type: 'open', antwoorden: [hoofd].concat(extra), punten: leesPuntenWaarde(blok) };
+      if (blok._afbeelding) openData.afbeelding = blok._afbeelding;
+      vragen.push(openData);
+      continue;
+    }
     const aantalAntwoorden = parseInt(blok.querySelector('.veld-aantal-antwoorden').value, 10);
     const antwoordVelden = Array.from(blok.querySelectorAll('.veld-antwoord')).slice(0, aantalAntwoorden);
     const antwoorden = antwoordVelden.map(veld => veld.value.trim());
@@ -3002,12 +3069,13 @@ function toonVraagFoto(imgId, url) {
 // Zet het/de goede antwoord(en) in het groot op het scherm.
 // prefix is 'host' of 'speler' (bepaalt welke elementen gevuld worden).
 function renderGroteAntwoorden(prefix, vraag) {
+  const nummers = vraag.type === 'open' ? vraag.antwoorden.map((_, i) => i + 1) : vraag.goedAntwoorden;
   document.getElementById(prefix + '-antwoord-label').textContent =
-    vraag.goedAntwoorden.length > 1 ? 'De goede antwoorden' : 'Het goede antwoord';
+    nummers.length > 1 ? 'De goede antwoorden' : 'Het goede antwoord';
 
   const containerEl = document.getElementById(prefix + '-antwoord-groot');
   containerEl.innerHTML = '';
-  vraag.goedAntwoorden.forEach(nummer => {
+  nummers.forEach(nummer => {
     const optie = document.createElement('div');
     optie.className = 'antwoord-optie goed antwoord-groot';
     optie.textContent = vraag.antwoorden[nummer - 1];
@@ -3167,8 +3235,10 @@ function startHostTimerAlsNodig(sessie) {
   hostTimerVoorVraagGestartOp = gestartOp;
   document.getElementById('host-vraag-timer').hidden = false;
 
+  const timerVraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
+  const startMs = timerVraag ? introEindeVoor('host/' + huidigeSessieCode + '/' + sessie.vraagGestartOp + '/' + sessie.huidigeVraagIndex, timerVraag) : gestartOp;
   const tick = () => {
-    const verstrekenMs = Date.now() - gestartOp;
+    const verstrekenMs = Date.now() - startMs;
     const secondenOver = Math.max(0, Math.ceil((huidigeQuizTijdslimiet * 1000 - verstrekenMs) / 1000));
     werkHostTimerWeergaveBij(secondenOver);
     if (secondenOver <= 0) {
@@ -3181,7 +3251,13 @@ function startHostTimerAlsNodig(sessie) {
   hostTimerInterval = setInterval(tick, 250);
 }
 
+let hostIntroTimer = null;
+let laatsteSessieHost = null;
+let spelerIntroTimer = null;
+let laatsteSessieSpeler = null;
+
 function renderSessieVoorHost(sessie) {
+  laatsteSessieHost = sessie;
   huidigeVraagIndexHost = sessie.huidigeVraagIndex;
   const spelers = sessie.spelers || {};
   const aantalSpelers = Object.keys(spelers).length;
@@ -3233,6 +3309,21 @@ function renderSessieVoorHost(sessie) {
   if (sessie.status === 'vraag') {
     const vraag = huidigeQuizVragen[sessie.huidigeVraagIndex];
 
+    // Eerst even de vraag groot met een laadteken; de antwoorden en de wekker komen daarna.
+    const introSleutel = 'host/' + huidigeSessieCode + '/' + sessie.vraagGestartOp + '/' + sessie.huidigeVraagIndex;
+    const introRest = introRestMs(introSleutel, vraag);
+    if (introRest > 0) {
+      stopHostTimer();
+      vulIntroScherm('host', vraag, 'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length);
+      toonScherm('scherm-host-intro');
+      if (hostIntroTimer) clearTimeout(hostIntroTimer);
+      hostIntroTimer = setTimeout(() => {
+        hostIntroTimer = null;
+        if (huidigeRol === 'host' && laatsteSessieHost && laatsteSessieHost.status === 'vraag') renderSessieVoorHost(laatsteSessieHost);
+      }, introRest + 30);
+      return;
+    }
+
     document.getElementById('host-voortgang-weergave').textContent =
       'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length +
       ' · ' + vraag.punten + (vraag.punten === 1 ? ' punt' : ' punten');
@@ -3241,12 +3332,19 @@ function renderSessieVoorHost(sessie) {
 
     const antwoordenEl = document.getElementById('host-antwoorden-weergave');
     antwoordenEl.innerHTML = '';
-    vraag.antwoorden.forEach(tekst => {
+    if (vraag.type === 'open') {
       const optie = document.createElement('div');
       optie.className = 'antwoord-optie';
-      optie.textContent = tekst;
+      optie.textContent = '✍️ De spelers typen hun antwoord';
       antwoordenEl.appendChild(optie);
-    });
+    } else {
+      vraag.antwoorden.forEach(tekst => {
+        const optie = document.createElement('div');
+        optie.className = 'antwoord-optie';
+        optie.textContent = tekst;
+        antwoordenEl.appendChild(optie);
+      });
+    }
 
     const antwoordenVoorVraag = (sessie.antwoorden && sessie.antwoorden[sessie.huidigeVraagIndex]) || {};
     const aantalGeantwoord = Object.keys(antwoordenVoorVraag).length;
@@ -3275,7 +3373,7 @@ function renderSessieVoorHost(sessie) {
     const gegeven = Object.entries(antwoordenVoorVraag).filter(([spelerId]) => spelers[spelerId]);
     const aantalGeantwoord = gegeven.length;
     const aantalGoed = gegeven
-      .filter(([, a]) => setsGelijk(a.antwoordIndexen || [], vraag.goedAntwoorden)).length;
+      .filter(([, a]) => isAntwoordGoed(vraag, a)).length;
     const aantalFout = aantalGeantwoord - aantalGoed;
     const aantalGeen = Math.max(0, aantalSpelers - aantalGeantwoord);
 
@@ -3364,8 +3462,7 @@ function berekenScoresEnToonResultaat() {
     Object.keys(antwoordenVoorVraag).forEach(spelerId => {
       if (!spelers[spelerId]) return; // speler is inmiddels weg
       const antwoord = antwoordenVoorVraag[spelerId];
-      const gekozenIndexen = antwoord.antwoordIndexen || [];
-      if (setsGelijk(gekozenIndexen, vraag.goedAntwoorden)) {
+      if (isAntwoordGoed(vraag, antwoord)) {
         const huidigeScore = spelers[spelerId].score || 0;
         const huidigeTijd = spelers[spelerId].totaleReactietijd || 0;
         updates['spelers/' + spelerId + '/score'] = huidigeScore + (typeof vraag.punten === 'number' ? vraag.punten : 1000);
@@ -3509,6 +3606,7 @@ document.getElementById('btn-speler-host-weg-terug').addEventListener('click', (
 });
 
 function renderSessieVoorSpeler(sessie) {
+  laatsteSessieSpeler = sessie;
   const spelers = sessie.spelers || {};
   huidigeStatusSpeler = sessie.status;
 
@@ -3528,7 +3626,7 @@ function renderSessieVoorSpeler(sessie) {
   if (sessie.status === 'vraag') {
     if (sessie.huidigeVraagIndex !== laatstGetoondeVraagIndexSpeler) {
       laatstGetoondeVraagIndexSpeler = sessie.huidigeVraagIndex;
-      vraagGetoondOpSpeler = Date.now();
+      vraagGetoondOpSpeler = 0;   // wordt gezet zodra de intro klaar is en de antwoorden verschijnen
       spelerHeeftGeantwoord = false;
       spelerGeselecteerdeAntwoorden = [];
     }
@@ -3542,6 +3640,21 @@ function renderSessieVoorSpeler(sessie) {
       // speler pas als de quizmaster doorklikt (status 'resultaat').
       toonScherm('scherm-speler-antwoord-verzonden');
     } else {
+      // Eerst de vraag groot met een laadteken; daarna pas de antwoorden (of het typvak).
+      const introSleutel = 'speler/' + huidigeSessieCode + '/' + sessie.vraagGestartOp + '/' + sessie.huidigeVraagIndex;
+      const introRest = introRestMs(introSleutel, vraag);
+      if (introRest > 0) {
+        vulIntroScherm('speler', vraag, 'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length);
+        toonScherm('scherm-speler-intro');
+        if (spelerIntroTimer) clearTimeout(spelerIntroTimer);
+        spelerIntroTimer = setTimeout(() => {
+          spelerIntroTimer = null;
+          if (huidigeRol === 'speler' && laatsteSessieSpeler && laatsteSessieSpeler.status === 'vraag') renderSessieVoorSpeler(laatsteSessieSpeler);
+        }, introRest + 30);
+        return;
+      }
+      if (!vraagGetoondOpSpeler) vraagGetoondOpSpeler = Date.now();
+
       document.getElementById('speler-voortgang-weergave').textContent =
         'Vraag ' + (sessie.huidigeVraagIndex + 1) + ' van ' + huidigeQuizVragen.length +
         ' · ' + vraag.punten + (vraag.punten === 1 ? ' punt' : ' punten');
@@ -3559,15 +3672,35 @@ function renderSessieVoorSpeler(sessie) {
       const antwoordenEl = document.getElementById('speler-antwoorden-weergave');
       antwoordenEl.innerHTML = '';
 
-      const verstuurAntwoord = (indexen) => {
+      const verstuurAntwoord = (indexen, tekst) => {
         if (spelerHeeftGeantwoord || huidigeStatusSpeler !== 'vraag') return;
         spelerHeeftGeantwoord = true;
         const reactietijdMs = Date.now() - vraagGetoondOpSpeler;
         db.ref('sessies/' + huidigeSessieCode + '/antwoorden/' + sessie.huidigeVraagIndex + '/' + huidigeSpelerId)
-          .set({ antwoordIndexen: indexen, reactietijdMs: reactietijdMs });
+          .set(tekst !== undefined ? { antwoordTekst: tekst, reactietijdMs: reactietijdMs } : { antwoordIndexen: indexen, reactietijdMs: reactietijdMs });
       };
 
-      if (meerdereGoedMogelijk) {
+      const openBlokEl = document.getElementById('speler-open-blok');
+      openBlokEl.hidden = vraag.type !== 'open';
+
+      if (vraag.type === 'open') {
+        instructieEl.textContent = 'Typ het goede antwoord. Let op: het moet goed gespeld zijn!';
+        verstuurKnop.style.display = '';
+        const invoer = document.getElementById('speler-open-invoer');
+        if (invoer.dataset.vraag !== String(sessie.huidigeVraagIndex)) {
+          invoer.value = '';
+          invoer.dataset.vraag = String(sessie.huidigeVraagIndex);
+          setTimeout(() => invoer.focus(), 80);
+        }
+        verstuurKnop.disabled = !invoer.value.trim();
+        invoer.oninput = () => { verstuurKnop.disabled = !invoer.value.trim(); };
+        invoer.onkeydown = (e) => { if (e.key === 'Enter') verstuurKnop.click(); };
+        verstuurKnop.onclick = () => {
+          const tekst = invoer.value.trim();
+          if (!tekst) return;
+          verstuurAntwoord(undefined, tekst);
+        };
+      } else if (meerdereGoedMogelijk) {
         instructieEl.textContent = 'Tik op alle antwoorden die je goed denkt dat zijn en klik daarna op "Antwoord versturen".';
         verstuurKnop.style.display = '';
         verstuurKnop.disabled = spelerGeselecteerdeAntwoorden.length === 0;
@@ -3630,7 +3763,7 @@ function renderSessieVoorSpeler(sessie) {
     if (!eigenAntwoord) {
       resultaatEl.className = 'groot-resultaat fout';
       resultaatEl.textContent = 'Geen antwoord ✗';
-    } else if (setsGelijk(eigenAntwoord.antwoordIndexen || [], vraag.goedAntwoorden)) {
+    } else if (isAntwoordGoed(vraag, eigenAntwoord)) {
       resultaatEl.className = 'groot-resultaat goed';
       resultaatEl.textContent = 'Goed! ✔';
     } else {
@@ -3786,10 +3919,24 @@ function startSoloVanQuiz(code, terugScherm) {
   });
 }
 
+let soloIntroToken = 0;
+
 function toonSoloVraag() {
   const vraag = soloVragen[soloIndex];
   soloHeeftGeantwoord = false;
   soloGeselecteerdeAntwoorden = [];
+  // Eerst de vraag groot met een laadteken, daarna pas de antwoorden.
+  const token = ++soloIntroToken;
+  vulIntroScherm('solo', vraag, 'Vraag ' + (soloIndex + 1) + ' van ' + soloVragen.length);
+  toonScherm('scherm-solo-intro');
+  setTimeout(() => {
+    if (token !== soloIntroToken || !document.getElementById('scherm-solo-intro').classList.contains('actief')) return;
+    toonSoloVraagNaIntro();
+  }, introDuurVoor(vraag));
+}
+
+function toonSoloVraagNaIntro() {
+  const vraag = soloVragen[soloIndex];
 
   document.getElementById('solo-voortgang').textContent =
     'Vraag ' + (soloIndex + 1) + ' van ' + soloVragen.length;
@@ -3801,8 +3948,23 @@ function toonSoloVraag() {
   const instructieEl = document.getElementById('solo-vraag-instructie');
   const antwoordenEl = document.getElementById('solo-antwoorden-weergave');
   antwoordenEl.innerHTML = '';
+  document.getElementById('solo-open-blok').hidden = vraag.type !== 'open';
 
-  if (meerdereGoedMogelijk) {
+  if (vraag.type === 'open') {
+    instructieEl.textContent = 'Typ het goede antwoord. Let op: het moet goed gespeld zijn!';
+    verstuurKnop.style.display = '';
+    const invoer = document.getElementById('solo-open-invoer');
+    invoer.value = '';
+    verstuurKnop.disabled = true;
+    invoer.oninput = () => { verstuurKnop.disabled = !invoer.value.trim(); };
+    invoer.onkeydown = (e) => { if (e.key === 'Enter') verstuurKnop.click(); };
+    verstuurKnop.onclick = () => {
+      const tekst = invoer.value.trim();
+      if (!tekst) return;
+      verstuurSoloAntwoord(undefined, tekst);
+    };
+    setTimeout(() => invoer.focus(), 80);
+  } else if (meerdereGoedMogelijk) {
     instructieEl.textContent = 'Tik op alle antwoorden die je goed denkt dat zijn en klik daarna op "Antwoord versturen".';
     verstuurKnop.style.display = '';
     verstuurKnop.disabled = true;
@@ -3849,12 +4011,12 @@ function toonSoloVraag() {
   toonScherm('scherm-solo-vraag');
 }
 
-function verstuurSoloAntwoord(indexen) {
+function verstuurSoloAntwoord(indexen, tekst) {
   if (soloHeeftGeantwoord) return;
   soloHeeftGeantwoord = true;
 
   const vraag = soloVragen[soloIndex];
-  const goed = setsGelijk(indexen, vraag.goedAntwoorden);
+  const goed = vraag.type === 'open' ? openAntwoordGoed(vraag, tekst) : setsGelijk(indexen, vraag.goedAntwoorden);
   if (goed) soloAantalGoed++;
 
   const resultaatEl = document.getElementById('solo-resultaat-tekst');
@@ -3914,6 +4076,7 @@ function toonSoloEinde() {
 }
 
 function verlaatSoloQuiz() {
+  soloIntroToken++;
   soloVragen = [];
   toonScherm('scherm-algemeen');
 }
