@@ -24,10 +24,10 @@
     })();
   </script>
   <title>Quiz Maker</title>
-  <link rel="stylesheet" href="style.css?v=20261007a">
-  <link rel="stylesheet" href="telefoon.css?v=20261007a">
-  <link rel="stylesheet" href="breed.css?v=20261007a">
-  <link rel="stylesheet" href="account.css?v=20261007a">
+  <link rel="stylesheet" href="style.css?v=20261008a">
+  <link rel="stylesheet" href="telefoon.css?v=20261008a">
+  <link rel="stylesheet" href="breed.css?v=20261008a">
+  <link rel="stylesheet" href="account.css?v=20261008a">
 </head>
 <body>
 
@@ -155,12 +155,39 @@
     </section>
 
     <!-- SCHERM: SPELER VRAAG -->
+    <!-- SCHERM: SPELER INTRO (de vraag groot, met laadteken, voordat de antwoorden komen) -->
+    <section id="scherm-speler-intro" class="scherm scherm-gecentreerd">
+      <p id="speler-intro-voortgang" class="voortgang"></p>
+      <h2 id="speler-intro-vraag" class="titel-regenboog intro-vraag"></h2>
+      <img id="speler-intro-foto" class="vraag-foto" alt="Foto bij de vraag" hidden>
+      <div class="laad-spinner-groot" role="status" aria-label="Even wachten, de vraag begint zo"></div>
+    </section>
+
+    <!-- SCHERM: HOST INTRO -->
+    <section id="scherm-host-intro" class="scherm scherm-gecentreerd">
+      <p id="host-intro-voortgang" class="voortgang"></p>
+      <h2 id="host-intro-vraag" class="titel-regenboog intro-vraag"></h2>
+      <img id="host-intro-foto" class="vraag-foto" alt="Foto bij de vraag" hidden>
+      <div class="laad-spinner-groot" role="status" aria-label="Even wachten, de vraag begint zo"></div>
+    </section>
+
+    <!-- SCHERM: SOLO INTRO -->
+    <section id="scherm-solo-intro" class="scherm scherm-gecentreerd">
+      <p id="solo-intro-voortgang" class="voortgang"></p>
+      <h2 id="solo-intro-vraag" class="titel-regenboog intro-vraag"></h2>
+      <img id="solo-intro-foto" class="vraag-foto" alt="Foto bij de vraag" hidden>
+      <div class="laad-spinner-groot" role="status" aria-label="Even wachten, de vraag begint zo"></div>
+    </section>
+
     <section id="scherm-speler-vraag" class="scherm">
       <p id="speler-voortgang-weergave" class="voortgang"></p>
       <h2 id="speler-vraag-weergave" class="titel-regenboog"></h2>
       <img id="speler-vraag-foto" class="vraag-foto" alt="Foto bij de vraag" hidden>
       <p id="speler-vraag-instructie" class="subtitel"></p>
       <div id="speler-antwoorden-weergave" class="antwoorden-lijst"></div>
+      <div id="speler-open-blok" class="open-antwoord-blok" hidden>
+        <input type="text" id="speler-open-invoer" placeholder="Typ hier je antwoord" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
       <button class="btn btn-primary" id="btn-speler-antwoord-versturen" disabled>Antwoord versturen</button>
     </section>
 
@@ -409,6 +436,9 @@
       <img id="solo-vraag-foto" class="vraag-foto" alt="Foto bij de vraag" hidden>
       <p id="solo-vraag-instructie" class="subtitel"></p>
       <div id="solo-antwoorden-weergave" class="antwoorden-lijst"></div>
+      <div id="solo-open-blok" class="open-antwoord-blok" hidden>
+        <input type="text" id="solo-open-invoer" placeholder="Typ hier je antwoord" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
       <button class="btn btn-primary" id="btn-solo-antwoord-versturen" disabled>Antwoord versturen</button>
     </section>
 
@@ -622,10 +652,10 @@
         <input type="file" class="veld-vraag-foto-bestand" accept="image/*" style="display:none;">
       </div>
 
-      <label>Aantal antwoorden</label>
-      <select class="veld-aantal-antwoorden">
-        <option value="4">4 antwoorden</option>
-        <option value="2">2 antwoorden (bijv. waar/niet waar)</option>
+      <label>Soort vraag</label>
+      <select class="veld-soort">
+        <option value="keuze">Meerkeuzevraag (spelers kiezen een antwoord)</option>
+        <option value="open">Open vraag (spelers typen het antwoord)</option>
       </select>
 
       <label>Punten voor een goed antwoord</label>
@@ -634,6 +664,21 @@
         <input type="text" inputmode="numeric" pattern="[0-9.]*" class="veld-punten" value="1.000">
         <button type="button" class="btn-punten-stap btn-punten-plus" aria-label="50 punten meer">+</button>
       </div>
+
+      <div class="open-blok" hidden>
+        <label>Goed antwoord (spelers moeten dit goed typen)</label>
+        <input type="text" class="veld-open-antwoord" placeholder="Het goede antwoord" autocomplete="off">
+        <label>Ook goed (andere schrijfwijzen, gescheiden door een ; — niet verplicht)</label>
+        <input type="text" class="veld-open-extra" placeholder="Bijv. Den Haag; 's-Gravenhage" autocomplete="off">
+        <p class="subtitel">Hoofdletters en spaties aan het begin of einde maken niet uit. De rest moet precies kloppen.</p>
+      </div>
+
+      <div class="keuze-blok">
+      <label>Aantal antwoorden</label>
+      <select class="veld-aantal-antwoorden">
+        <option value="4">4 antwoorden</option>
+        <option value="2">2 antwoorden (bijv. waar/niet waar)</option>
+      </select>
 
       <label>Antwoorden — vink aan welk antwoord (of welke antwoorden) goed is/zijn</label>
       <div class="antwoord-invoer-rij">
@@ -651,6 +696,7 @@
       <div class="antwoord-invoer-rij">
         <input type="checkbox" class="veld-goed-vinkje" title="Dit antwoord is goed">
         <input type="text" class="veld-antwoord" data-antwoord-index="4" placeholder="Antwoord 4">
+      </div>
       </div>
     </div>
   </template>
@@ -879,9 +925,9 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 
-  <script src="firebase-config.js?v=20261007a"></script>
-  <script src="poppetjes.js?v=20261007a"></script>
-  <script src="app.js?v=20261007a"></script>
-  <script src="telefoon.js?v=20261007a"></script>
+  <script src="firebase-config.js?v=20261008a"></script>
+  <script src="poppetjes.js?v=20261008a"></script>
+  <script src="app.js?v=20261008a"></script>
+  <script src="telefoon.js?v=20261008a"></script>
 </body>
 </html>
