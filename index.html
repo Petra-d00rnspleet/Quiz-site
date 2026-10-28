@@ -11,27 +11,31 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 
-<script>
+<title>Quiz Maker - Maak en speel online quizzen</title>
+<meta name="description" content="Welkom bij Quiz Maker! Ontdek online quizzen, beantwoord vragen en test je kennis.">
 
+<script>
     // Herkent telefoon, tablet of laptop en zet de juiste indeling aan.
     (function () {
       var mq = window.matchMedia('(max-width: 700px), (pointer: coarse) and (max-width: 900px)');
       var aanraak = window.matchMedia('(pointer: coarse)');
       function zet() {
         var h = document.documentElement.classList;
-        h.toggle('telefoon', mq.matches);       // telefoon: onderbalk + tegels
-        h.toggle('breed', !mq.matches);         // laptop en tablet: zijbalk + tegels
-        h.toggle('tablet', !mq.matches && aanraak.matches); // tablet: grotere knoppen
+        h.toggle('telefoon', mq.matches);
+        h.toggle('breed', !mq.matches);
+        h.toggle('tablet', !mq.matches && aanraak.matches);
       }
       zet();
-      if (mq.addEventListener) mq.addEventListener('change', zet); else if (mq.addListener) mq.addListener(zet);
+      if (mq.addEventListener) mq.addEventListener('change', zet);
+      else if (mq.addListener) mq.addListener(zet);
     })();
-  </script>
-  <title>Quiz Maker</title>
-  <link rel="stylesheet" href="style.css?v=20261008b">
-  <link rel="stylesheet" href="telefoon.css?v=20261008b">
-  <link rel="stylesheet" href="breed.css?v=20261008b">
-  <link rel="stylesheet" href="account.css?v=20261008b">
+</script>
+
+<link rel="stylesheet" href="style.css?v=20261008b">
+<link rel="stylesheet" href="telefoon.css?v=20261008b">
+<link rel="stylesheet" href="breed.css?v=20261008b">
+<link rel="stylesheet" href="account.css?v=20261008b">
+
 </head>
 <body>
 
