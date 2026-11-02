@@ -174,7 +174,10 @@ let socialeAuthPogingen = 0;
 const authKlaar = new Promise(klaar => {
   let gedaan = false;
   const stop = auth.onAuthStateChanged(() => { if (!gedaan) { gedaan = true; klaar(); } });
-  setTimeout(() => { if (!gedaan) { gedaan = true; klaar(); } }, 8000);
+  // Heb je een bewaarde login, dan wachten we langer: een trage verbinding mag nooit je echte account door een anoniem account vervangen.
+  let wacht = 8000;
+  try { if (localStorage.getItem(ACCOUNT_UID_SLEUTEL)) wacht = 30000; } catch (e) {}
+  setTimeout(() => { if (!gedaan) { gedaan = true; klaar(); } }, wacht);
   void stop;
 });
 function zorgVoorSocialeGebruiker() {
@@ -688,10 +691,12 @@ document.getElementById('tab-account-registreren').addEventListener('click', () 
 
 // ---- Inloggen ----
 // Zet profiel, bezit en munten van het account op dit apparaat.
-function zetLokaalAccountVanOnline(user) {
+function zetLokaalAccountVanOnline(user, getypteNaam) {
   return Promise.all([db.ref('gebruikers/' + user.uid).once('value'), haalAccountData(user.uid, true).catch(() => false)]).then(([snap]) => {
-    const p = snap.val();
-    if (!p || !p.gebruikersnaam) throw new Error('Dit account heeft geen profiel meer.');
+    const p0 = snap.val();
+    // Ontbreekt het profiel, dan gebruiken we de ingetypte naam; het profiel wordt na het herladen opnieuw aangemaakt.
+    const p = p0 && p0.gebruikersnaam ? p0 : { gebruikersnaam: getypteNaam || '' };
+    if (!p.gebruikersnaam) throw new Error('Dit account heeft geen profiel meer.');
     const data = {};
     ACCOUNT_DATA_SLEUTELS.forEach(k => { data[k] = localStorage.getItem(k); });
     wisLokaalAccount();
@@ -720,9 +725,15 @@ function probeerAccountInloggen() {
   fout.textContent = '';
   if (!naam || !ww) { fout.textContent = 'Vul je gebruikersnaam en wachtwoord in.'; return; }
   knop.disabled = true;
+  const zoekNaam = normaliseerGebruikersnaam(naam);
+  const frisAnoniem = () => auth.signOut().catch(() => {}).then(() => meldAnoniemAan());
   zorgVoorSocialeGebruiker().then(user => {
+    // Een oude speler-sessie (bijv. een verwijderd account) kan het opzoeken van de naam blokkeren: begin dan schoon.
+    if (user && isSpelerAccount(user)) return frisAnoniem();
+    return user;
+  }).then(user => {
     if (!user) throw new Error('Geen verbinding met de server. Probeer het zo nog eens.');
-    return naamUids(normaliseerGebruikersnaam(naam));
+    return naamUids(zoekNaam, true).catch(() => frisAnoniem().then(() => naamUids(zoekNaam, true)));
   }).then(uids => {
     if (!uids.length) throw { code: 'geen-account' };
     // Meerdere accounts met dezelfde naam? Het wachtwoord bepaalt welk account het is.
@@ -739,7 +750,7 @@ function probeerAccountInloggen() {
       });
     };
     return probeer(0);
-  }).then(user => zetLokaalAccountVanOnline(user).catch(err => auth.signOut().then(() => { throw err; })))
+  }).then(user => zetLokaalAccountVanOnline(user, naam).catch(err => auth.signOut().then(() => { throw err; })))
     .then(() => location.reload())
     .catch(err => {
       knop.disabled = false;
@@ -773,11 +784,12 @@ function naamVrijgeven(uid, zoeknaam) {
     db.ref('gebruikersnamen/' + k).transaction(v => (v === uid ? null : v)).catch(() => {})
   ]);
 }
-function naamUids(zoeknaam) {
+function naamUids(zoeknaam, strikt) {
   const k = naamSleutel(zoeknaam);
+  const bijFout = strikt ? (e => { throw e; }) : (() => null);
   return Promise.all([
-    db.ref('namen/' + k).once('value').catch(() => null),
-    db.ref('gebruikersnamen/' + k).once('value').catch(() => null)
+    db.ref('namen/' + k).once('value').catch(bijFout),
+    db.ref('gebruikersnamen/' + k).once('value').catch(bijFout)
   ]).then(([nieuw, oud]) => {
     const uids = [];
     if (nieuw && nieuw.val() && typeof nieuw.val() === 'object') Object.keys(nieuw.val()).forEach(u => uids.push(u));
@@ -4479,7 +4491,7 @@ function accountIsVerdwenen() {   // geeft een belofte: true = het account besta
   if (!lokaal || !naam || !u || u.uid !== lokaal || u.isAnonymous) return Promise.resolve(false);
   return u.reload().then(() => Promise.all([
     db.ref('gebruikers/' + lokaal + '/gebruikersnaam').once('value'),
-    naamUids(normaliseerGebruikersnaam(naam))
+    naamUids(normaliseerGebruikersnaam(naam), true)
   ])).then(res => !res[0].exists() && res[1].indexOf(lokaal) === -1).catch(err => {
     const c = err && err.code;
     return c === 'auth/user-not-found' || c === 'auth/user-token-expired' || c === 'auth/invalid-user-token' || c === 'auth/user-disabled';
