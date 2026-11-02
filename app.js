@@ -4123,7 +4123,7 @@ function werkProfielPoppetjeWeergaveBij() {
 
   const beheerLogo = sitebeheerActief && !bezoekUid();
   if (heeftProfiel() && (beheerLogo || geldigDier(huidigProfielDier()))) {
-    const svg = beheerLogo ? BEHEER_LOGO_HTML : profielPoppetjeHtml();
+    const svg = beheerLogo ? beheerPoppetjeHtml(huidigProfielDier(), huidigeProfielAccessoires()) : profielPoppetjeHtml();
     overlayPoppetjeEl.innerHTML = svg;
     badgePoppetjeEl.innerHTML = svg;
   } else {
@@ -4215,7 +4215,7 @@ function peNaLetter() {
 
 function bouwPoppetjeEditor() {
   // Bezoek je iemand als sitebeheer, dan kun je elk dier en accessoire voor die persoon kiezen.
-  const bezoekAlles = !!bezoekUid();
+  const bezoekAlles = !!bezoekUid() || !!sitebeheerActief;
   const bezitDieren = bezoekAlles ? DIEREN.slice() : haalBezitDieren();
   const bezitAcc = bezoekAlles ? [].concat.apply([], ACCESSOIRE_GROEPEN.map(g => g.items)) : haalBezitAccessoires();
   const dier = geldigDier(huidigProfielDier()) || bezitDieren[0] || DIEREN[0];
@@ -4320,7 +4320,7 @@ document.getElementById('btn-pe-klaar').addEventListener('click', sluitPoppetjeE
 document.getElementById('btn-profiel-badge').addEventListener('click', () => {
   if (heeftProfiel()) {
     werkProfielOverlayNaamBij();
-    document.getElementById('btn-profiel-poppetje-wijzigen').hidden = !!(sitebeheerActief && !bezoekUid());
+    document.getElementById('btn-profiel-poppetje-wijzigen').hidden = false;
     werkProfielPoppetjeWeergaveBij();
     sluitProfielPoppetjeKiezer();
     profielOverlayEl.classList.add('actief');
@@ -4927,7 +4927,7 @@ function zoekGebruikersOpNaam(zoekterm, forceer) {
         rij.className = 'vriend-zoekresultaat';
         const pop = document.createElement('div');
         pop.className = 'vriend-mini-poppetje';
-        if (isBeheerUid(r.uid)) pop.innerHTML = BEHEER_LOGO_HTML;
+        if (isBeheerUid(r.uid)) pop.innerHTML = beheerPoppetjeHtml(p.dier, p.accessoires);
         else if (geldigDier(p.dier)) pop.innerHTML = poppetjeSvg(p.dier, geldigeAccessoires(p.accessoires));
         const naam = document.createElement('strong');
         vulWeergaveNaam(naam, r.uid, p.gebruikersnaam);
@@ -5390,6 +5390,14 @@ function isAlleenEmoji(tekst) {
 const BEHEER_LOGO_HTML = '<svg class="beheer-logo-svg" viewBox="0 0 100 100" aria-hidden="true">' +
   '<circle cx="50" cy="50" r="46" fill="#16204a" stroke="#f0c04d" stroke-width="5"/>' +
   '<text x="50" y="50" dy=".35em" text-anchor="middle" font-size="54">⚙️</text></svg>';
+// Sitebeheer mag zelf een poppetje kiezen; je herkent hem aan het tandwiel-badge rechtsonder.
+function beheerPoppetjeHtml(dier, accessoires) {
+  if (!geldigDier(dier)) return BEHEER_LOGO_HTML;
+  return '<span class="beheer-pop">' + poppetjeSvg(dier, geldigeAccessoires(accessoires)) +
+    '<svg class="beheer-pop-badge" viewBox="0 0 100 100" aria-hidden="true">' +
+    '<circle cx="50" cy="50" r="46" fill="#16204a" stroke="#f0c04d" stroke-width="7"/>' +
+    '<text x="50" y="50" dy=".35em" text-anchor="middle" font-size="56">⚙️</text></svg></span>';
+}
 let beheerCache = {};          // uid -> { waarde: true/false, tijd }
 let beheerLaden = {};
 let geblokkeerdDoorMij = {};   // (alleen sitebeheer) uid -> true
@@ -5642,7 +5650,12 @@ let chatProfielCache = {};      // uid -> { dier, accessoires } (van een ander)
 let chatProfielLaden = {};
 
 function poppetjeHtmlVoorUid(uid) {
-  if (isBeheerUid(uid)) return BEHEER_LOGO_HTML;
+  if (isBeheerUid(uid)) {
+    const gb = profielFirebaseGebruiker();
+    if (gb && uid === gb.uid) return beheerPoppetjeHtml(huidigProfielDier(), huidigeProfielAccessoires());
+    const pb = chatProfielCache[uid];
+    return pb ? beheerPoppetjeHtml(pb.dier, pb.accessoires) : BEHEER_LOGO_HTML;
+  }
   const gebruiker = profielFirebaseGebruiker();
   if (gebruiker && uid === gebruiker.uid) return profielPoppetjeHtml();
   const p = chatProfielCache[uid];
@@ -7280,7 +7293,7 @@ function bouwBeheerProfielenHtml(zoek) {
   return lijst.map(p => {
     const isIk = p.uid === eigen || p.uid === accountUid();
     return '<div class="vriend-rij">' +
-      '<span class="vriend-mini-poppetje" aria-hidden="true">' + (p.beheer ? BEHEER_LOGO_HTML : (p.dier ? escapeHtml(p.dier) : '👤')) + '</span>' +
+      '<span class="vriend-mini-poppetje" aria-hidden="true">' + (p.beheer ? beheerPoppetjeHtml(p.dier, p.accessoires) : (p.dier ? escapeHtml(p.dier) : '👤')) + '</span>' +
       '<strong>' + escapeHtml(p.naam) + '</strong>' + (p.beheer ? '<span class="subtitel"> Sitebeheer</span>' : '') +
       '<div class="beheer-knoppen">' +
       '<button type="button" class="btn btn-secondary beheer-profiel-bezoek" data-uid="' + escapeHtml(p.uid) + '">👀 Bezoeken</button>' +
