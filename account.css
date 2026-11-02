@@ -180,3 +180,14 @@ html.breed body:not(:is(
 /* Alle titels en kaarten gecentreerd */
 .scherm > h1, .scherm > h2, .scherm > .subtitel { text-align: center; }
 .munten-weergave, .account-status { margin-left: auto; margin-right: auto; }
+
+/* De hele pagina-inhoud staat altijd precies in het midden van het scherm */
+html body .container { margin-left: auto !important; margin-right: auto !important; }
+.account-blok, .account-tabs, #account-keuze { width: 100%; max-width: 640px; margin-left: auto; margin-right: auto; }
+.account-blok > label { text-align: center; }
+.account-blok .foutmelding, #account-apparaat-melding, #login-foutmelding { text-align: center; }
+
+/* Vangnet: de pagina staat altijd in het midden (los van fouten eerder in style.css) */
+html, body { width: 100%; }
+body { display: flex; justify-content: center; align-items: stretch; }
+html body .container { flex: 0 1 auto; }
