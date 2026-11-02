@@ -191,3 +191,22 @@ html body .container { margin-left: auto !important; margin-right: auto !importa
 html, body { width: 100%; }
 body { display: flex; justify-content: center; align-items: stretch; }
 html body .container { flex: 0 1 auto; }
+
+
+/* ===================================================================
+   Het vrienden- en profielknopje aan de bovenkant is voorgoed weg.
+   Vrienden en Profiel staan in de zijbalk (laptop/tablet) of onderbalk (telefoon).
+   =================================================================== */
+.bovenbalk-knoppen, html .bovenbalk-knoppen, html.breed .bovenbalk-knoppen { display: none !important; }
+html.breed body:not(:is(
+  [data-scherm="scherm-algemeen"], [data-scherm="scherm-dierenverzameling"],
+  [data-scherm="scherm-speelbare-quizzen"], [data-scherm="scherm-meedoen"],
+  [data-scherm="scherm-quizmaken"], [data-scherm="scherm-winkel"], [data-scherm="scherm-wiel"]
+)) .container { padding-top: 36px; }
+
+/* Sitebeheer met een zelfgekozen poppetje: tandwiel-badge rechtsonder */
+.beheer-pop { position: relative; display: inline-block; line-height: 0; }
+.beheer-pop .beheer-pop-badge {
+  position: absolute !important; right: -6%; bottom: -6%;
+  width: 40% !important; height: 40% !important; max-width: none; filter: drop-shadow(0 1px 3px rgba(0,0,0,.6));
+}
