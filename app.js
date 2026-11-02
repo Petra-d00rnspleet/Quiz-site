@@ -4215,7 +4215,8 @@ function peNaLetter() {
 
 function bouwPoppetjeEditor() {
   // Bezoek je iemand als sitebeheer, dan kun je elk dier en accessoire voor die persoon kiezen.
-  const bezoekAlles = !!bezoekUid() || !!sitebeheerActief;
+  // Ook sitebeheer (of een bezoeker) kiest alleen uit wat die persoon zelf heeft.
+  const bezoekAlles = false;
   const bezitDieren = bezoekAlles ? DIEREN.slice() : haalBezitDieren();
   const bezitAcc = bezoekAlles ? [].concat.apply([], ACCESSOIRE_GROEPEN.map(g => g.items)) : haalBezitAccessoires();
   const dier = geldigDier(huidigProfielDier()) || bezitDieren[0] || DIEREN[0];
