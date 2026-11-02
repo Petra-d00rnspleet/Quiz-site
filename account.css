@@ -151,3 +151,32 @@ html.telefoon .vriend-rij .beheer-knoppen { width: 100%; margin-left: 0; }
 .beheer-tegel-poppetje svg { width: 64px; height: 64px; overflow: visible; }
 .beheer-tegel-naam { font-size: .82rem; font-weight: 700; color: #f2f2f5; line-height: 1.15; overflow-wrap: anywhere; }
 html.telefoon .beheer-raster { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* ===================================================================
+   ALLES IN HET MIDDEN: niets meer scheef naar rechts.
+   - De knoppen Vrienden + profiel staan bovenaan in het midden.
+   - De zijbalk links duwt de pagina niet meer scheef: rechts komt evenveel
+     ruimte, zodat de inhoud precies in het midden van het scherm staat.
+   =================================================================== */
+.bovenbalk-knoppen {
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%);
+  justify-content: center;
+}
+html.breed body:is(
+  [data-scherm="scherm-algemeen"], [data-scherm="scherm-dierenverzameling"],
+  [data-scherm="scherm-speelbare-quizzen"], [data-scherm="scherm-meedoen"],
+  [data-scherm="scherm-quizmaken"], [data-scherm="scherm-winkel"], [data-scherm="scherm-wiel"]
+):not(.chat-open) { padding-right: 92px; }
+
+/* Op schermen zonder zijbalk staat de balk bovenaan: geef de inhoud ruimte eronder */
+html.breed body:not(:is(
+  [data-scherm="scherm-algemeen"], [data-scherm="scherm-dierenverzameling"],
+  [data-scherm="scherm-speelbare-quizzen"], [data-scherm="scherm-meedoen"],
+  [data-scherm="scherm-quizmaken"], [data-scherm="scherm-winkel"], [data-scherm="scherm-wiel"]
+)) .container { padding-top: 84px; }
+
+/* Alle titels en kaarten gecentreerd */
+.scherm > h1, .scherm > h2, .scherm > .subtitel { text-align: center; }
+.munten-weergave, .account-status { margin-left: auto; margin-right: auto; }
