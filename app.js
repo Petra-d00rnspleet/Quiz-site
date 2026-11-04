@@ -1079,8 +1079,7 @@ function isAntwoordGoed(vraag, antwoord) {
 // klok die niet gelijk loopt niets uit). Lange vragen krijgen iets meer leestijd.
 const introEersteKeer = {};
 function introDuurVoor(vraag) {
-  const lengte = String((vraag && vraag.vraag) || '').length;
-  return Math.min(8000, Math.max(3000, 2500 + lengte * 55));
+  return 5000; // het laden van elke vraag duurt precies 5 seconden
 }
 function introEindeVoor(sleutel, vraag) {
   if (!introEersteKeer[sleutel]) introEersteKeer[sleutel] = Date.now();
