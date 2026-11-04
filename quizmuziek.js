@@ -8,7 +8,6 @@
 (function () {
   // Op deze schermen speelt de muziek (laden + antwoord invullen)
   var MUZIEK_SCHERMEN = [
-    'scherm-speler-intro', 'scherm-speler-vraag',   // meedoen met een quiz
     'scherm-solo-intro',   'scherm-solo-vraag',     // alleen spelen
     'scherm-host-intro',   'scherm-host-vraag'      // quizmaster (haal deze twee weg als de host geen muziek wil)
   ];
