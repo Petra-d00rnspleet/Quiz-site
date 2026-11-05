@@ -5499,7 +5499,8 @@ function werkChatBeheerBij() {
   }
   const geblokkeerd = chatGeblokkeerd();
   const bezoek = !!bezoekUid();   // sitebeheer leest mee: alleen kijken
-  melding.textContent = bezoek ? '👁 Je leest mee in het account van ' + (huidigeMakerNaam() || '') + '. Je kunt hier niets versturen.'
+  const kanNamensSturen = bezoek && !!sitebeheerActief;   // sitebeheer mag tekstberichten sturen, duidelijk gemarkeerd
+  melding.textContent = bezoek ? '👁 Je leest mee in het account van ' + (huidigeMakerNaam() || '') + '.' + (kanNamensSturen ? ' Berichten die je hier typt staan in de chat onder zijn/haar naam, met de melding "verstuurd door sitebeheer".' : ' Je kunt hier niets versturen.')
     : (geblokkeerd ? '🚫 Je bent geblokkeerd. Je kunt geen berichten meer sturen.' : '⚠️Dit is alleen voor belangrijke dingen⚠️');
   melding.classList.toggle('geblokkeerd', geblokkeerd || bezoek);
   melding.hidden = !(bezoek || geblokkeerd || chatMetBeheerder());
@@ -5536,11 +5537,15 @@ function werkChatBeheerBij() {
 
   // Geblokkeerd: het schrijfvak staat uit
   const input = document.getElementById('chat-input');
-  ['chat-input', 'btn-chat-sturen', 'btn-chat-poppetje', 'btn-chat-quiz', 'btn-chat-munten', 'btn-chat-emoji'].forEach(id => {
+  ['chat-input', 'btn-chat-sturen'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = geblokkeerd || (bezoek && !kanNamensSturen);
+  });
+  ['btn-chat-poppetje', 'btn-chat-quiz', 'btn-chat-munten', 'btn-chat-emoji'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.disabled = geblokkeerd || bezoek;
   });
-  if (input) input.placeholder = bezoek ? 'Alleen meelezen' : (geblokkeerd ? 'Je bent geblokkeerd' : 'Typ een bericht...');
+  if (input) input.placeholder = bezoek ? (kanNamensSturen ? 'Bericht als sitebeheer namens ' + (huidigeMakerNaam() || 'deze persoon') : 'Alleen meelezen') : (geblokkeerd ? 'Je bent geblokkeerd' : 'Typ een bericht...');
 }
 
 // ---------------- Waarschuwing van sitebeheer in de chat ----------------
@@ -5819,6 +5824,13 @@ function tekenChatBerichten() {
     p.append(maakChatBerichtKop(wie, key, b, eigen));
     if (b.antwoordOp && typeof b.antwoordOp === 'object') p.appendChild(maakAntwoordCitaat(b.antwoordOp));
     p.appendChild(tekst);
+    if (b.doorBeheer) {
+      const label = document.createElement('div');
+      label.className = 'chat-door-beheer';
+      label.style.cssText = 'margin-top:4px;font-size:.75rem;font-weight:700;opacity:.8;';
+      label.textContent = '🛠 Verstuurd door sitebeheer';
+      p.appendChild(label);
+    }
     lijst.appendChild(p);
   });
   if (bezoekUid()) lijst.querySelectorAll('button:not(.chat-waarschuwing-weg)').forEach(k => k.remove());   // alleen kijken
@@ -6619,20 +6631,29 @@ function betaalMuntenTerugAlsNodig(key, b, nu) {
   }).catch(() => { delete muntenTerugbetaaldLokaal[slot]; });
 }
 
+let sitebeheerNamensBevestigd = false;
 function verstuurChatBericht() {
   const gebruiker = profielFirebaseGebruiker();
   const input = document.getElementById('chat-input');
   const tekst = veiligeChatTekst(input.value);
   if (!tekst) return;
-  if (bezoekUid()) return;   // meelezen mag, namens iemand anders schrijven niet
+  // Bezoekmodus: alleen sitebeheer mag een tekstbericht sturen, en het staat altijd gemarkeerd als "verstuurd door sitebeheer"
+  const namens = !!bezoekUid();
+  const echt = auth.currentUser;
+  if (namens && (!sitebeheerActief || !echt)) return;
+  if (namens && !sitebeheerNamensBevestigd) {
+    if (!confirm('Dit bericht komt in de chat te staan onder de naam van ' + (huidigeMakerNaam() || 'deze persoon') + ', met de melding "verstuurd door sitebeheer".\n\nDoorgaan?')) return;
+    sitebeheerNamensBevestigd = true;
+  }
   if (chatGeblokkeerd()) { werkChatBeheerBij(); return; }
   const ref = chatBerichtenRef();
   if (!gebruiker || !ref) { alert(socialeVerbindingsMelding()); zorgVoorSocialeGebruiker(); return; }
-  const antwoord = chatAntwoord ? { key: chatAntwoord.key, uid: chatAntwoord.uid, naam: chatAntwoord.naam === 'Jij' ? huidigeMakerNaam() : chatAntwoord.naam, tekst: chatAntwoord.tekst } : null;
+  const antwoord = (!namens && chatAntwoord) ? { key: chatAntwoord.key, uid: chatAntwoord.uid, naam: chatAntwoord.naam === 'Jij' ? huidigeMakerNaam() : chatAntwoord.naam, tekst: chatAntwoord.tekst } : null;
   input.value = '';
   stopAntwoord();
   const nieuwBericht = { uid: gebruiker.uid, gebruikersnaam: huidigeMakerNaam(), tekst: tekst, tijd: firebase.database.ServerValue.TIMESTAMP };
   if (antwoord) nieuwBericht.antwoordOp = antwoord;
+  if (namens) nieuwBericht.doorBeheer = echt.uid;
   ref.push().set(nieuwBericht).catch(err => {
     input.value = tekst;
     if (antwoord) { chatAntwoord = antwoord; chatAntwoord.naam = antwoord.uid === gebruiker.uid ? 'Jij' : antwoord.naam; bouwAntwoordBalk(); document.getElementById('chat-antwoord-naam').textContent = chatAntwoord.naam; document.getElementById('chat-antwoord-tekst').textContent = antwoord.tekst; document.getElementById('chat-antwoord-balk').hidden = false; }
