@@ -2391,10 +2391,13 @@ function bouwBoxKaartHtml(boxId, box) {
       ? 'Binnenkort — te koop van ' + formatBoxDatum(box.vanafDatum) + ' tot ' + formatBoxDatum(box.totDatum)
       : 'Binnenkort — te koop vanaf ' + formatBoxDatum(box.vanafDatum);
     html += '<span class="box-status box-status-vanaf">⏳ ' + escapeHtml(teaserTekst) + '</span>';
-  } else if (box.totDatum) {
-    // Kist is nu gewoon te koop en heeft een tot-datum: laat spelers ook zien tot
-    // wanneer ze hem nog kunnen kopen.
-    html += '<span class="box-status box-status-vanaf">⏳ Nog te koop tot ' + escapeHtml(formatBoxDatum(box.totDatum)) + '</span>';
+  } else if (box.vanafDatum || box.totDatum) {
+    // Kist is nu te koop en heeft een vanaf- en/of tot-datum: spelers zien de hele looptijd.
+    let looptijd;
+    if (box.vanafDatum && box.totDatum) looptijd = '📅 Te koop van ' + formatBoxDatum(box.vanafDatum) + ' tot ' + formatBoxDatum(box.totDatum);
+    else if (box.vanafDatum) looptijd = '📅 Te koop sinds ' + formatBoxDatum(box.vanafDatum);
+    else looptijd = '⏳ Nog te koop tot ' + formatBoxDatum(box.totDatum);
+    html += '<span class="box-status box-status-vanaf">' + escapeHtml(looptijd) + '</span>';
   }
   html += '</div>' +
     '<div class="quiz-item-knoppen">' +
