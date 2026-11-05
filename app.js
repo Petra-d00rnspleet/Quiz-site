@@ -5612,7 +5612,7 @@ function werkChatBeheerBij() {
   ['btn-chat-poppetje', 'btn-chat-quiz', 'btn-chat-munten', 'btn-chat-emoji'].forEach(id => {
     const el = document.getElementById(id);
     // Poppetjes sturen mag sitebeheer ook namens de bezochte persoon
-    if (el) el.disabled = geblokkeerd || (bezoek && !(id === 'btn-chat-poppetje' && kanNamensSturen));
+    if (el) el.disabled = geblokkeerd || (bezoek && !(id !== 'btn-chat-emoji' && kanNamensSturen));
   });
   if (input) input.placeholder = bezoek ? (kanNamensSturen ? 'Bericht als sitebeheer namens ' + (huidigeMakerNaam() || 'deze persoon') : 'Alleen meelezen') : (geblokkeerd ? 'Je bent geblokkeerd' : 'Typ een bericht...');
 }
@@ -6626,17 +6626,18 @@ function verstuurChatMunten() {
   const gebruiker = profielFirebaseGebruiker();
   const ref = chatBerichtenRef();
   if (!gebruiker || !ref) { alert(socialeVerbindingsMelding()); return; }
-  if (bezoekUid()) return;
+  if (bezoekUid() && (!sitebeheerActief || !auth.currentUser)) return;
   if (chatGeblokkeerd()) { werkChatBeheerBij(); return; }
   if (!chatOntvangerGeldig()) { alert(ontvangerFoutTekst('munten')); return; }
   const invoer = document.getElementById('chat-munten-aantal');
   const bedrag = Math.floor(Number(invoer.value));
   if (!(bedrag >= 1) || bedrag > 100000) { alert('Vul een aantal munten in (minstens 1).'); return; }
   if (bedrag > haalMunten()) { alert('Je hebt maar ' + haalMunten() + ' munten.'); return; }
+  if (bezoekUid() && !confirm('Dit cadeau komt in de chat te staan onder de naam van ' + (huidigeMakerNaam() || 'deze persoon') + ', met de melding "verstuurd door sitebeheer". De munten gaan van het account van ' + (huidigeMakerNaam() || 'deze persoon') + ' af.\n\nDoorgaan?')) return;
   const knop = document.getElementById('btn-chat-munten-verzenden');
   knop.disabled = true;
   zetMunten(haalMunten() - bedrag);   // het bedrag is nu "onderweg"
-  ref.push().set({
+  const muntenBericht = {
     uid: gebruiker.uid,
     gebruikersnaam: huidigeMakerNaam(),
     type: 'munten',
@@ -6645,7 +6646,9 @@ function verstuurChatMunten() {
     status: 'open',
     tekst: '🪙 ' + bedrag + ' munten',
     tijd: firebase.database.ServerValue.TIMESTAMP
-  }).then(() => {
+  };
+  if (bezoekUid() && auth.currentUser) muntenBericht.doorBeheer = auth.currentUser.uid;
+  ref.push().set(muntenBericht).then(() => {
     knop.disabled = false;
     invoer.value = '';
     document.getElementById('chat-munten-paneel').hidden = true;
@@ -7033,9 +7036,13 @@ function verstuurChatQuiz(q) {
   if (!gebruiker || !ref) return;
   if (chatGeblokkeerd()) { werkChatBeheerBij(); return; }
   if (!chatOntvangerGeldig()) { alert(ontvangerFoutTekst('quizzen')); return; }
+  if (bezoekUid()) {
+    if (!sitebeheerActief || !auth.currentUser) return;
+    if (!confirm('Deze quiz komt in de chat te staan onder de naam van ' + (huidigeMakerNaam() || 'deze persoon') + ', met de melding "verstuurd door sitebeheer".\n\nDoorgaan?')) { bouwChatQuizLijst(); return; }
+  }
   db.ref('quizzen/' + q.code + '/titel').once('value').then(snap => {
     if (!snap.exists()) throw new Error('Deze quiz bestaat niet meer.');
-    return ref.push().set({
+    const quizBericht = {
       uid: gebruiker.uid,
       gebruikersnaam: huidigeMakerNaam(),
       type: 'quiz',
@@ -7046,7 +7053,9 @@ function verstuurChatQuiz(q) {
       status: 'open',
       tekst: '📝 ' + snap.val(),
       tijd: firebase.database.ServerValue.TIMESTAMP
-    });
+    };
+    if (bezoekUid() && auth.currentUser) quizBericht.doorBeheer = auth.currentUser.uid;
+    return ref.push().set(quizBericht);
   }).then(() => {
     document.getElementById('chat-quiz-paneel').hidden = true;
   }).catch(err => {
