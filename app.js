@@ -5611,7 +5611,8 @@ function werkChatBeheerBij() {
   });
   ['btn-chat-poppetje', 'btn-chat-quiz', 'btn-chat-munten', 'btn-chat-emoji'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.disabled = geblokkeerd || bezoek;
+    // Poppetjes sturen mag sitebeheer ook namens de bezochte persoon
+    if (el) el.disabled = geblokkeerd || (bezoek && !(id === 'btn-chat-poppetje' && kanNamensSturen));
   });
   if (input) input.placeholder = bezoek ? (kanNamensSturen ? 'Bericht als sitebeheer namens ' + (huidigeMakerNaam() || 'deze persoon') : 'Alleen meelezen') : (geblokkeerd ? 'Je bent geblokkeerd' : 'Typ een bericht...');
 }
@@ -6916,6 +6917,10 @@ function verstuurChatPoppetje() {
     if (gekozen > 0 && gekozen >= chatTotaalBezit(soort)) { alert('Je moet minstens één ' + soortNaam[soort] + ' overhouden.'); return; }
   }
   const totaal = lijst.reduce((t, x) => t + x.aantal, 0);
+  if (bezoekUid()) {
+    if (!sitebeheerActief || !auth.currentUser) return;
+    if (!confirm('Dit cadeau komt in de chat te staan onder de naam van ' + (huidigeMakerNaam() || 'deze persoon') + ', met de melding "verstuurd door sitebeheer".\n\nDoorgaan?')) return;
+  }
   const bericht = {
     uid: gebruiker.uid,
     gebruikersnaam: huidigeMakerNaam(),
@@ -6934,6 +6939,7 @@ function verstuurChatPoppetje() {
     bericht.items = lijst.map(x => ({ soort: x.soort, item: x.item, aantal: x.aantal }));
     bericht.tekst = ('🎁 ' + totaal + ' poppetjes: ' + lijst.map(x => (x.aantal > 1 ? x.aantal + '× ' : '') + chatPoppetjeNaam(x.soort, x.item)).join(', ')).slice(0, 500);
   }
+  if (bezoekUid() && auth.currentUser) bericht.doorBeheer = auth.currentUser.uid;
   const knop = document.getElementById('btn-chat-poppetje-verzenden');
   if (knop) knop.disabled = true;
   ref.push().set(bericht).then(() => {
