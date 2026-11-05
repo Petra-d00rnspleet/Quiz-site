@@ -5903,7 +5903,12 @@ function tekenChatBerichten() {
     }
     lijst.appendChild(p);
   });
-  if (bezoekUid()) lijst.querySelectorAll('button:not(.chat-waarschuwing-weg)').forEach(k => k.remove());   // alleen kijken
+  // Bezoekmodus: alleen kijken, behalve dat sitebeheer cadeaus en quizzen voor de bezochte persoon mag accepteren of weigeren
+  if (bezoekUid()) lijst.querySelectorAll('button:not(.chat-waarschuwing-weg)').forEach(k => {
+    const kaart = k.closest('.chat-bericht');
+    const mag = sitebeheerActief && kaart && !kaart.classList.contains('eigen') && k.closest('.chat-poppetje-status');
+    if (!mag) k.remove();
+  });
   if (onderaan) lijst.scrollTop = lijst.scrollHeight;
 }
 
@@ -6708,7 +6713,7 @@ function maakChatMuntenBericht(key, b, eigen, gebruiker) {
 function accepteerChatMunten(key, b) {
   const gebruiker = profielFirebaseGebruiker();
   const ref = chatBerichtenRef();
-  if (!gebruiker || !ref || bezoekUid()) return;
+  if (!gebruiker || !ref || (bezoekUid() && !sitebeheerActief)) return;
   const bedrag = Math.floor(Number(b.bedrag));
   if (!magCadeauAccepteren(b, gebruiker) || (!huidigGroepId && b.uid !== huidigChatUid) || !(bedrag >= 1)) return;
   const statusRef = ref.child(key).child('status');
