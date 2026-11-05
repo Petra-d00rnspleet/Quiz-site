@@ -17,13 +17,15 @@
     var invoer = document.getElementById('input-code');
     var scherm = document.getElementById('scherm-meedoen');
     if (!invoer || !scherm) return;
-    invoer.value = code;
+    if (code) invoer.value = code;
     if (typeof toonScherm === 'function') toonScherm('scherm-meedoen');
-    var naam = document.getElementById('input-speler-naam');
-    if (naam) { try { naam.focus(); } catch (e) {} }
+    var veld = code ? document.getElementById('input-speler-naam') : invoer;
+    if (veld) { try { veld.focus(); } catch (e) {} }
   }
   var linkCode = leesCodeUitLink();
-  if (linkCode) {
+  var vasteLink = false;   // de vaste klaslink: adres van de site + ?meedoen
+  try { vasteLink = new URLSearchParams(location.search).has('meedoen'); } catch (e) {}
+  if (linkCode || vasteLink) {
     openMeedoenMetCode(linkCode);
     // Voor de zekerheid nog een keer als de pagina klaar is met laden (alleen als je nog op het startscherm staat)
     window.addEventListener('load', function () {
@@ -57,10 +59,14 @@
   kopieer.className = 'btn btn-secondary';
   kopieer.textContent = '📋 Kopieer link';
 
+  var vast = document.createElement('p');
+  vast.style.cssText = 'margin:6px 0 0;font-size:.95rem;text-align:center;overflow-wrap:anywhere;';
+
   blok.appendChild(kaart);
   blok.appendChild(uitleg);
   blok.appendChild(linkTekst);
   blok.appendChild(kopieer);
+  blok.appendChild(vast);
   codeEl.parentNode.insertBefore(blok, codeEl.nextSibling);
 
   var huidigeLink = '';
@@ -79,6 +85,7 @@
       var svg = kaart.querySelector('svg');
       if (svg) { svg.style.width = '100%'; svg.style.height = 'auto'; svg.style.display = 'block'; }
       linkTekst.textContent = huidigeLink;
+      vast.textContent = 'Vaste klaslink (vul daar de code in): ' + location.origin + location.pathname + '?meedoen';
       blok.hidden = false;
     } catch (e) {
       console.warn('[quizqr] QR-code maken mislukt:', e);
