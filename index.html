@@ -8,7 +8,21 @@
 <link rel="icon" type="image/png" href="./favicon.png?v=2">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0a1130">
-<style>html { background-color: #05081c; color-scheme: dark; }</style>
+<style>
+html { background-color: #05081c; color-scheme: dark; }
+/* Meerkeuze-antwoorden: 2 naast elkaar en 2 eronder (zodat je niet hoeft te scrollen) */
+#speler-antwoorden-weergave, #solo-antwoorden-weergave, #host-antwoorden-weergave {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
+}
+#speler-antwoorden-weergave .antwoord-optie, #solo-antwoorden-weergave .antwoord-optie, #host-antwoorden-weergave .antwoord-optie {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 72px; padding: 12px 10px; text-align: center; overflow-wrap: anywhere; line-height: 1.25;
+}
+/* Is het aantal antwoorden oneven (of een open vraag), dan krijgt het laatste de hele breedte */
+#speler-antwoorden-weergave .antwoord-optie:last-child:nth-child(odd),
+#solo-antwoorden-weergave .antwoord-optie:last-child:nth-child(odd),
+#host-antwoorden-weergave .antwoord-optie:last-child:nth-child(odd) { grid-column: 1 / -1; }
+</style>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 
