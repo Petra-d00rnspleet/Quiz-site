@@ -1079,7 +1079,7 @@ function isAntwoordGoed(vraag, antwoord) {
 // klok die niet gelijk loopt niets uit). Lange vragen krijgen iets meer leestijd.
 const introEersteKeer = {};
 function introDuurVoor(vraag) {
-  return 2000; // het laden van elke vraag duurt precies 2 seconden
+  return 5000; // het laden van elke vraag duurt precies 5 seconden
 }
 function introEindeVoor(sleutel, vraag) {
   if (!introEersteKeer[sleutel]) introEersteKeer[sleutel] = Date.now();
@@ -4624,7 +4624,7 @@ function verkoopDier(dier) {
   const aantal = aantalVan('dier', dier);
   if (aantal <= 0) return;
   if (aantal === 1 && haalBezitDieren().length <= 1) { alert('Je kunt je laatste dier niet verkopen.'); return; }
-  if (!confirm('Eén exemplaar van dit dier verkopen voor ' + VERKOOP_PRIJS + ' munten?')) return;
+  if (!confirm('Eén exemplaar van dit dier verwijderen? Je krijgt ' + VERKOOP_PRIJS + ' munten.')) return;
   verwijderEenUitBezit('dier', dier);
   geefMunten(VERKOOP_PRIJS);
   bouwVerzamelingKiezer();
@@ -4635,23 +4635,17 @@ function verkoopAccessoire(emoji) {
   if (aantal <= 0) return;
   if (aantal === 1 && haalBezitAccessoires().length <= 1) { alert('Je kunt je laatste accessoire niet verkopen.'); return; }
   const naam = ACCESSOIRES[emoji] ? ACCESSOIRES[emoji].naam : 'dit accessoire';
-  if (!confirm('Eén exemplaar van "' + naam + '" verkopen voor ' + VERKOOP_PRIJS + ' munten?')) return;
+  if (!confirm('Eén exemplaar van "' + naam + '" verwijderen? Je krijgt ' + VERKOOP_PRIJS + ' munten.')) return;
   verwijderEenUitBezit('accessoire', emoji);
   geefMunten(VERKOOP_PRIJS);
   bouwVerzamelingKiezer();
 }
 
 function openVerzamelItemActies(type, item) {
+  // In de verzameling kun je alleen nog verwijderen (verkopen); sturen doe je via de chat met een vriend.
   const aantal = aantalVan(type, item);
   if (!aantal) return;
-  const titel = type === 'dier' ? item : ((ACCESSOIRES[item] && ACCESSOIRES[item].naam) || item);
-  const naarVriend = prompt('Wat wil je doen met ' + titel + '?\nTyp VERKOOP om 1 exemplaar te verkopen, of typ STUUR om 1 exemplaar naar een vriend te sturen.');
-  if (!naarVriend) return;
-  if (naarVriend.trim().toLowerCase() === 'verkoop') {
-    type === 'dier' ? verkoopDier(item) : verkoopAccessoire(item);
-  } else if (naarVriend.trim().toLowerCase() === 'stuur') {
-    openVriendStuurOverlay(type, item);
-  }
+  type === 'dier' ? verkoopDier(item) : verkoopAccessoire(item);
 }
 
 // Vervangt de verzameling-renderer zodat dubbele exemplaren zichtbaar zijn als 2, 3, ...
@@ -4718,7 +4712,7 @@ function bouwVerzamelingKiezer() {
       badge.title = aantal + ' exemplaar' + (aantal === 1 ? '' : 's');
       knop.appendChild(badge);
       knop.addEventListener('click', () => openVerzamelItemActies(opDieren ? 'dier' : 'accessoire', item));
-      knop.title = aantal > 1 ? 'Klik: 1 verkopen of 1 naar een vriend sturen' : 'Klik: verkopen of naar een vriend sturen';
+      knop.title = aantal > 1 ? 'Klik: 1 exemplaar verwijderen' : 'Klik: verwijderen';
     }
     kiezerEl.appendChild(knop);
   });
