@@ -251,7 +251,7 @@ const DIER_TEKENINGEN = {
           cirkel(27, 41, 5, DONKER) + cirkel(73, 41, 5, DONKER) +
           cirkel(28.6, 39, 1.7, '#fff') + cirkel(74.6, 39, 1.7, '#fff'),
     kruin: { x: 50, y: 39, b: 34, strik: 0 },
-    ogen: { x: 50, y: 40, dx: 24, s: 0.75 }
+    ogen: { x: 50, y: 40, dx: 24, s: 0.62 }
   },
 
   // ---------- Aap ----------
@@ -1333,17 +1333,19 @@ function verwijderAangepastAccessoireUitCatalogus(id) {
 function tekenAangepastPoppetje(data) {
   const kleur = data.kleur || '#8b93a3';
   const emoji = data.emoji || '🙂';
+  // Ronde kop met het gekozen plaatje op het voorhoofd. De hoed zit er precies bovenop
+  // (kruin), onder de hoed blijft het plaatje vrij, en de bril zit op de ogen (ogen).
   return {
-    achter: `<ellipse cx="50" cy="56" rx="35" ry="37" fill="${kleur}" opacity=".96"/>`,
-    hoofd: `<ellipse cx="50" cy="59" rx="31" ry="30" fill="${kleur}"/>` +
-      `<ellipse cx="39" cy="55" rx="4" ry="5" fill="#2b2140"/><ellipse cx="61" cy="55" rx="4" ry="5" fill="#2b2140"/>` +
-      `<circle cx="38" cy="53" r="1.3" fill="#fff"/><circle cx="60" cy="53" r="1.3" fill="#fff"/>` +
-      `<path d="M42 71 Q50 77 58 71" fill="none" stroke="#2b2140" stroke-width="2.5" stroke-linecap="round"/>` +
-      `<circle cx="50" cy="67" r="2.5" fill="#ff8fa3"/>` +
-      maakEmojiTekst(emoji, 50, 36, 27),
+    achter: `<ellipse cx="50" cy="58" rx="36" ry="35" fill="${kleur}" opacity=".96"/>`,
+    hoofd: `<ellipse cx="50" cy="60" rx="32" ry="31" fill="${kleur}"/>` +
+      maakEmojiTekst(emoji, 50, 44, 22) +
+      `<ellipse cx="39" cy="63" rx="4" ry="5" fill="#2b2140"/><ellipse cx="61" cy="63" rx="4" ry="5" fill="#2b2140"/>` +
+      `<circle cx="38" cy="61" r="1.3" fill="#fff"/><circle cx="60" cy="61" r="1.3" fill="#fff"/>` +
+      `<circle cx="29" cy="72" r="4.2" fill="#ff8fa3" opacity=".4"/><circle cx="71" cy="72" r="4.2" fill="#ff8fa3" opacity=".4"/>` +
+      `<path d="M43 78 Q50 84 57 78" fill="none" stroke="#2b2140" stroke-width="2.5" stroke-linecap="round"/>`,
     voor: '',
     kruin: { x: 50, y: 29, b: 46 },
-    ogen: { y: 55, dx: 11 }
+    ogen: { y: 63, dx: 11 }
   };
 }
 
@@ -1373,9 +1375,11 @@ function poppetjeSvg(dier, accessoires) {
     const boven = ACCESSOIRES[acc.boven];
     if (boven.customEmoji) {
       const kleur = boven.customKleur || '#f0c04d';
+      // De hoed zit met zijn onderkant (y = 0) vast op het hoofd: het rondje eronder
+      // zakt een stukje in de kop en het plaatje staat erboven, dus niets zweeft.
       delen += `<g transform="translate(${k.x} ${k.y}) rotate(${k.r || 0}) scale(${k.b / 100})">` +
-        `<ellipse cx="0" cy="-22" rx="32" ry="12" fill="${kleur}" opacity=".95"/>` +
-        maakEmojiTekst(boven.customEmoji, 0, -24, 42) + `</g>`;
+        `<ellipse cx="0" cy="-8" rx="34" ry="13" fill="${kleur}" opacity=".95"/>` +
+        maakEmojiTekst(boven.customEmoji, 0, -12, 44) + `</g>`;
     } else {
       const hoed = boven.tekening;
       const hoedTekening = typeof hoed === 'function' ? hoed(k.strik) : hoed;
@@ -1389,7 +1393,15 @@ function poppetjeSvg(dier, accessoires) {
     const o = tekening.ogen;
     // dx = afstand van het midden tot het midden van een oog; s = grootte van de lenzen
     // (standaard passend bij dx; bij dieren met bijzondere ogen, zoals de kikker, apart ingesteld).
-    delen += `<g transform="translate(${o.x || 50} ${o.y})">${ACCESSOIRES[acc.gezicht].bril(o.dx, o.s || o.dx / 28)}</g>`;
+    const bril = ACCESSOIRES[acc.gezicht];
+    if (bril.customEmoji) {
+      // Zelfgemaakte bril: het plaatje komt precies midden tussen de ogen, over beide ogen heen
+      const sc = o.s || o.dx / 28;
+      delen += `<g transform="translate(${o.x || 50} ${o.y})"><ellipse cx="0" cy="0" rx="${o.dx + 20 * sc}" ry="${19 * sc}" fill="${bril.customKleur || '#f0c04d'}" opacity=".35"/>` +
+        maakEmojiTekst(bril.customEmoji, 0, 0, sc * 60) + `</g>`;
+    } else {
+      delen += `<g transform="translate(${o.x || 50} ${o.y})">${bril.bril(o.dx, o.s || o.dx / 28)}</g>`;
+    }
   }
 
   if (acc.hoek) {
