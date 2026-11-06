@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nog 20 nieuwe quizzen online zetten</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #0a1130; color: #f2f2f5; margin: 0; padding: 24px; display: flex; justify-content: center; }
+  main { max-width: 640px; width: 100%; }
+  h1 { color: #f0c04d; }
+  button { background: #f0c04d; color: #1a1200; border: 0; border-radius: 12px; padding: 14px 20px; font-size: 16px; font-weight: 700; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  ul { padding-left: 20px; line-height: 1.6; }
+  #log { margin-top: 16px; white-space: pre-wrap; background: #10152e; border: 1px solid #4a3c1a; border-radius: 12px; padding: 12px; min-height: 40px; }
+  .ok { color: #8cf5b6; } .fout { color: #ffb0bc; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Nog 20 nieuwe quizzen online zetten</h1>
+  <p>Deze pagina zet 20 nieuwe quizzen van 11 tot 15 vragen onder "Speelbare quizzen". Je kunt hem zo vaak openen als je wilt: elke quiz heeft een vaste code, dus er komen nooit dubbelen.</p>
+  <ul id="lijst"></ul>
+  <button id="knop" type="button">Zet de 20 quizzen online</button>
+  <div id="log"></div>
+  <p style="opacity:.7;font-size:14px">Klaar? Verwijder dit bestand (quizzen-importeren.html) daarna weer van je site.</p>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+// Elke vraag: [vraag, goed antwoord (of lijst met goede antwoorden), [foute antwoorden]]
+// De volgorde van de antwoorden wordt vast door elkaar gehusseld (altijd hetzelfde bij opnieuw draaien).
+var QUIZZEN = [
+ { code: "QZVOGE", titel: "Vogels", emoji: "🦜", kleur: ["#1c3a2a", "#04120a"], vragen: [
+  ["Welke vogel is de grootste vogel ter wereld en kan niet vliegen?", "De struisvogel", ["De adelaar", "De pelikaan", "De zwaan"]],
+  ["Welke vogel heeft een grote waaier van gekleurde staartveren?", "De pauw", ["De mus", "De duif", "De merel"]],
+  ["Welke vogel brengt volgens het verhaal de baby's?", "De ooievaar", ["De uil", "De zwaan", "De kraai"]],
+  ["Welke vogel kan stil in de lucht blijven hangen en zelfs achteruit vliegen?", "De kolibrie", ["De zwaluw", "De meeuw", "De specht"]],
+  ["Welke vogel legt zijn eieren in het nest van een andere vogel?", "De koekoek", ["De ooievaar", "De spreeuw", "De uil"]],
+  ["Hoe heet het jong van een kip?", "Kuiken", ["Veulen", "Kalf", "Lam"]],
+  ["Welke nachtvogel kan zijn kop bijna helemaal ronddraaien?", "De uil", ["De kip", "De pinguïn", "De fazant"]],
+  ["Welke vogel is het symbool voor vrede?", "De duif", ["De havik", "De raaf", "De gier"]],
+  ["Welke van deze vogels is een trekvogel?", "De zwaluw", ["De huismus", "De ekster", "De kraai"]],
+  ["Pinguïns kunnen vliegen.", "Niet waar", ["Waar"]],
+  ["Welke vogel heeft een rood borstje?", "De roodborst", ["De merel", "De koolmees", "De spreeuw"]],
+  ["Alle vogels leggen eieren.", "Waar", ["Niet waar"]]
+ ]},
+ { code: "QZBOOM", titel: "Bomen en planten", emoji: "🌳", kleur: ["#16341c", "#04100a"], vragen: [
+  ["Welk gas nemen planten op uit de lucht om te groeien?", "Koolstofdioxide", ["Zuurstof", "Stikstof", "Helium"]],
+  ["Hoe heet het proces waarmee planten met zonlicht hun voedsel maken?", "Fotosynthese", ["Verdamping", "Verbranding", "Spijsvertering"]],
+  ["Aan welke boom groeien eikels?", "De eik", ["De beuk", "De berk", "De den"]],
+  ["Welke boom heeft naalden in plaats van bladeren?", "De den", ["De eik", "De linde", "De wilg"]],
+  ["Welke bloem draait zijn kop mee met de zon?", "De zonnebloem", ["De roos", "De tulp", "De madelief"]],
+  ["Met welk deel haalt een plant water uit de grond?", "De wortels", ["De bladeren", "De bloem", "De stengel"]],
+  ["Welk blad staat op de vlag van Canada?", "Het esdoornblad", ["Het eikenblad", "Het lindeblad", "Het klaverblad"]],
+  ["Welke plant geeft je jeuk en een brandend gevoel als je hem aanraakt?", "De brandnetel", ["De roos", "De klaproos", "De klaver"]],
+  ["Welke bloem is het meest bekende symbool van Nederland?", "De tulp", ["De roos", "De orchidee", "De lelie"]],
+  ["Welke kleurstof in bladeren zorgt dat ze groen zijn?", "Bladgroen", ["Bladgeel", "Bladrood", "Bladblauw"]],
+  ["Hoe kun je zien hoe oud een omgezaagde boom is?", "Door de jaarringen te tellen", ["Door de bladeren te tellen", "Door de takken te meten", "Door de schors te wegen"]],
+  ["Een tomaat is voor een plantkundige een vrucht.", "Waar", ["Niet waar"]]
+ ]},
+ { code: "QZKUNS", titel: "Schilders en kunst", emoji: "🎨", kleur: ["#3a1030", "#12041a"], vragen: [
+  ["Wie schilderde De Sterrennacht?", "Vincent van Gogh", ["Rembrandt", "Picasso", "Johannes Vermeer"]],
+  ["Wie schilderde de Mona Lisa?", "Leonardo da Vinci", ["Michelangelo", "Rafaël", "Rembrandt"]],
+  ["In welk museum in Parijs hangt de Mona Lisa?", "Het Louvre", ["Het Rijksmuseum", "Het Prado", "De Tate"]],
+  ["Wie schilderde Meisje met de parel?", "Johannes Vermeer", ["Vincent van Gogh", "Jan Steen", "Frans Hals"]],
+  ["Wat zijn de drie primaire kleuren bij verf?", "Rood, geel en blauw", ["Rood, groen en blauw", "Geel, groen en paars", "Zwart, wit en grijs"]],
+  ["Welke kleur krijg je als je blauw en geel mengt?", "Groen", ["Paars", "Oranje", "Bruin"]],
+  ["Welke kleur krijg je als je rood en wit mengt?", "Roze", ["Oranje", "Paars", "Grijs"]],
+  ["Wie schilderde Guernica?", "Pablo Picasso", ["Salvador Dalí", "Claude Monet", "Andy Warhol"]],
+  ["Welk museum in Amsterdam heeft heel veel werk van Vincent van Gogh?", "Het Van Gogh Museum", ["Het Scheepvaartmuseum", "Het Anne Frank Huis", "Het Stedelijk Museum Rotterdam"]],
+  ["Wat is een zelfportret?", "Een afbeelding die de maker van zichzelf maakt", ["Een schilderij van een landschap", "Een foto van een gebouw", "Een beeld van een dier"]],
+  ["Welke Nederlandse kunstenaar maakte schilderijen met vierkante vlakken in rood, geel en blauw?", "Piet Mondriaan", ["Karel Appel", "M.C. Escher", "Rembrandt"]],
+  ["Wat is een mozaïek?", "Een afbeelding gemaakt van kleine steentjes of tegeltjes", ["Een schilderij met waterverf", "Een beeld van klei", "Een tekening met potlood"]]
+ ]},
+ { code: "QZROME", titel: "De Romeinen", emoji: "🏛️", kleur: ["#3a2410", "#120805"], vragen: [
+  ["Wat was de hoofdstad van het Romeinse Rijk?", "Rome", ["Athene", "Parijs", "Carthago"]],
+  ["Welke taal spraken de Romeinen?", "Latijn", ["Grieks", "Italiaans", "Frans"]],
+  ["Wie was de eerste keizer van Rome?", "Augustus", ["Julius Caesar", "Nero", "Caligula"]],
+  ["Wat was een gladiator?", "Een vechter in de arena", ["Een soldaat op een schip", "Een Romeinse bakker", "Een priester"]],
+  ["Welk getal is het Romeinse cijfer X?", "10", ["5", "50", "100"]],
+  ["Welk getal is XIV?", "14", ["16", "9", "19"]],
+  ["Wie werd in 44 voor Christus door senatoren vermoord?", "Julius Caesar", ["Augustus", "Nero", "Hannibal"]],
+  ["Waarvoor gebruikten de Romeinen aquaducten?", "Om water te vervoeren", ["Om graan op te slaan", "Om schepen te bouwen", "Om soldaten te laten slapen"]],
+  ["Welke Romeinse stad werd begraven onder de as van de Vesuvius?", "Pompeii", ["Carthago", "Athene", "Troje"]],
+  ["Welke beroemde arena staat in Rome?", "Het Colosseum", ["De Akropolis", "Het Pantheon", "Het Forum"]],
+  ["Welke Romeinse god kwam overeen met de Griekse god Zeus?", "Jupiter", ["Mars", "Neptunus", "Apollo"]],
+  ["Langs welke rivier liep de Romeinse grens in Nederland?", "De Rijn", ["De Maas", "De Schelde", "De IJssel"]],
+  ["De Romeinen bouwden heel goede wegen.", "Waar", ["Niet waar"]]
+ ]},
+ { code: "QZRIDD", titel: "Ridders en kastelen", emoji: "🛡️", kleur: ["#2a2a50", "#080818"], vragen: [
+  ["Waar woonden ridders en koningen vaak?", "In een kasteel", ["In een tent", "In een grot", "In een flat"]],
+  ["Hoe heet het water rondom een kasteel?", "Slotgracht", ["Zwembad", "Kanaal", "Haven"]],
+  ["Wat droeg een ridder om zich te beschermen?", "Een harnas", ["Een regenjas", "Een zwembroek", "Een schort"]],
+  ["Wat is een toernooi?", "Een wedstrijd tussen ridders", ["Een soort kasteel", "Een dansfeest", "Een boek"]],
+  ["Welke brug kon omhoog gehaald worden om het kasteel te beschermen?", "De ophaalbrug", ["De hangbrug", "De draaibrug", "De boogbrug"]],
+  ["Aan welke tafel zaten de ridders van koning Arthur?", "De Ronde Tafel", ["De Vierkante Tafel", "De Lange Tafel", "De Gouden Tafel"]],
+  ["Welke ziekte, de Zwarte Dood, doodde in de Middeleeuwen miljoenen mensen?", "De pest", ["De griep", "De mazelen", "De verkoudheid"]],
+  ["Wat staat er op een wapenschild?", "Tekens van een familie of stad", ["Een recept", "Een kalender", "Een kaart van de wereld"]],
+  ["Hoe heet een man die in een klooster leeft?", "Een monnik", ["Een ridder", "Een boer", "Een smid"]],
+  ["Welk beroep maakte hoefijzers en zwaarden?", "De smid", ["De bakker", "De schipper", "De schilder"]],
+  ["Hoe heet de sterkste toren van een kasteel?", "De donjon", ["De minaret", "De vuurtoren", "De klokkentoren"]]
+ ]},
+ { code: "QZONTD", titel: "Ontdekkingsreizigers", emoji: "🧭", kleur: ["#0d2a3a", "#04101c"], vragen: [
+  ["In welk jaar bereikte Columbus Amerika?", "1492", ["1066", "1789", "1620"]],
+  ["Wiens expeditie voer als eerste rond de wereld?", "Magellaan", ["Columbus", "Marco Polo", "Napoleon"]],
+  ["Hoe heet de beroemde piratenvlag met een doodshoofd?", "Jolly Roger", ["Union Jack", "Rode Baron", "Zwarte Dood"]],
+  ["Wat staat er vaak op een schatkaart om de schat aan te wijzen?", "Een kruis", ["Een cirkel", "Een ster", "Een hartje"]],
+  ["Naar welk land reisde Marco Polo?", "China", ["Brazilië", "Noorwegen", "Australië"]],
+  ["Wie vond de zeeroute van Europa naar India?", "Vasco da Gama", ["Columbus", "James Cook", "Abel Tasman"]],
+  ["Wie bereikte als eerste de Zuidpool?", "Roald Amundsen", ["Ernest Shackleton", "Robert Peary", "Edmund Hillary"]],
+  ["Naar welke Nederlandse zeevaarder is het eiland Tasmanië vernoemd?", "Abel Tasman", ["Michiel de Ruyter", "Willem Barentsz", "Piet Hein"]],
+  ["Hoe heet de uitkijkmand bovenin een mast?", "Het kraaiennest", ["Het meeuwennest", "Het roer", "De kombuis"]],
+  ["Naar welke windrichting wijst een kompasnaald?", "Het noorden", ["Het zuiden", "Het oosten", "Het westen"]],
+  ["Welke Nederlandse zeevaarder overwinterde op Nova Zembla?", "Willem Barentsz", ["Abel Tasman", "Piet Hein", "Cornelis de Houtman"]],
+  ["Wie schreef het beroemde piratenboek Schateiland?", "Robert Louis Stevenson", ["Jules Verne", "Mark Twain", "Roald Dahl"]],
+  ["Wat is de kombuis op een schip?", "De keuken", ["De slaapkamer", "De stuurhut", "Het ruim"]]
+ ]},
+ { code: "QZVLAG", titel: "Vlaggen en landen van Europa", emoji: "🚩", kleur: ["#3a1018", "#12040a"], vragen: [
+  ["Welke kleuren heeft de Nederlandse vlag van boven naar beneden?", "Rood, wit, blauw", ["Blauw, wit, rood", "Oranje, wit, blauw", "Rood, blauw, wit"]],
+  ["Welk land heeft een rode vlag met een wit kruis in een vierkant?", "Zwitserland", ["Denemarken", "Engeland", "Oostenrijk"]],
+  ["Welk land heeft een rode vlag met een wit kruis dat naar links is geschoven?", "Denemarken", ["Zweden", "Finland", "Polen"]],
+  ["Welke kleuren heeft de vlag van Italië?", "Groen, wit, rood", ["Rood, wit, blauw", "Zwart, rood, geel", "Blauw, wit, rood"]],
+  ["Welke kleuren heeft de Duitse vlag van boven naar beneden?", "Zwart, rood, goud", ["Rood, wit, zwart", "Zwart, wit, rood", "Goud, rood, zwart"]],
+  ["Hoeveel sterren staan er op de vlag van de Europese Unie?", "12", ["15", "27", "10"]],
+  ["Wat is het kleinste land ter wereld?", "Vaticaanstad", ["Monaco", "Malta", "Luxemburg"]],
+  ["Wat is de hoofdstad van Tsjechië?", "Praag", ["Boedapest", "Warschau", "Wenen"]],
+  ["Wat is de hoofdstad van Griekenland?", "Athene", ["Thessaloniki", "Rome", "Sparta"]],
+  ["Welk land grenst in het zuiden aan Nederland?", "België", ["Frankrijk", "Duitsland", "Engeland"]],
+  ["Wat is de hoofdstad van Oostenrijk?", "Wenen", ["Salzburg", "Bern", "Praag"]],
+  ["Welk land heeft een blauwe vlag met een geel kruis?", "Zweden", ["Frankrijk", "Noorwegen", "Griekenland"]]
+ ]},
+ { code: "QZBERG", titel: "Bergen, rivieren en meren", emoji: "⛰️", kleur: ["#10303a", "#04101a"], vragen: [
+  ["Wat is de hoogste berg ter wereld?", "Mount Everest", ["K2", "Mont Blanc", "Kilimanjaro"]],
+  ["Welke rivier stroomt door Parijs?", "De Seine", ["De Theems", "De Tiber", "De Rijn"]],
+  ["Welke rivier stroomt door Londen?", "De Theems", ["De Seine", "De Donau", "De Elbe"]],
+  ["In welk land ontspringt de Rijn?", "Zwitserland", ["Duitsland", "Nederland", "Frankrijk"]],
+  ["Wat is het grootste meer van Nederland?", "Het IJsselmeer", ["Het Markermeer", "De Loosdrechtse Plassen", "Het Veluwemeer"]],
+  ["Wat is de hoogste berg van Nederland?", "De Vaalserberg", ["De Sint-Pietersberg", "De Posbank", "De Wilhelminaberg"]],
+  ["Welk gebergte ligt tussen Spanje en Frankrijk?", "De Pyreneeën", ["De Alpen", "De Karpaten", "De Andes"]],
+  ["Wat is de grootste hete woestijn ter wereld?", "De Sahara", ["De Gobi", "De Kalahari", "De Negev"]],
+  ["Hoeveel continenten zijn er?", "7", ["5", "6", "8"]],
+  ["In welk land staat de vulkaan Fuji?", "Japan", ["China", "Korea", "Indonesië"]],
+  ["Welke rivier is de langste van Zuid-Amerika?", "De Amazone", ["De Orinoco", "De Rio de la Plata", "De Mississippi"]],
+  ["Op welk Italiaans eiland staat de vulkaan Etna?", "Sicilië", ["Sardinië", "Corsica", "Malta"]]
+ ]},
+ { code: "QZCHEM", titel: "Scheikunde en materialen", emoji: "🧪", kleur: ["#1c3a2a", "#04120a"], vragen: [
+  ["Wat is de scheikundige formule van water?", "H2O", ["CO2", "O2", "NaCl"]],
+  ["Wat is de scheikundige formule van koolstofdioxide?", "CO2", ["H2O", "O2", "CH4"]],
+  ["Wat is tafelzout scheikundig?", "Natriumchloride", ["Suiker", "Kalk", "Soda"]],
+  ["Wat is het symbool van goud in het periodiek systeem?", "Au", ["Go", "Ag", "Gd"]],
+  ["Bij hoeveel graden Celsius smelt ijs?", "0 graden", ["10 graden", "100 graden", "-10 graden"]],
+  ["Bij hoeveel graden Celsius kookt water gewoonlijk?", "100 graden", ["50 graden", "200 graden", "0 graden"]],
+  ["Welk gas maakt je stem hoog als je het inademt uit een ballon?", "Helium", ["Zuurstof", "Koolstofdioxide", "Stikstof"]],
+  ["Hoe heet het als een vaste stof vloeibaar wordt?", "Smelten", ["Stollen", "Verdampen", "Condenseren"]],
+  ["Wat heeft ijzer nodig om te gaan roesten?", "Zuurstof en water", ["Alleen kou", "Alleen zon", "Alleen wind"]],
+  ["In welke toestand is stoom?", "Gas", ["Vloeibaar", "Vast", "Plasma-ijs"]],
+  ["Welk metaal is bij kamertemperatuur vloeibaar?", "Kwik", ["IJzer", "Koper", "Zilver"]],
+  ["Een diamant bestaat uit koolstof.", "Waar", ["Niet waar"]],
+  ["Wat is een atoom?", "Een heel klein bouwsteentje van een element", ["Een soort gas", "Een soort metaal", "Een elektrisch kabeltje"]]
+ ]},
+ { code: "QZENER", titel: "Elektriciteit en energie", emoji: "⚡", kleur: ["#2a3a10", "#0a1204"], vragen: [
+  ["Wat gebruikt een zonnepaneel om stroom te maken?", "Zonlicht", ["Wind", "Water", "Kolen"]],
+  ["Wat maakt een windmolen voor stroom?", "Elektriciteit", ["Benzine", "Gas", "Warmte alleen"]],
+  ["Wat is een batterij?", "Een opslag van energie", ["Een soort lamp", "Een stekker", "Een schakelaar"]],
+  ["In welke eenheid meten we elektrische spanning?", "Volt", ["Meter", "Gram", "Liter"]],
+  ["Welk materiaal geleidt stroom goed?", "Koper", ["Rubber", "Hout", "Plastic"]],
+  ["Welke energiebron is een fossiele brandstof?", "Steenkool", ["Wind", "Zon", "Water"]],
+  ["Welke energiebron is hernieuwbaar?", "Wind", ["Aardgas", "Olie", "Steenkool"]],
+  ["Water en elektriciteit is een gevaarlijke combinatie.", "Waar", ["Niet waar"]],
+  ["Hoe heet de energie van beweging?", "Bewegingsenergie", ["Warmte-energie", "Lichtenergie", "Chemische energie"]],
+  ["Hoeveel volt is de spanning ongeveer uit een stopcontact in Nederland?", "230 volt", ["12 volt", "1,5 volt", "1000 volt"]],
+  ["Wat doet een zekering?", "De stroom onderbreken bij te veel stroom", ["Meer stroom maken", "De lamp feller maken", "De stroom opslaan"]]
+ ]},
+ { code: "QZFRUI", titel: "Fruit en groente", emoji: "🍎", kleur: ["#3a1010", "#120404"], vragen: [
+  ["Welk fruit is geel en gebogen?", "Banaan", ["Appel", "Citroen", "Peer"]],
+  ["Welke groente at Popeye om sterk te worden?", "Spinazie", ["Broccoli", "Sla", "Spruitjes"]],
+  ["Welke van deze groeit onder de grond?", "Aardappel", ["Tomaat", "Komkommer", "Paprika"]],
+  ["Welk fruit heeft de pitjes aan de buitenkant?", "Aardbei", ["Kers", "Druif", "Pruim"]],
+  ["Waar worden rozijnen van gemaakt?", "Gedroogde druiven", ["Gedroogde pruimen", "Gedroogde appels", "Gedroogde kersen"]],
+  ["Welk fruit staat bekend om veel vitamine C?", "Sinaasappel", ["Banaan", "Druif", "Meloen"]],
+  ["Welke groente laat je huilen als je hem snijdt?", "De ui", ["De wortel", "De komkommer", "De sla"]],
+  ["Welk fruit heeft een groene schil en rood vruchtvlees met zwarte pitten?", "Watermeloen", ["Appel", "Kiwi", "Granaatappel"]],
+  ["Welke groente lijkt op een kleine groene boom?", "Broccoli", ["Spruitjes", "Sla", "Prei"]],
+  ["Welk tropisch fruit heeft een stekelige schil met bladeren erbovenop?", "Ananas", ["Mango", "Papaja", "Kokosnoot"]],
+  ["Er bestaan ook paarse wortels.", "Waar", ["Niet waar"]],
+  ["Waar maak je friet van?", "Aardappels", ["Rijst", "Mais", "Bonen"]]
+ ]},
+ { code: "QZKOKE", titel: "Koken en bakken", emoji: "🍰", kleur: ["#4a3a10", "#1a1004"], vragen: [
+  ["Wat gebruik je om een cake te laten rijzen?", "Bakpoeder", ["Zout", "Peper", "Azijn"]],
+  ["Waar wordt brood vooral van gemaakt?", "Meel", ["Rijst", "Suiker", "Boter"]],
+  ["Hoeveel milliliter zit er in een liter?", "1000", ["100", "10", "500"]],
+  ["Wat doe je met broodbeslag om het soepel te maken?", "Kneden", ["Bakken", "Vriezen", "Snijden"]],
+  ["Uit welk land komt pasta oorspronkelijk?", "Italië", ["Frankrijk", "Duitsland", "Engeland"]],
+  ["Hoe heet de grote lepel waarmee je soep opschept?", "Soeplepel", ["Theelepel", "Strooilepel", "Boterlepel"]],
+  ["Wat eet een vegetariër niet?", "Vlees", ["Groente", "Kaas", "Fruit"]],
+  ["Met welk apparaat warm je snel eten op met straling?", "Een magnetron", ["Een koelkast", "Een friteuse", "Een afwasmachine"]],
+  ["Waar wordt kaas van gemaakt?", "Melk", ["Ei", "Meel", "Suiker"]],
+  ["Wat doet gist met deeg?", "Het laat het rijzen", ["Het maakt het zout", "Het maakt het hard", "Het maakt het rood"]],
+  ["Wat is een recept?", "Een beschrijving van hoe je iets maakt", ["Een soort pan", "Een eetgerecht", "Een kookwekker"]],
+  ["Rauwe kip moet je altijd goed doorbakken.", "Waar", ["Niet waar"]]
+ ]},
+ { code: "QZTALE", titel: "Talen van de wereld", emoji: "🗺️", kleur: ["#10303a", "#04101a"], vragen: [
+  ["Hoe zeg je 'hallo' in het Frans?", "Bonjour", ["Hola", "Ciao", "Guten Tag"]],
+  ["Hoe zeg je 'bedankt' in het Spaans?", "Gracias", ["Merci", "Danke", "Grazie"]],
+  ["Hoe zeg je 'bedankt' in het Duits?", "Danke", ["Merci", "Gracias", "Thanks"]],
+  ["Hoe zeg je 'goedemorgen' in het Italiaans?", "Buongiorno", ["Bonjour", "Buenos días", "Guten Morgen"]],
+  ["Wat is 'dog' in het Nederlands?", "Hond", ["Kat", "Paard", "Konijn"]],
+  ["Welke taal spreekt men in Brazilië?", "Portugees", ["Spaans", "Frans", "Engels"]],
+  ["Welke taal heeft de meeste moedertaalsprekers ter wereld?", "Mandarijn Chinees", ["Engels", "Spaans", "Hindi"]],
+  ["Welke taal wordt in Egypte gesproken?", "Arabisch", ["Frans", "Turks", "Hebreeuws"]],
+  ["Wat is een synoniem?", "Een woord met dezelfde betekenis", ["Een woord met een tegengestelde betekenis", "Een spreekwoord", "Een zin zonder werkwoord"]],
+  ["Wat is een antoniem?", "Een woord met een tegengestelde betekenis", ["Een woord met dezelfde betekenis", "Een nieuw woord", "Een lang woord"]],
+  ["Hoeveel letters heeft ons alfabet?", "26", ["24", "28", "30"]],
+  ["Welk woord is een werkwoord?", "Rennen", ["Huis", "Snel", "Groot"]]
+ ]},
+ { code: "QZSPRK", titel: "Sprookjes", emoji: "🏰", kleur: ["#4a1c3a", "#16041a"], vragen: [
+  ["Wie verloor een glazen muiltje op het bal?", "Assepoester", ["Sneeuwwitje", "Doornroosje", "Roodkapje"]],
+  ["Wie at van een vergiftigde appel?", "Sneeuwwitje", ["Assepoester", "Rapunzel", "Belle"]],
+  ["Bij hoeveel dwergen woonde Sneeuwwitje?", "7", ["5", "9", "12"]],
+  ["Hoeveel biggetjes zijn er in het sprookje van de drie biggetjes?", "3", ["2", "4", "7"]],
+  ["Wie sliep honderd jaar?", "Doornroosje", ["Assepoester", "Roodkapje", "Duimelijntje"]],
+  ["Wiens neus werd langer als hij loog?", "Pinokkio", ["Peter Pan", "Aladdin", "Hans"]],
+  ["Wie had heel lang haar en zat opgesloten in een toren?", "Rapunzel", ["Assepoester", "Belle", "Doornroosje"]],
+  ["Waarvan was het huisje van de heks in Hans en Grietje gemaakt?", "Snoep en koek", ["Hout", "Steen", "IJs"]],
+  ["Welke Deense schrijver schreef Het lelijke jonge eendje?", "Hans Christian Andersen", ["De gebroeders Grimm", "Roald Dahl", "Astrid Lindgren"]],
+  ["In wat verandert het lelijke jonge eendje?", "Een zwaan", ["Een eend", "Een gans", "Een pauw"]],
+  ["Wie liep met een rood mutsje naar haar oma?", "Roodkapje", ["Assepoester", "Belle", "Rapunzel"]],
+  ["Wat verandert de kikker in een prins?", "Een kus", ["Een toverstaf", "Een traan", "Een wens"]]
+ ]},
+ { code: "QZKLAS", titel: "Componisten en klassieke muziek", emoji: "🎼", kleur: ["#2a1c40", "#0a0620"], vragen: [
+  ["Welke beroemde componist werd later in zijn leven doof?", "Beethoven", ["Mozart", "Bach", "Vivaldi"]],
+  ["Uit welk land kwam Mozart?", "Oostenrijk", ["Frankrijk", "Nederland", "Spanje"]],
+  ["Wie schreef De Vier Jaargetijden?", "Vivaldi", ["Mozart", "Beethoven", "Chopin"]],
+  ["Wat is een opera?", "Een toneelstuk waarin gezongen wordt", ["Een soort piano", "Een dansstijl", "Een kerklied"]],
+  ["Hoeveel lijnen heeft een notenbalk?", "5", ["4", "6", "8"]],
+  ["Welk ballet schreef Tsjaikovski over een speelgoedsoldaat?", "De Notenkraker", ["Zwanenmeer", "Giselle", "Assepoester"]],
+  ["Wat betekent 'piano' in de muziek?", "Zacht", ["Hard", "Snel", "Langzaam"]],
+  ["Hoe heet iemand die muziek schrijft?", "Componist", ["Dirigent", "Solist", "Presentator"]],
+  ["Wie was een wonderkind dat al heel jong muziek schreef?", "Mozart", ["Brahms", "Wagner", "Verdi"]],
+  ["Wie schreef de Ode aan de Vreugde in de Negende Symfonie?", "Beethoven", ["Bach", "Haydn", "Schubert"]],
+  ["Hoe heet een muziekstuk voor één instrument alleen?", "Solo", ["Duet", "Trio", "Koor"]]
+ ]},
+ { code: "QZPROV", titel: "Nederlandse provincies en steden", emoji: "🗺️", kleur: ["#3a2a10", "#120a04"], vragen: [
+  ["Hoeveel provincies heeft Nederland?", "12", ["10", "14", "9"]],
+  ["Wat is de hoofdstad van Friesland?", "Leeuwarden", ["Groningen", "Zwolle", "Assen"]],
+  ["Wat is de hoofdstad van Noord-Brabant?", "'s-Hertogenbosch", ["Eindhoven", "Breda", "Tilburg"]],
+  ["Wat is de hoofdstad van Zeeland?", "Middelburg", ["Vlissingen", "Goes", "Terneuzen"]],
+  ["Welke Nederlandse stad heeft de grootste haven?", "Rotterdam", ["Amsterdam", "Vlissingen", "Groningen"]],
+  ["In welke provincie liggen de hunebedden?", "Drenthe", ["Zeeland", "Flevoland", "Limburg"]],
+  ["Welke provincie ligt het meest in het zuiden?", "Limburg", ["Zeeland", "Noord-Brabant", "Gelderland"]],
+  ["Wat is de hoofdstad van Gelderland?", "Arnhem", ["Nijmegen", "Apeldoorn", "Ede"]],
+  ["Wat is de hoofdstad van Overijssel?", "Zwolle", ["Enschede", "Deventer", "Almelo"]],
+  ["Wat is de hoofdstad van Noord-Holland?", "Haarlem", ["Amsterdam", "Alkmaar", "Hilversum"]],
+  ["Welke provincie is uit het water gewonnen?", "Flevoland", ["Zeeland", "Utrecht", "Friesland"]],
+  ["In welke stad zetelt de regering?", "Den Haag", ["Amsterdam", "Utrecht", "Rotterdam"]],
+  ["Welke provincie is de kleinste?", "Utrecht", ["Zeeland", "Flevoland", "Drenthe"]],
+  ["Wat is de hoofdstad van Groningen?", "Groningen", ["Winschoten", "Assen", "Emmen"]]
+ ]},
+ { code: "QZVERK", titel: "Verkeer en veiligheid", emoji: "🚦", kleur: ["#3a1c10", "#120804"], vragen: [
+  ["Wat betekent een rood stoplicht?", "Stoppen", ["Doorrijden", "Langzaam rijden", "Toeteren"]],
+  ["Wat betekent een groen stoplicht?", "Je mag doorgaan", ["Stoppen", "Omkeren", "Parkeren"]],
+  ["Waar kun je veilig oversteken?", "Op een zebrapad", ["Midden op de weg", "Achter een bocht", "Op de stoep"]],
+  ["Wat is het alarmnummer in Nederland?", "112", ["911", "999", "100"]],
+  ["Wat betekent een rood achthoekig bord met STOP?", "Je moet stoppen", ["Je mag sneller rijden", "Je mag parkeren", "Je mag omkeren"]],
+  ["Wat betekent een omgekeerde rode driehoek?", "Voorrang geven", ["Voorrang hebben", "Parkeren verboden", "Eenrichtingsverkeer"]],
+  ["Wat doe je eerst voordat je oversteekt?", "Links en rechts kijken", ["Rennen", "Fluiten", "Je ogen dichtdoen"]],
+  ["Je mag op de fiets met je telefoon in je hand bellen.", "Niet waar", ["Waar"]],
+  ["Wat moet je in een auto altijd dragen?", "Een gordel", ["Een hoed", "Een bril", "Handschoenen"]],
+  ["Wat moet aan op je fiets als het donker is?", "Je fietslicht", ["Je bel", "Je standaard", "Je mandje"]],
+  ["Hoe heet het deel van de straat voor voetgangers?", "De stoep", ["Het fietspad", "De rijbaan", "De berm"]],
+  ["Wat kun je het beste dragen op de fiets voor je veiligheid?", "Een helm", ["Een muts", "Een pet", "Een sjaal"]]
+ ]},
+ { code: "QZTIJD", titel: "Tijd en kalender", emoji: "⏰", kleur: ["#1c2456", "#05081c"], vragen: [
+  ["Hoeveel dagen heeft een schrikkeljaar?", "366", ["365", "364", "367"]],
+  ["Hoeveel maanden heeft een jaar?", "12", ["10", "11", "13"]],
+  ["Hoeveel minuten zitten er in een uur?", "60", ["100", "30", "24"]],
+  ["Hoeveel dagen heeft februari in een gewoon jaar?", "28", ["29", "30", "31"]],
+  ["Hoeveel uren heeft een dag?", "24", ["12", "60", "48"]],
+  ["Welke dag komt na zondag?", "Maandag", ["Zaterdag", "Dinsdag", "Vrijdag"]],
+  ["Hoeveel seizoenen heeft een jaar?", "4", ["2", "3", "6"]],
+  ["In welke maand begint de lente volgens de kalender?", "Maart", ["Januari", "Juni", "September"]],
+  ["Hoe heet een periode van honderd jaar?", "Een eeuw", ["Een decennium", "Een millennium", "Een kwartaal"]],
+  ["Hoe heet een periode van tien jaar?", "Een decennium", ["Een eeuw", "Een millennium", "Een kwartaal"]],
+  ["Welke maand heeft 31 dagen?", "Juli", ["April", "Juni", "September"]],
+  ["Wat doen we in het voorjaar met de klok bij de zomertijd?", "Een uur vooruit", ["Een uur terug", "Twee uur vooruit", "Een halfuur terug"]]
+ ]},
+ { code: "QZHUIS", titel: "Huisdieren", emoji: "🐶", kleur: ["#2a3a2a", "#08120a"], vragen: [
+  ["Hoe heet het jong van een hond?", "Puppy", ["Kitten", "Kalf", "Veulen"]],
+  ["Wat eet een konijn graag?", "Hooi en groente", ["Vlees", "Vis", "Brood met kaas"]],
+  ["Welk diertje is een knaagdier?", "De hamster", ["De kat", "De goudvis", "De schildpad"]],
+  ["Hoe heet een vrouwelijk paard?", "Merrie", ["Hengst", "Ruin", "Veulen"]],
+  ["Hoe heet het jong van een paard?", "Veulen", ["Kalf", "Lam", "Kuiken"]],
+  ["Waar leeft een goudvis?", "In water", ["In een boom", "In zand", "In een nest"]],
+  ["Uit welk werelddeel komt de cavia oorspronkelijk?", "Zuid-Amerika", ["Afrika", "Azië", "Europa"]],
+  ["Welk huisdier kan woorden nadoen?", "De papegaai", ["De goudvis", "De cavia", "De slak"]],
+  ["Een kat slaapt gemiddeld meer dan 12 uur per dag.", "Waar", ["Niet waar"]],
+  ["Wat moet je een hond regelmatig doen?", "Uitlaten", ["Laten zwemmen in het bad", "In een kooi houden", "Elke dag scheren"]],
+  ["Welk van deze dieren is geen knaagdier?", "Het konijn", ["De cavia", "De hamster", "De rat"]],
+  ["Welk huisdier is een reptiel?", "De schildpad", ["De goudvis", "De cavia", "De parkiet"]]
+ ]},
+ { code: "QZAFRI", titel: "Wilde dieren van Afrika", emoji: "🦁", kleur: ["#4a3a10", "#1a1004"], vragen: [
+  ["Welk dier wordt de koning van de dieren genoemd?", "De leeuw", ["De olifant", "De tijger", "De giraf"]],
+  ["Welk dier is het hoogste landdier?", "De giraf", ["De olifant", "De neushoorn", "De kameel"]],
+  ["Wat is het grootste landdier?", "De Afrikaanse olifant", ["De nijlpaard", "De neushoorn", "De giraf"]],
+  ["Welk dier heeft een hoorn op zijn neus?", "De neushoorn", ["De olifant", "De zebra", "De antilope"]],
+  ["Welk dier brengt veel tijd door in rivieren en meren en heeft een grote bek?", "Het nijlpaard", ["De hyena", "De gazelle", "De giraf"]],
+  ["Wat is het snelste landdier?", "De cheeta", ["De leeuw", "De gazelle", "Het paard"]],
+  ["Welke aap is de grootste?", "De gorilla", ["De chimpansee", "De baviaan", "De makaak"]],
+  ["Wat is de savanne?", "Een grote grasvlakte met enkele bomen", ["Een dichte regenwoud", "Een zandwoestijn", "Een meer"]],
+  ["Welke vogel eet voornamelijk aas?", "De gier", ["De ooievaar", "De papegaai", "De flamingo"]],
+  ["Welk dier kan lang zonder water in de woestijn?", "De kameel", ["De nijlpaard", "De otter", "De pinguïn"]],
+  ["Welk dier staat bekend om zijn 'lachende' geluid?", "De hyena", ["De leeuw", "De giraf", "De olifant"]],
+  ["Elke zebra heeft een eigen, unieke strepenpatroon.", "Waar", ["Niet waar"]]
+ ]}
+];
+
+function prng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+function omslag(q) {
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="480" height="270" viewBox="0 0 480 270"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="' + q.kleur[0] + '"/><stop offset="100%" stop-color="' + q.kleur[1] + '"/></linearGradient></defs>' +
+    '<rect width="480" height="270" fill="url(#g)"/><circle cx="70" cy="45" r="2" fill="#ffe9a8"/><circle cx="405" cy="38" r="2" fill="#ffe9a8"/><circle cx="425" cy="205" r="2" fill="#ffe9a8"/><circle cx="55" cy="185" r="1.5" fill="#ffe9a8"/>' +
+    '<text x="240" y="150" font-size="96" text-anchor="middle">' + q.emoji + '</text>' +
+    '<text x="240" y="225" font-size="' + Math.min(30, Math.floor(440 / (q.titel.length * 0.6))) + '" font-weight="700" font-family="sans-serif" fill="#f0c04d" text-anchor="middle">' + q.titel + '</text></svg>';
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
+function bouwQuiz(q, nr) {
+  var vragen = q.vragen.map(function (v, i) {
+    var goed = Array.isArray(v[1]) ? v[1] : [v[1]];
+    var alle = goed.concat(v[2]);
+    var rnd = prng(nr * 100 + i + 1);
+    for (var k = alle.length - 1; k > 0; k--) { var j = Math.floor(rnd() * (k + 1)); var t = alle[k]; alle[k] = alle[j]; alle[j] = t; }
+    var idx = goed.map(function (g) { return alle.indexOf(g) + 1; }).sort();
+    var o = { vraag: v[0], antwoorden: alle, goedAntwoorden: idx, punten: 1000 };
+    if (idx.length > 1) o.alleGoed = true;
+    return o;
+  });
+  return { titel: q.titel, vragen: vragen, afbeelding: omslag(q), openbaar: true, publicatie: 'goedgekeurd',
+    soloToegestaan: true, tijdslimiet: 20, geblokkeerd: false, makerNaam: 'Quizzzzz', makerUid: '', aangemaaktOp: Date.now() };
+}
+
+var lijstEl = document.getElementById('lijst'), logEl = document.getElementById('log'), knop = document.getElementById('knop');
+QUIZZEN.forEach(function (q) { var li = document.createElement('li'); li.textContent = q.emoji + ' ' + q.titel + ' (' + q.vragen.length + ' vragen, code ' + q.code + ')'; lijstEl.appendChild(li); });
+function log(t, klasse) { var d = document.createElement('div'); d.textContent = t; if (klasse) d.className = klasse; logEl.appendChild(d); }
+
+knop.addEventListener('click', function () {
+  knop.disabled = true; logEl.innerHTML = '';
+  var keten = Promise.resolve();
+  QUIZZEN.forEach(function (q, nr) {
+    keten = keten.then(function () {
+      return db.ref('quizzen/' + q.code).set(bouwQuiz(q, nr + 1)).then(function () { log('✔ ' + q.titel + ' staat online', 'ok'); });
+    }).catch(function (err) { log('✘ ' + q.titel + ': ' + (err && err.code ? err.code : err.message) + ' — probeer het als sitebeheer (ingelogd) opnieuw, of controleer de Firebase-regels.', 'fout'); });
+  });
+  keten.then(function () { log('Klaar. Kijk bij "Speelbare quizzen".'); knop.disabled = false; });
+});
+</script>
+</body>
+</html>
