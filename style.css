@@ -2869,6 +2869,15 @@ html.breed body.bezoek-modus .telefoon-nav { top: calc(52px + env(safe-area-inse
 .open-blok[hidden], .keuze-blok[hidden], .open-antwoord-blok[hidden] { display: none; }
 .keuze-blok { display: flex; flex-direction: column; gap: 8px; }
 .open-blok { display: flex; flex-direction: column; gap: 8px; }
+.open-antwoorden { display: flex; flex-direction: column; gap: 8px; }
+.open-antwoord-rij { display: flex; gap: 8px; align-items: center; }
+.open-antwoord-rij .veld-open-antwoord { flex: 1 1 auto; min-width: 0; }
+.btn-open-weg {
+  flex: 0 0 auto; width: 44px; height: 44px; border-radius: 12px; cursor: pointer;
+  border: 1px solid #4a3c1a; background: #10152e; color: #ff8fa0; font-size: 1.1rem; line-height: 1;
+}
+.btn-open-weg:hover { border-color: #ff8fa0; }
+.btn-open-plus { align-self: stretch; font-size: 1.6rem; line-height: 1; padding-top: 6px; padding-bottom: 6px; }
 .open-antwoord-blok input { width: 100%; box-sizing: border-box; font-size: 1.3rem; padding: 16px; text-align: center; min-height: 60px; }
 .intro-vraag { font-size: clamp(1.8rem, 6.5vw, 3.2rem); line-height: 1.2; text-align: center; margin: .4em 0 .8em; overflow-wrap: anywhere; }
 
