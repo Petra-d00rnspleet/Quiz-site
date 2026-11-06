@@ -693,11 +693,14 @@ html { background-color: #05081c; color-scheme: dark; }
       </div>
 
       <div class="open-blok" hidden>
-        <label>Goed antwoord (spelers moeten dit goed typen)</label>
-        <input type="text" class="veld-open-antwoord" placeholder="Het goede antwoord" autocomplete="off">
-        <label>Ook goed (andere schrijfwijzen, gescheiden door een ; — niet verplicht)</label>
-        <input type="text" class="veld-open-extra" placeholder="Bijv. Den Haag; 's-Gravenhage" autocomplete="off">
-        <p class="subtitel">Hoofdletters, leestekens (punten, komma's, apostrofs, streepjes enz.) en spaties aan het begin of einde maken niet uit. De rest moet kloppen.</p>
+        <label>Goede antwoord</label>
+        <div class="open-antwoorden">
+          <div class="open-antwoord-rij">
+            <input type="text" class="veld-open-antwoord" placeholder="Het goede antwoord" autocomplete="off">
+          </div>
+        </div>
+        <button type="button" class="btn btn-secondary btn-open-plus" aria-label="Nog een goed antwoord toevoegen" title="Nog een goed antwoord toevoegen">＋</button>
+        <p class="subtitel">Met de ＋ maak je er zoveel vakjes bij als je wilt, maar alle vakjes moeten ingevuld zijn. Typt een speler één van deze antwoorden, dan heeft hij het goed. Hoofdletters, leestekens (punten, komma's, apostrofs, streepjes enz.) en spaties aan het begin of einde maken niet uit. De rest moet kloppen.</p>
       </div>
 
       <div class="keuze-blok">
