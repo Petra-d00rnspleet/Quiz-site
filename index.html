@@ -697,7 +697,7 @@ html { background-color: #05081c; color-scheme: dark; }
         <input type="text" class="veld-open-antwoord" placeholder="Het goede antwoord" autocomplete="off">
         <label>Ook goed (andere schrijfwijzen, gescheiden door een ; — niet verplicht)</label>
         <input type="text" class="veld-open-extra" placeholder="Bijv. Den Haag; 's-Gravenhage" autocomplete="off">
-        <p class="subtitel">Hoofdletters en spaties aan het begin of einde maken niet uit. De rest moet precies kloppen.</p>
+        <p class="subtitel">Hoofdletters, leestekens (punten, komma's, apostrofs, streepjes enz.) en spaties aan het begin of einde maken niet uit. De rest moet kloppen.</p>
       </div>
 
       <div class="keuze-blok">
@@ -707,7 +707,11 @@ html { background-color: #05081c; color-scheme: dark; }
         <option value="2">2 antwoorden (bijv. waar/niet waar)</option>
       </select>
 
-      <label>Antwoorden — vink aan welk antwoord goed is. Mag meer dan één goed zijn? Vink ze allemaal aan: een speler heeft het goed met één van die antwoorden</label>
+      <label>Hoeveel antwoorden zijn er goed?</label>
+      <select class="veld-aantal-goed"></select>
+      <p class="subtitel veld-goed-uitleg"></p>
+
+      <label>Antwoorden — vink de goede antwoorden aan</label>
       <div class="antwoord-invoer-rij">
         <input type="checkbox" class="veld-goed-vinkje" title="Dit antwoord is goed">
         <input type="text" class="veld-antwoord" data-antwoord-index="1" placeholder="Antwoord 1">
@@ -954,7 +958,7 @@ html { background-color: #05081c; color-scheme: dark; }
 
   <script src="firebase-config.js?v=20261008b"></script>
   <script src="poppetjes.js?v=20261008b"></script>
-  <script src="app.js?v=20261105f"></script>
+  <script src="app.js?v=20261106a"></script>
   <script src="telefoon.js?v=20261008b"></script>
   <script src="quizmuziek.js?v=20261104b"></script>
   <script src="qrcode.js?v=1"></script>
