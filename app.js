@@ -1245,6 +1245,42 @@ function leesEnVerkleinVraagFoto(bestand) {
   });
 }
 
+// ---------- Open vraag: meerdere goede antwoorden (elk in een eigen vakje, met een plusje) ----------
+// Voegt een vakje voor een goed antwoord toe. Het eerste vakje heeft geen ✕, de rest wel.
+function voegOpenAntwoordRijToe(blokEl, waarde) {
+  const houder = blokEl.querySelector('.open-antwoorden');
+  if (!houder) return null;
+  const rij = document.createElement('div');
+  rij.className = 'open-antwoord-rij';
+  const veld = document.createElement('input');
+  veld.type = 'text';
+  veld.className = 'veld-open-antwoord';
+  veld.autocomplete = 'off';
+  veld.placeholder = houder.children.length === 0 ? 'Het goede antwoord' : 'Nog een goed antwoord';
+  veld.value = waarde || '';
+  rij.appendChild(veld);
+  if (houder.children.length > 0) {
+    const weg = document.createElement('button');
+    weg.type = 'button';
+    weg.className = 'btn-open-weg';
+    weg.title = 'Dit vakje weghalen';
+    weg.setAttribute('aria-label', 'Dit vakje weghalen');
+    weg.textContent = '✕';
+    weg.addEventListener('click', () => rij.remove());
+    rij.appendChild(weg);
+  }
+  houder.appendChild(rij);
+  return rij;
+}
+// Vult de vakjes met een lijst goede antwoorden (minstens 1 vakje).
+function zetOpenAntwoorden(blokEl, lijst) {
+  const houder = blokEl.querySelector('.open-antwoorden');
+  if (!houder) return;
+  houder.innerHTML = '';
+  const antwoorden = (lijst && lijst.length) ? lijst : [''];
+  antwoorden.forEach(a => voegOpenAntwoordRijToe(blokEl, a));
+}
+
 // Zet (of verwijdert, bij lege url) de foto van één vraagblok in het formulier.
 function zetVraagFoto(blokEl, url) {
   blokEl._afbeelding = url || '';
@@ -1314,6 +1350,14 @@ function voegVraagBlokToe(vraagData) {
       werkGoedBij();
     });
   });
+  const openPlusKnop = blokEl.querySelector('.btn-open-plus');
+  if (openPlusKnop) {
+    openPlusKnop.addEventListener('click', () => {
+      const rij = voegOpenAntwoordRijToe(blokEl, '');
+      const veld = rij && rij.querySelector('.veld-open-antwoord');
+      if (veld) { try { veld.focus(); } catch (e) {} }
+    });
+  }
   let startGoed = 1;
 
   if (vraagData) {
@@ -1322,8 +1366,7 @@ function voegVraagBlokToe(vraagData) {
     const aantalAntwoorden = (!isOpen && genormaliseerd.antwoorden.length === 2) ? 2 : 4;
     blokEl.querySelector('.veld-soort').value = isOpen ? 'open' : 'keuze';
     if (isOpen) {
-      blokEl.querySelector('.veld-open-antwoord').value = genormaliseerd.antwoorden[0] || '';
-      blokEl.querySelector('.veld-open-extra').value = genormaliseerd.antwoorden.slice(1).join('; ');
+      zetOpenAntwoorden(blokEl, genormaliseerd.antwoorden);
     }
 
     blokEl.querySelector('.veld-vraag').value = genormaliseerd.vraag;
@@ -1569,13 +1612,16 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
   for (const blok of blokken) {
     const vraagTekst = blok.querySelector('.veld-vraag').value.trim();
     if (blok.querySelector('.veld-soort').value === 'open') {
-      const hoofd = blok.querySelector('.veld-open-antwoord').value.trim();
-      const extra = blok.querySelector('.veld-open-extra').value.split(';').map(t => t.trim()).filter(Boolean);
-      if (!vraagTekst || !hoofd) {
+      const openAntwoorden = Array.from(blok.querySelectorAll('.veld-open-antwoord')).map(v => v.value.trim());
+      if (!vraagTekst || openAntwoorden.length === 0) {
         foutmelding.textContent = 'Vul bij elke open vraag de vraagtekst en het goede antwoord in.';
         return;
       }
-      const openData = { vraag: vraagTekst, type: 'open', antwoorden: [hoofd].concat(extra), punten: leesPuntenWaarde(blok) };
+      if (openAntwoorden.some(a => !a)) {
+        foutmelding.textContent = 'Bij "' + vraagTekst + '" is een vakje voor een goed antwoord leeg. Vul het in of haal het weg met de ✕.';
+        return;
+      }
+      const openData = { vraag: vraagTekst, type: 'open', antwoorden: Array.from(new Set(openAntwoorden)), punten: leesPuntenWaarde(blok) };
       if (blok._afbeelding) openData.afbeelding = blok._afbeelding;
       vragen.push(openData);
       continue;
