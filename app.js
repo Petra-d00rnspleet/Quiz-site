@@ -54,7 +54,7 @@ function bezoekUid() { const b = bezoekInfo(); return b ? b.uid : ''; }
 const ACCOUNT_DATA_SLEUTELS = ['quizAppMunten', 'eigenQuizzen', 'quizAppGekochteBoxen', 'quizAppWielLaatsteDraai', 'quizAppWielLaatsteResultaat', 'quizAppWielVandaag'];
 // Alles wat bij uitloggen van dit apparaat verdwijnt (staat online veilig bij je account).
 const ACCOUNT_LOKALE_SLEUTELS = ['makerNaam', 'profielDier', 'profielAccessoires', 'quizAppBezitDieren', 'quizAppBezitAccessoires',
-  'quizAppBezitAantallen', 'quizAppChatGelezen', 'quizAppChatStijl', 'beheerTijdGezien', ACCOUNT_UID_SLEUTEL].concat(ACCOUNT_DATA_SLEUTELS);
+  'quizAppBezitAantallen', 'quizAppChatGelezen', 'quizAppChatStijl', 'beheerTijdGezien', 'accountSyncOpen', ACCOUNT_UID_SLEUTEL].concat(ACCOUNT_DATA_SLEUTELS);
 
 function maakAccountEmail(uid) { return String(uid).toLowerCase() + ACCOUNT_DOMEIN; }
 function isSpelerAccount(u) { return !!u && !u.isAnonymous && typeof u.email === 'string' && u.email.slice(-ACCOUNT_DOMEIN.length) === ACCOUNT_DOMEIN; }
@@ -64,12 +64,16 @@ function wisLokaalAccount() { ACCOUNT_LOKALE_SLEUTELS.forEach(k => localStorage.
 
 // Wijzigingen in munten, quizzen enz. gaan automatisch (na een korte pauze) naar je account.
 const origineleSetItem = Storage.prototype.setItem;
+const SYNC_OPEN_SLEUTEL = 'accountSyncOpen';
 let accountSyncTimer = null;
 Storage.prototype.setItem = function (sleutel, waarde) {
   origineleSetItem.call(this, sleutel, waarde);
   if (this === window.localStorage && ACCOUNT_DATA_SLEUTELS.indexOf(sleutel) !== -1) {
+    // Onthoud dat er wijzigingen nog niet online staan: die mogen bij het herladen nooit
+    // overschreven worden door oudere online gegevens (anders verdwijnt een net gemaakte quiz).
+    origineleSetItem.call(this, SYNC_OPEN_SLEUTEL, '1');
     clearTimeout(accountSyncTimer);
-    accountSyncTimer = setTimeout(syncAccountData, 1500);
+    accountSyncTimer = setTimeout(syncAccountData, 500);
   }
 };
 
@@ -85,15 +89,25 @@ function syncAccountData() {
     const v = localStorage.getItem(k);
     if (v !== null && v.length <= 100000) data[k] = v;
   });
-  return db.ref('accountData/' + u.uid).update(data).catch(() => {});
+  return db.ref('accountData/' + u.uid).update(data).then(() => {
+    localStorage.removeItem(SYNC_OPEN_SLEUTEL);
+  }).catch(() => {});
 }
+
+// Sluit je de pagina (of ga je naar een ander tabblad/app) terwijl er nog wijzigingen niet
+// online staan, dan sturen we ze meteen door.
+window.addEventListener('pagehide', () => { if (localStorage.getItem(SYNC_OPEN_SLEUTEL) === '1') syncAccountData(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && localStorage.getItem(SYNC_OPEN_SLEUTEL) === '1') syncAccountData(); });
 
 // Haalt je online gegevens op. Geeft true als er iets op dit apparaat is veranderd.
 function haalAccountData(uid, vervangAlles) {
   return db.ref('accountData/' + uid).once('value').then(snap => {
     const d = snap.val() || {};
     let veranderd = false;
+    // Staan er op dit apparaat nog wijzigingen die niet online waren aangekomen? Dan wint dit apparaat.
+    const lokaalOpen = !vervangAlles && localStorage.getItem(SYNC_OPEN_SLEUTEL) === '1';
     ACCOUNT_DATA_SLEUTELS.forEach(k => {
+      if (lokaalOpen && localStorage.getItem(k) !== null) return;
       if (typeof d[k] === 'string') {
         if (localStorage.getItem(k) !== d[k]) { origineleSetItem.call(localStorage, k, d[k]); veranderd = true; }
       } else if (vervangAlles) {
