@@ -1052,6 +1052,9 @@ function normaliseerVraag(vraag) {
     type: vraag.type === 'open' ? 'open' : 'keuze',
     antwoorden: vraag.antwoorden || [],
     goedAntwoorden: goedAntwoorden,
+    // alleGoed: bij meer dan 1 goed antwoord moet de speler precies die antwoorden kiezen.
+    // Oudere quizzen hebben dit veld niet: daar is één goed gekozen antwoord genoeg.
+    alleGoed: !!vraag.alleGoed && goedAntwoorden.length > 1,
     afbeelding: vraag.afbeelding || '',
     punten: punten
   };
@@ -1059,9 +1062,14 @@ function normaliseerVraag(vraag) {
 
 // ---------- Open vragen (spelers typen het antwoord) ----------
 // Bij een open vraag zijn `antwoorden` de goede schrijfwijzen (de eerste is het hoofdantwoord).
-// Hoofdletters en extra spaties maken niet uit; verder moet het precies kloppen.
+// Hoofdletters, leestekens (punten, komma's, apostrofs, uitroeptekens, streepjes, enz.) en
+// extra spaties maken niet uit; verder moet het kloppen. Streepjes en schuine strepen tellen
+// als spatie ("Den-Haag" = "den haag"), de rest van de leestekens verdwijnt.
 function normaliseerOpenTekst(t) {
-  return String(t == null ? '' : t).normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
+  return String(t == null ? '' : t).normalize('NFC').toLowerCase()
+    .replace(/[-\u2010-\u2015_\/\\]/g, ' ')
+    .replace(/[\p{P}`\u00b4^\u00a8]/gu, '')
+    .replace(/\s+/g, ' ').trim();
 }
 function openAntwoordGoed(vraag, tekst) {
   const n = normaliseerOpenTekst(tekst);
@@ -1071,7 +1079,7 @@ function openAntwoordGoed(vraag, tekst) {
 function isAntwoordGoed(vraag, antwoord) {
   if (!antwoord) return false;
   if (vraag.type === 'open') return openAntwoordGoed(vraag, antwoord.antwoordTekst);
-  return heeftGoedAntwoordGekozen(antwoord.antwoordIndexen, vraag.goedAntwoorden);
+  return isKeuzeGoed(vraag, antwoord.antwoordIndexen);
 }
 
 // ---------- Vraag-intro: eerst de vraag groot met een laadteken, daarna pas de antwoorden ----------
@@ -1123,6 +1131,53 @@ function zetPuntenWaarde(blokEl, getal) {
 function heeftGoedAntwoordGekozen(gekozen, goede) {
   if (!gekozen || !goede) return false;
   return gekozen.some(g => goede.includes(g));
+}
+
+// Beoordeelt de gekozen antwoorden bij een meerkeuzevraag. Heeft de vraag meerdere goede
+// antwoorden (alleGoed), dan moeten precies de goede antwoorden gekozen zijn.
+function isKeuzeGoed(vraag, gekozen) {
+  if (vraag.alleGoed) return setsGelijk(gekozen, vraag.goedAntwoorden);
+  return heeftGoedAntwoordGekozen(gekozen, vraag.goedAntwoorden);
+}
+
+// Tekent de antwoordknoppen voor de speler (live en solo). Bij 1 goed antwoord: tik = antwoord.
+// Bij meerdere goede antwoorden: kies er precies zoveel als er goed zijn en klik op versturen.
+// `gekozen` is een lijst die de aanroeper bewaart, zodat de keuze bij opnieuw tekenen blijft staan.
+function bouwKeuzeOpties(antwoordenEl, vraag, gekozen, verstuurKnop, instructieEl, verstuur) {
+  const meer = !!vraag.alleGoed;
+  const n = (vraag.goedAntwoorden || []).length;
+  const optieEls = [];
+  const werkBij = () => {
+    optieEls.forEach((el, i) => el.classList.toggle('geselecteerd', gekozen.indexOf(i + 1) !== -1));
+    if (meer) {
+      instructieEl.textContent = 'Er zijn ' + n + ' goede antwoorden. Kies er precies ' + n + ' (' + gekozen.length + ' van ' + n + ' gekozen).';
+      verstuurKnop.disabled = gekozen.length !== n;
+    }
+  };
+  if (meer) {
+    verstuurKnop.style.display = '';
+    verstuurKnop.onclick = () => { if (gekozen.length === n) verstuur(gekozen.slice()); };
+  } else {
+    instructieEl.textContent = 'Tik op het antwoord dat je goed denkt dat is.';
+    verstuurKnop.style.display = 'none';
+    verstuurKnop.onclick = null;
+  }
+  vraag.antwoorden.forEach((tekst, index) => {
+    const antwoordIndex = index + 1;
+    const optie = document.createElement('div');
+    optie.className = 'antwoord-optie';
+    optie.textContent = tekst;
+    optie.addEventListener('click', () => {
+      if (!meer) { verstuur([antwoordIndex]); return; }
+      const pos = gekozen.indexOf(antwoordIndex);
+      if (pos !== -1) gekozen.splice(pos, 1);
+      else if (gekozen.length < n) gekozen.push(antwoordIndex);
+      werkBij();
+    });
+    antwoordenEl.appendChild(optie);
+    optieEls.push(optie);
+  });
+  werkBij();
 }
 
 // Vergelijkt twee lijsten met antwoordnummers zonder rekening te houden met volgorde.
@@ -1206,6 +1261,47 @@ function voegVraagBlokToe(vraagData) {
   const kloon = sjabloonVraagBlok.content.cloneNode(true);
   const blokEl = kloon.querySelector('.vraag-blok');
 
+  // "Hoeveel antwoorden zijn goed?": de keuzelijst loopt van 1 tot het aantal antwoorden, en je
+  // kunt nooit meer vinkjes aanzetten dan hier staat. Bij 1 goed antwoord wisselt een nieuw
+  // vinkje het oude; bij meer goede antwoorden gaan de overige vinkjes op slot zodra het aantal bereikt is.
+  const aantalGoedEl = blokEl.querySelector('.veld-aantal-goed');
+  const goedUitlegEl = blokEl.querySelector('.veld-goed-uitleg');
+  const zichtbareVinkjes = () => {
+    const aantal = parseInt(blokEl.querySelector('.veld-aantal-antwoorden').value, 10) || 4;
+    return Array.from(blokEl.querySelectorAll('.veld-goed-vinkje')).slice(0, aantal);
+  };
+  const werkGoedBij = (gewenst) => {
+    const vinkjes = zichtbareVinkjes();
+    const huidig = gewenst || parseInt(aantalGoedEl.value, 10) || 1;
+    aantalGoedEl.innerHTML = '';
+    for (let i = 1; i <= vinkjes.length; i++) {
+      const o = document.createElement('option');
+      o.value = String(i);
+      o.textContent = i === 1 ? '1 antwoord is goed' : i + ' antwoorden zijn goed';
+      aantalGoedEl.appendChild(o);
+    }
+    const n = Math.min(Math.max(1, huidig), vinkjes.length);
+    aantalGoedEl.value = String(n);
+    let aangevinkt = vinkjes.filter(v => v.checked);
+    while (aangevinkt.length > n) { aangevinkt.pop().checked = false; }
+    aangevinkt = vinkjes.filter(v => v.checked);
+    vinkjes.forEach(v => { v.disabled = n > 1 && !v.checked && aangevinkt.length >= n; });
+    goedUitlegEl.textContent = (n === 1
+      ? 'Spelers tikken het goede antwoord aan.'
+      : 'Spelers moeten precies ' + n + ' antwoorden kiezen en alle ' + n + ' moeten goed zijn.') +
+      ' Aangevinkt: ' + aangevinkt.length + ' van ' + n + '.';
+  };
+  aantalGoedEl.addEventListener('change', () => werkGoedBij());
+  blokEl.querySelectorAll('.veld-goed-vinkje').forEach(vinkje => {
+    vinkje.addEventListener('change', () => {
+      if (vinkje.checked && (parseInt(aantalGoedEl.value, 10) || 1) === 1) {
+        zichtbareVinkjes().forEach(v => { if (v !== vinkje) v.checked = false; });
+      }
+      werkGoedBij();
+    });
+  });
+  let startGoed = 1;
+
   if (vraagData) {
     const genormaliseerd = normaliseerVraag(vraagData);
     const isOpen = genormaliseerd.type === 'open';
@@ -1231,10 +1327,12 @@ function voegVraagBlokToe(vraagData) {
 
     werkAantalAntwoordenZichtbaarheidBij(blokEl, aantalAntwoorden);
     zetVraagFoto(blokEl, genormaliseerd.afbeelding);
+    startGoed = Math.max(1, genormaliseerd.goedAntwoorden.filter(g => g <= aantalAntwoorden).length);
   } else {
     werkAantalAntwoordenZichtbaarheidBij(blokEl, 4);
     zetVraagFoto(blokEl, '');
   }
+  werkGoedBij(startGoed);
 
   const vraagFotoBestandEl = blokEl.querySelector('.veld-vraag-foto-bestand');
   blokEl.querySelector('.btn-vraag-foto-kiezen').addEventListener('click', () => {
@@ -1279,6 +1377,7 @@ function voegVraagBlokToe(vraagData) {
 
   blokEl.querySelector('.veld-aantal-antwoorden').addEventListener('change', (e) => {
     werkAantalAntwoordenZichtbaarheidBij(blokEl, parseInt(e.target.value, 10));
+    werkGoedBij();
   });
 
   // Soort vraag: meerkeuze of open (typen)
@@ -1484,6 +1583,12 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
       foutmelding.textContent = 'Vink bij elke vraag minstens 1 goed antwoord aan.';
       return;
     }
+    const gewenstGoed = parseInt(blok.querySelector('.veld-aantal-goed').value, 10) || 1;
+    if (goedAntwoorden.length !== gewenstGoed) {
+      foutmelding.textContent = 'Bij "' + vraagTekst + '" staat dat er ' + gewenstGoed + ' antwoord' + (gewenstGoed === 1 ? ' is' : 'en zijn') +
+        ' goed, maar je hebt er ' + goedAntwoorden.length + ' aangevinkt.';
+      return;
+    }
 
     const vraagData = {
       vraag: vraagTekst,
@@ -1491,6 +1596,7 @@ document.getElementById('btn-quiz-opslaan').addEventListener('click', () => {
       goedAntwoorden: goedAntwoorden,
       punten: punten
     };
+    if (goedAntwoorden.length > 1) vraagData.alleGoed = true;
     if (blok._afbeelding) {
       vraagData.afbeelding = blok._afbeelding;
     }
@@ -2304,6 +2410,40 @@ function formatBoxDatum(datumTekst) {
   return datum.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+function lowerFirst(t) { return t ? t.charAt(0).toLowerCase() + t.slice(1) : t; }
+
+// Aantal dagen van vandaag tot een YYYY-MM-DD datum (negatief = verleden).
+function dagenTot(datumTekst) {
+  const a = new Date(huidigeDatumTekst() + 'T00:00:00');
+  const b = new Date(datumTekst + 'T00:00:00');
+  return Math.round((b - a) / 86400000);
+}
+
+// Tekst over de looptijd van een kist: vanaf wanneer en tot wanneer hij te koop is
+// (alleen de datums die zijn ingesteld). Bijv. "Te koop van 1 november 2026 tot 15 november 2026 (nog 5 dagen)".
+// De kist gaat op de "tot"-datum zelf offline, dus de laatste koopdag is de dag ervoor.
+function boxLooptijdTekst(box) {
+  if (!box) return '';
+  const vanaf = box.vanafDatum, tot = box.totDatum;
+  let tekst;
+  if (boxIsNogNietTeKoop(box)) {
+    const n = dagenTot(vanaf);
+    tekst = 'Te koop vanaf ' + formatBoxDatum(vanaf) + (tot ? ' tot ' + formatBoxDatum(tot) : '') +
+      ' (' + (n === 1 ? 'morgen' : 'over ' + n + ' dagen') + ')';
+  } else if (vanaf && tot) {
+    const n = dagenTot(tot);
+    tekst = 'Te koop van ' + formatBoxDatum(vanaf) + ' tot ' + formatBoxDatum(tot) + ' (' + (n <= 1 ? 'nog maar vandaag' : 'nog ' + n + ' dagen') + ')';
+  } else if (vanaf) {
+    tekst = 'Te koop sinds ' + formatBoxDatum(vanaf);
+  } else if (tot) {
+    const n = dagenTot(tot);
+    tekst = 'Nog te koop tot ' + formatBoxDatum(tot) + ' (' + (n <= 1 ? 'nog maar vandaag' : 'nog ' + n + ' dagen') + ')';
+  } else {
+    tekst = '';
+  }
+  return tekst;
+}
+
 function haalGekochteBoxen() {
   const opgeslagen = JSON.parse(localStorage.getItem(GEKOCHTE_BOXEN_SLEUTEL) || 'null');
   return Array.isArray(opgeslagen) ? opgeslagen : [];
@@ -2367,37 +2507,17 @@ function bouwBoxKaartHtml(boxId, box) {
     } else if (automatischOffline) {
       html += '<span class="box-status box-status-offline">🔒 Automatisch offline sinds ' + escapeHtml(formatBoxDatum(box.totDatum)) + '</span>';
     } else if (nogNietTeKoop) {
-      html += '<span class="box-status box-status-vanaf">⏳ Te koop vanaf ' + escapeHtml(formatBoxDatum(box.vanafDatum)) +
+      html += '<span class="box-status box-status-vanaf">⏳ ' + escapeHtml(boxLooptijdTekst(box)) +
         (box.teaserZichtbaar ? ' · spelers zien alvast dat hij eraan komt' : ' · nog helemaal onzichtbaar voor spelers') + '</span>';
     } else if (box.vanafDatum || box.totDatum) {
-      // Kist is nu gewoon te koop, maar heeft een vanaf- en/of tot-datum ingesteld:
-      // laat de hele looptijd zien, niet alleen de tot-datum.
-      let looptijdTekst;
-      if (box.vanafDatum && box.totDatum) {
-        looptijdTekst = 'Te koop van ' + formatBoxDatum(box.vanafDatum) + ' tot ' + formatBoxDatum(box.totDatum);
-      } else if (box.vanafDatum) {
-        looptijdTekst = 'Te koop sinds ' + formatBoxDatum(box.vanafDatum);
-      } else {
-        looptijdTekst = 'Te koop tot ' + formatBoxDatum(box.totDatum);
-      }
-      html += '<span class="box-status box-status-vanaf">📅 ' + escapeHtml(looptijdTekst) + '</span>';
+      html += '<span class="box-status box-status-vanaf">📅 ' + escapeHtml(boxLooptijdTekst(box)) + '</span>';
     }
   } else if (nogNietTeKoop) {
-    // Spelers zien deze kaart bij een nog-niet-te-koop kist alleen als sitebeheer
-    // "teaserZichtbaar" heeft aangezet (zie het filteren in laadWinkelBoxen). Is er ook
-    // een "tot"-datum ingesteld, dan laten we spelers meteen zien tot wanneer de kist
-    // er dan zal zijn, niet alleen wanneer hij begint.
-    const teaserTekst = box.totDatum
-      ? 'Binnenkort — te koop van ' + formatBoxDatum(box.vanafDatum) + ' tot ' + formatBoxDatum(box.totDatum)
-      : 'Binnenkort — te koop vanaf ' + formatBoxDatum(box.vanafDatum);
-    html += '<span class="box-status box-status-vanaf">⏳ ' + escapeHtml(teaserTekst) + '</span>';
+    // Spelers zien een nog-niet-te-koop kist alleen als sitebeheer "teaserZichtbaar" aan heeft staan.
+    html += '<span class="box-status box-status-vanaf">⏳ Binnenkort — ' + escapeHtml(lowerFirst(boxLooptijdTekst(box))) + '</span>';
   } else if (box.vanafDatum || box.totDatum) {
-    // Kist is nu te koop en heeft een vanaf- en/of tot-datum: spelers zien de hele looptijd.
-    let looptijd;
-    if (box.vanafDatum && box.totDatum) looptijd = '📅 Te koop van ' + formatBoxDatum(box.vanafDatum) + ' tot ' + formatBoxDatum(box.totDatum);
-    else if (box.vanafDatum) looptijd = '📅 Te koop sinds ' + formatBoxDatum(box.vanafDatum);
-    else looptijd = '⏳ Nog te koop tot ' + formatBoxDatum(box.totDatum);
-    html += '<span class="box-status box-status-vanaf">' + escapeHtml(looptijd) + '</span>';
+    // Kist is nu te koop en heeft een vanaf- en/of tot-datum: iedereen ziet de hele looptijd.
+    html += '<span class="box-status box-status-vanaf">📅 ' + escapeHtml(boxLooptijdTekst(box)) + '</span>';
   }
   html += '</div>' +
     '<div class="quiz-item-knoppen">' +
@@ -3764,7 +3884,7 @@ function renderSessieVoorSpeler(sessie) {
       openBlokEl.hidden = vraag.type !== 'open';
 
       if (vraag.type === 'open') {
-        instructieEl.textContent = 'Typ het goede antwoord. Let op: het moet goed gespeld zijn!';
+        instructieEl.textContent = 'Typ het goede antwoord. Let op: het moet goed gespeld zijn! Hoofdletters en leestekens maken niet uit.';
         verstuurKnop.style.display = '';
         const invoer = document.getElementById('speler-open-invoer');
         if (invoer.dataset.vraag !== String(sessie.huidigeVraagIndex)) {
@@ -3781,22 +3901,7 @@ function renderSessieVoorSpeler(sessie) {
           verstuurAntwoord(undefined, tekst);
         };
       } else {
-        instructieEl.textContent = 'Tik op het antwoord dat je goed denkt dat is.';
-        verstuurKnop.style.display = 'none';
-        verstuurKnop.onclick = null;
-
-        vraag.antwoorden.forEach((tekst, index) => {
-          const antwoordIndex = index + 1;
-          const optie = document.createElement('div');
-          optie.className = 'antwoord-optie';
-          optie.textContent = tekst;
-
-          optie.addEventListener('click', () => {
-            verstuurAntwoord([antwoordIndex]);
-          });
-
-          antwoordenEl.appendChild(optie);
-        });
+        bouwKeuzeOpties(antwoordenEl, vraag, spelerGeselecteerdeAntwoorden, verstuurKnop, instructieEl, verstuurAntwoord);
       }
 
       toonScherm('scherm-speler-vraag');
@@ -3999,7 +4104,7 @@ function toonSoloVraagNaIntro() {
   document.getElementById('solo-open-blok').hidden = vraag.type !== 'open';
 
   if (vraag.type === 'open') {
-    instructieEl.textContent = 'Typ het goede antwoord. Let op: het moet goed gespeld zijn!';
+    instructieEl.textContent = 'Typ het goede antwoord. Let op: het moet goed gespeld zijn! Hoofdletters en leestekens maken niet uit.';
     verstuurKnop.style.display = '';
     const invoer = document.getElementById('solo-open-invoer');
     invoer.value = '';
@@ -4013,19 +4118,7 @@ function toonSoloVraagNaIntro() {
     };
     setTimeout(() => invoer.focus(), 80);
   } else {
-    instructieEl.textContent = 'Tik op het antwoord dat je goed denkt dat is.';
-    verstuurKnop.style.display = 'none';
-    verstuurKnop.onclick = null;
-
-    vraag.antwoorden.forEach((tekst, index) => {
-      const optie = document.createElement('div');
-      optie.className = 'antwoord-optie';
-      optie.textContent = tekst;
-      optie.addEventListener('click', () => {
-        verstuurSoloAntwoord([index + 1]);
-      });
-      antwoordenEl.appendChild(optie);
-    });
+    bouwKeuzeOpties(antwoordenEl, vraag, [], verstuurKnop, instructieEl, verstuurSoloAntwoord);
   }
 
   toonScherm('scherm-solo-vraag');
@@ -4036,7 +4129,7 @@ function verstuurSoloAntwoord(indexen, tekst) {
   soloHeeftGeantwoord = true;
 
   const vraag = soloVragen[soloIndex];
-  const goed = vraag.type === 'open' ? openAntwoordGoed(vraag, tekst) : heeftGoedAntwoordGekozen(indexen, vraag.goedAntwoorden);
+  const goed = vraag.type === 'open' ? openAntwoordGoed(vraag, tekst) : isKeuzeGoed(vraag, indexen);
   if (goed) soloAantalGoed++;
 
   const resultaatEl = document.getElementById('solo-resultaat-tekst');
