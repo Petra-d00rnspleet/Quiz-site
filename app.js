@@ -5008,6 +5008,15 @@ function markeerChatGelezen(snap) {
     return;
   }
   zetChatGelezen(chatIdVoor(gebruiker.uid, huidigChatUid), nieuwste);
+  // Leesvinkje: berichten van de ander krijgen "gelezen: true" zodra je de chat open hebt.
+  // (Niet bij het meelezen als sitebeheer: dan heeft de bezochte persoon het niet gelezen.)
+  if (!bezoekUid()) {
+    const ref = chatBerichtenRef();
+    if (ref) snap.forEach(c => {
+      const v = c.val() || {};
+      if (v.uid && v.uid !== gebruiker.uid && !v.gelezen) ref.child(c.key).child('gelezen').set(true).catch(() => {});
+    });
+  }
   if (chatOngelezen[huidigChatUid]) {
     chatOngelezen[huidigChatUid] = 0;
     renderVrienden();
@@ -5976,6 +5985,7 @@ function tekenChatBerichten() {
         voor.textContent = b.aan ? ('🎯 Voor ' + (b.aan === gebruiker.uid ? 'jou' : groepLidNaam(b.aan))) : '🎁 Voor iedereen';
         el.insertBefore(voor, el.children[1] || null);
       }
+      if (eigen && !huidigGroepId) el.appendChild(maakLeesVinkje(b));
       lijst.appendChild(el);
       if (b.type === 'munten' && eigen) betaalMuntenTerugAlsNodig(key, b);
       return;
@@ -5997,6 +6007,7 @@ function tekenChatBerichten() {
       label.textContent = '🛠 Verstuurd door sitebeheer';
       p.appendChild(label);
     }
+    if (eigen && !huidigGroepId) p.appendChild(maakLeesVinkje(b));
     lijst.appendChild(p);
   });
   // Bezoekmodus: alleen kijken, behalve dat sitebeheer cadeaus en quizzen voor de bezochte persoon mag accepteren of weigeren
@@ -6006,6 +6017,17 @@ function tekenChatBerichten() {
     if (!mag) k.remove();
   });
   if (onderaan) lijst.scrollTop = lijst.scrollHeight;
+}
+
+// Vinkje onder je eigen bericht: grijs = verstuurd, gekleurd = de ander heeft de chat geopend en het gelezen.
+function maakLeesVinkje(b) {
+  const el = document.createElement('div');
+  const gelezen = !!(b && b.gelezen);
+  el.className = 'chat-leesvinkje' + (gelezen ? ' gelezen' : '');
+  el.textContent = '✓';
+  el.title = gelezen ? 'Gelezen' : 'Verstuurd';
+  el.setAttribute('aria-label', el.title);
+  return el;
 }
 
 // Kopregel van een bericht: naam, en bij je eigen berichten een 🗑-knop om het te verwijderen.
