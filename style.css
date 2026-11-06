@@ -2909,3 +2909,19 @@ body.bezoek-modus .poppetje-editor {
 .quiz-bekijk-vraag li { overflow-wrap: anywhere; color: #f2f2f5; }
 .quiz-bekijk-vraag li.goed { color: #8cf5b6; font-weight: 700; }
 .quiz-bekijk-foto { max-width: 100%; max-height: 220px; object-fit: contain; border-radius: 10px; align-self: flex-start; }
+
+/* ---------- Leesvinkje onder je eigen chatbericht ---------- */
+.chat-leesvinkje {
+  align-self: flex-end;
+  text-align: right;
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  color: #8e8aa0;
+  transition: color 0.2s ease;
+}
+.chat-leesvinkje.gelezen {
+  color: #2bb5ff;
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.5);
+}
