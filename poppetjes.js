@@ -1172,16 +1172,16 @@ Object.assign(ACCESSOIRES, {
     `<path d="M${-dx - 22 * s} 0 L${-dx - 38 * s} ${-2 * s} M${dx + 22 * s} 0 L${dx + 38 * s} ${-2 * s}" stroke="#e5384b" stroke-width="${6 * s}" stroke-linecap="round"/>` +
     `<rect x="${-dx - 23 * s}" y="${-17 * s}" width="${2 * dx + 46 * s}" height="${34 * s}" rx="${15 * s}" fill="#8fd3ff" fill-opacity=".5" stroke="#e5384b" stroke-width="${5 * s}"/>` +
     `<path d="M${-dx - 12 * s} ${-8 * s} H${-dx + 2 * s}" stroke="#fff" opacity=".7" stroke-width="${3.4 * s}" stroke-linecap="round"/>` },
-  '🥸': { plek: 'gezicht', naam: 'grappige bril', bril: (dx, s) =>
+  '🥸': { plek: 'gezicht', naam: 'grappige bril', bril: (dx, s, ny = dx * 1.05, nr = 4.6) =>
     brilPaar(`<circle cx="0" cy="0" r="19" fill="#fff" fill-opacity=".35" stroke="#26263a" stroke-width="5"/>`, dx, s, '#26263a') +
-    `<ellipse cx="0" cy="${dx * 0.95}" rx="${dx * 0.32}" ry="${dx * 0.26}" fill="#f2b28a"/>` +
-    `<path d="M${-dx * 0.9} ${dx * 1.35} Q${-dx * 0.4} ${dx * 0.95} 0 ${dx * 1.2} Q${dx * 0.4} ${dx * 0.95} ${dx * 0.9} ${dx * 1.35} Q${dx * 0.5} ${dx * 1.75} 0 ${dx * 1.45} Q${-dx * 0.5} ${dx * 1.75} ${-dx * 0.9} ${dx * 1.35} Z" fill="#5a3a22"/>` },
+    `<ellipse cx="0" cy="${ny - nr * 0.1}" rx="${nr * 0.95}" ry="${nr * 0.8}" fill="#f2b28a" stroke="#c98a62" stroke-width="${nr * 0.12}"/>` +
+    `<path d="M${-nr * 2.1} ${ny + nr * 0.9} Q${-nr * 1.0} ${ny + nr * 0.1} 0 ${ny + nr * 0.55} Q${nr * 1.0} ${ny + nr * 0.1} ${nr * 2.1} ${ny + nr * 0.9} Q${nr * 1.1} ${ny + nr * 1.9} 0 ${ny + nr * 1.35} Q${-nr * 1.1} ${ny + nr * 1.9} ${-nr * 2.1} ${ny + nr * 0.9} Z" fill="#5a3a22"/>` },
   '🧐': { plek: 'gezicht', naam: 'monocle', bril: (dx, s) =>
     `<circle cx="${dx}" cy="0" r="${21 * s}" fill="#bfe6ff" fill-opacity=".3" stroke="#d99a06" stroke-width="${4.4 * s}"/>` +
     `<path d="M${dx + 6 * s} ${20 * s} Q${dx + 22 * s} ${44 * s} ${dx + 8 * s} ${66 * s}" stroke="#d99a06" stroke-width="${1.8 * s}" fill="none"/>` },
-  '🤡': { plek: 'gezicht', naam: 'clownsneus', bril: (dx, s) =>
-    `<circle cx="0" cy="${dx * 1.05}" r="${dx * 0.55}" fill="#e5384b" stroke="#a81f30" stroke-width="${1.6 * s}"/>` +
-    `<circle cx="${-dx * 0.18}" cy="${dx * 0.85}" r="${dx * 0.16}" fill="#fff" opacity=".6"/>` },
+  '🤡': { plek: 'gezicht', naam: 'clownsneus', bril: (dx, s, ny = dx * 1.05, nr = 4.6) =>
+    `<circle cx="0" cy="${ny}" r="${nr * 1.25}" fill="#e5384b" stroke="#a81f30" stroke-width="${1.4 * s * 1.4}"/>` +
+    `<circle cx="${-nr * 0.4}" cy="${ny - nr * 0.45}" r="${nr * 0.35}" fill="#fff" opacity=".6"/>` },
   '😍': { plek: 'gezicht', naam: 'hartjesbril', bril: (dx, s) =>
     brilPaar(`<path d="M0 17 C-26 0 -22 -18 -9 -18 C-3 -18 0 -12 0 -12 C0 -12 3 -18 9 -18 C22 -18 26 0 0 17 Z" fill="#ff5c9a" stroke="#c92a6d" stroke-width="3.4" stroke-linejoin="round"/><ellipse cx="-9" cy="-8" rx="4" ry="2.4" fill="#fff" opacity=".6"/>`, dx, s, '#c92a6d') },
   '🤩': { plek: 'gezicht', naam: 'sterrenbril', bril: (dx, s) =>
@@ -1359,6 +1359,360 @@ function tekenAangepastAccessoire(id, data) {
   });
 }
 
+
+// ============================================================================
+// PASVORM — hoeden, brillen en meer passen automatisch op ELK dier
+//
+// Per dier staat in KOP_PROFIEL de echte vorm van de kop (hoe hoog de bovenkant
+// van het hoofd is op elke plek, en hoe breed het hoofd is op elke hoogte).
+// Daarmee wordt elke hoed uitgerekend: breedte, hoogte, schuinte, en of hij
+// precies op het hoofd rust, zonder de ogen te bedekken. Koptelefoon, kattenoren,
+// hoorntjes, strik en antennes lopen mee met de bolling van het hoofd.
+// De bril staat precies op de ogen; de pootjes van de bril eindigen bij de rand
+// van het hoofd. Heb je een nieuw dier getekend? Zet het dan in KOP_PROFIEL
+// (of laat het weg: dan wordt kruin/ogen gebruikt, zoals vroeger).
+// ============================================================================
+
+// Gemeten vorm van elke kop (automatisch gemaakt uit de tekeningen).
+const KOP_PROFIEL = {
+  '🐶': {t:[null,null,null,null,null,null,null,null,49.8,44.5,40.8,55.8,46.8,42.5,39.5,36.8,34.8,33,31.5,27,26.3,25.8,25.5,25.2,25,25,25,25.2,25.5,25.8,26.3,27,31.7,33.2,35,37.2,39.7,42.8,47.3,38.3,41.2,44.8,50.5,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,41,35.2,31.3,28.3,25.8,23.8,22.2,20.7,19.3,18.3,17.3,16.7,16,15.5,15.3,15,15,15,15.3,15.7,16,16.7,17.5,18.3,19.5,20.7,22.2,24,26.2,28.5,31.7,35.7,41.8,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,58.8,64.7,68.5,71.5,74,76,77.7,79.2,80.5,81.5,82.5,83.2,83.8,84.3,84.5,84.8,84.8,84.8,84.5,84.2,83.8,83.2,82.3,81.5,80.3,79.2,77.7,75.8,73.7,71.2,68.2,64.2,58,null,null,null,null,null]},
+  '🐱': {t:[null,null,null,null,null,null,null,null,52.3,47.3,44,58,49.5,45.5,42.5,40.2,38.2,36.5,35.2,30.8,30.3,29.8,29.5,29.2,29,28.5,29,29.2,29.5,29.8,30.3,30.8,31.7,36.7,38.3,40.3,42.8,45.8,49.8,41.5,44.2,47.7,53,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,40.8,34.8,30.8,27.7,25.2,23.2,21.5,20,18.7,17.7,16.8,16.2,15.7,15.3,15,15,15.2,15.3,15.7,16.2,16.8,17.8,18.8,20,21.7,23.3,25.5,28,31,35.2,41.7,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,59,65,69,72.2,74.7,76.7,78.3,79.8,81.2,82.2,83,83.7,84.2,84.5,84.8,84.8,84.7,84.5,84.2,83.7,82.8,82,81,79.8,78.2,76.5,74.3,71.8,68.8,64.7,58.2,null,null,null,null,null]},
+  '🐭': {t:[null,null,null,null,null,null,null,null,null,55.8,47,42.8,39.8,50,44.7,41.3,38.5,36.3,34.5,33,28.5,28,27.5,27.3,27,27,27,27.3,27.5,28,28.5,33.2,34.7,36.5,38.8,41.5,45.2,50.7,40,43.2,47.5,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,41.5,36.2,32.5,29.7,27.3,25.5,23.8,22.5,21.5,20.5,19.7,19,18.7,18.3,18,18,18,18.3,18.7,19.2,19.8,20.5,21.5,22.7,24,25.7,27.5,29.8,32.7,36.5,42.3,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,58.3,63.7,67.3,70.2,72.5,74.3,76,77.3,78.3,79.3,80.2,80.8,81.2,81.5,81.8,81.8,81.7,81.5,81.2,80.7,80,79.3,78.3,77.2,75.8,74.2,72.3,70,67.2,63.3,57.5,null,null,null,null,null,null]},
+  '🐹': {t:[null,null,null,null,null,null,58,49.8,46,43.2,52.7,47.8,44.5,42,39.8,38.2,36.7,35.3,31.2,30.5,30,29.7,29.3,29.2,29,29,29,29.2,29.3,29.7,30.2,30.7,31.2,32,36.7,38.3,40,42.2,44.8,48.2,53.3,43.5,46.3,50.3,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,40,33.5,29.2,25.8,23.2,20.8,19,17.3,16,14.8,14,13.3,12.7,12.3,12,12,12.2,12.3,12.7,13.3,14,15,16.2,17.5,19.2,21,23.3,26,29.5,33.8,41,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,59.8,66.3,70.7,74,76.7,79,80.8,82.5,83.8,84.8,85.8,86.5,87.2,87.5,87.7,87.8,87.7,87.5,87.2,86.5,85.8,84.8,83.7,82.3,80.7,78.8,76.5,73.7,70.3,66,58.8,null,null,null,null,null]},
+  '🐰': {t:[null,null,null,null,null,null,null,null,null,61,52.3,48.3,45.5,55.3,50.2,46.8,44.2,42,40.3,38.8,34.5,34,33.5,33.2,33,33,33.2,33.3,33.5,34,34.5,38.8,40.5,42.2,44.3,47,50.5,55.8,45.7,48.7,52.8,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,41.5,35.8,32.2,29.3,27,25.2,23.7,22.3,21.2,20.2,19.5,18.8,18.5,18.2,18,18,18.2,18.5,19,19.5,20.3,21.2,22.3,23.7,25.3,27.2,29.5,32.5,36.2,42.2,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,58.3,63.8,67.7,70.5,72.8,74.7,76.2,77.5,78.7,79.7,80.3,81,81.3,81.7,81.8,81.8,81.7,81.3,80.8,80.3,79.5,78.7,77.5,76.2,74.5,72.7,70.3,67.3,63.7,57.7,null,null,null,null]},
+  '🦊': {t:[null,null,null,null,null,null,null,null,58.2,50,46.2,43.5,52.8,48,44.7,42.3,40.3,38.5,37.2,32.8,32.3,31.8,31.5,31.2,31,31,31,31.2,31.5,31.8,32.3,32.8,37.3,38.7,40.5,42.5,45,48.3,53.3,43.7,46.5,50.5,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,40.7,34.8,30.8,27.7,25.3,23.3,21.5,20.2,19,18,17.3,16.7,16.3,16.2,16,16,16.3,16.8,17.3,18.2,19.2,20.3,21.7,23.5,25.5,28,31,35.2,39.5,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,59.2,65,69,72.2,74.5,76.5,78.3,79.7,80.8,81.8,82.5,83.2,83.5,83.7,83.8,83.8,83.5,83,82.5,81.7,80.7,79.5,78.2,76.3,74.3,71.8,68.8,64.7,60.3,null,null,null,null,null,null]},
+  '🐻': {t:[null,null,null,null,null,null,null,null,49.8,44.5,40.8,55.8,46.8,42.5,39.5,36.8,34.8,33,31.5,27,26.3,25.8,25.5,25.2,25,25,25,25.2,25.5,25.8,26.3,27,31.7,33.2,35,37.2,39.7,42.8,47.3,38.3,41.2,44.8,50.5,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,41,35.2,31.3,28.3,25.8,23.8,22.2,20.7,19.3,18.3,17.3,16.7,16,15.5,15.3,15,15,15,15.3,15.7,16,16.7,17.5,18.3,19.5,20.7,22.2,24,26.2,28.5,31.7,35.7,41.8,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,58.8,64.7,68.5,71.5,74,76,77.7,79.2,80.5,81.5,82.5,83.2,83.8,84.3,84.5,84.8,84.8,84.8,84.5,84.2,83.8,83.2,82.3,81.5,80.3,79.2,77.7,75.8,73.7,71.2,68.2,64.2,58,null,null,null,null,null]},
+  '🐼': {t:[null,null,null,null,null,null,null,50.8,45,41.3,38.3,47.5,43,39.8,37.2,35,33.2,31.7,26.8,26.2,25.5,25,24.7,24.5,24.3,24.3,24.3,24.5,24.7,25.2,25.5,26.2,26.8,31.7,33.3,35.2,37.3,40,43.3,48,38.7,41.5,45.3,51.5,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,38.2,33,29.3,26.5,24.2,22,20.3,18.8,17.7,16.5,15.7,14.8,14.3,13.8,13.5,13.3,13.3,13.3,13.5,13.8,14.3,15,15.7,16.7,17.7,19,20.5,22.2,24.3,26.7,29.7,33.3,38.8,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,61.7,66.8,70.5,73.3,75.7,77.8,79.5,81,82.2,83.3,84.2,85,85.5,86,86.3,86.5,86.5,86.5,86.3,86,85.5,84.8,84.2,83.2,82.2,80.8,79.3,77.7,75.5,73.2,70.2,66.5,61,null,null,null,null,null]},
+  '🐨': {t:[null,null,null,null,null,null,null,null,null,50.2,45,41.5,56,47.2,43.2,40.2,37.7,35.7,34,29.2,28.5,27.8,27.5,27.2,27,27,27,27.3,27.5,28,28.5,29.2,34.2,35.8,37.8,40.3,43.3,47.7,39,41.8,45.3,50.8,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,41.3,35.7,31.8,29,26.7,24.7,23.2,21.7,20.5,19.5,18.7,18.2,17.7,17.3,17,17,17.2,17.3,17.7,18.2,18.8,19.7,20.7,21.8,23.2,24.8,26.8,29.2,32.2,36,42.2,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,58.5,64.2,68,70.8,73.2,75.2,76.7,78.2,79.3,80.3,81.2,81.7,82.2,82.5,82.8,82.8,82.7,82.5,82.2,81.7,81,80.2,79.2,78,76.7,75,73,70.7,67.7,63.8,57.7,null,null,null,null,null,null]},
+  '🐯': {t:[null,null,null,null,null,null,null,50.7,49.8,44.5,40.8,50.3,46.8,42.5,39.5,36.8,34.8,33,31.5,30.2,26.3,25.8,25.5,25.2,25,24.3,25,25.2,25.5,25.8,26.3,30.3,31.7,33.2,35,37.2,39.7,42.8,47.3,50.5,41.2,44.8,50.5,50.7,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,41,35.2,31.3,28.3,25.8,23.8,22.2,20.7,19.3,18.3,17.3,16.7,16,13.3,15.3,15,15,15,15.3,13.3,16,16.7,17.5,18.3,19.5,20.7,22.2,24,26.2,28.5,31.7,35.7,41.8,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,58.8,64.7,68.5,71.5,74,76,77.7,79.2,80.5,81.5,82.5,83.2,83.8,86.5,84.5,84.8,84.8,84.8,84.5,86.5,83.8,83.2,82.3,81.5,80.3,79.2,77.7,75.8,73.7,71.2,68.2,64.2,58,null,null,null,null,null]},
+  '🦁': {t:[null,54.7,49.5,37.2,33,51.3,48.3,34.5,32,30.5,29.5,29,22.2,16.2,16.2,16.5,14.8,16.8,16.8,16.8,13.2,9,9.2,9.8,10.8,12.5,10.8,9.7,9.2,9,13.5,16.8,16.8,16.8,15.2,16.5,16.2,16.2,22.5,29,29.7,30.5,32.2,34.8,48.5,51.7,33.3,37.8,49.8,null,null],l:[null,null,null,null,null,36.8,34,32.5,31.5,20.7,18.5,17.2,16.3,16,16,11.8,9,7.3,6.3,5.8,5.7,6,6.5,7.7,5.3,3.7,2.7,2.2,2,2.2,2.8,3.8,5.5,7.5,6.5,5.8,5.7,5.8,6.5,7.5,9.2,12.2,16,16,16.3,17.2,18.7,20.8,31.5,32.5,34],r:[null,null,null,null,null,63,65.8,67.3,68.3,79.2,81.3,82.7,83.5,83.8,83.8,88,90.8,92.5,93.5,94,94.2,93.8,93.3,92.2,94.5,96.2,97.2,97.7,97.8,97.7,97,96,94.3,92.3,93.3,94,94.2,94,93.3,92.3,90.7,87.7,83.8,83.8,83.5,82.7,81.2,79,68.3,67.2,65.8]},
+  '🐮': {t:[null,null,null,null,null,null,null,null,53.7,47.8,41,37.8,50.3,45.8,39.2,33.7,33,32,31.2,30.3,29.7,29.3,28.8,28.7,28.5,28.5,28.5,28.7,29,29.3,29.8,30.5,35,36.5,38.2,40.3,42.8,46.2,50.8,41.5,44.3,48.2,54.5,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,39,33.8,28.2,24,21.8,20.5,19.7,19.3,19,18,17.2,16.5,16,15.7,15.5,15.3,15.5,15.7,16,16.5,17.2,18,19,20.2,21.7,23.3,25.2,27.7,30.5,34.2,39.5,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,60.8,66,69.7,72.5,74.8,76.7,78.3,79.7,80.8,81.8,82.7,83.3,83.8,84.2,84.3,84.5,84.3,84.2,83.8,83.3,82.7,81.8,80.8,79.7,78.2,76.5,74.5,72.2,69.3,65.7,60.3,null,null,null,null,null]},
+  '🐷': {t:[null,null,null,null,null,null,null,null,50.2,44.8,41.3,56,47.2,43,40,37.5,35.5,33.8,32.3,28,27.3,26.8,26.5,26.2,26,26,26,26.2,26.5,26.8,27.3,28,32.5,34,35.7,37.7,40.2,43.3,47.7,38.8,41.7,45.2,50.8,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,47.7,37.7,32.8,29.5,26.7,24.5,22.7,21,19.7,18.5,17.5,16.7,16.2,15.7,15.3,15,15,15.2,15.3,15.7,16.2,16.8,17.7,18.5,19.8,21.2,22.8,24.7,27,29.7,33.2,38,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,52.2,62.2,67,70.3,73.2,75.3,77.2,78.8,80.2,81.3,82.3,83.2,83.7,84.2,84.5,84.8,84.8,84.7,84.5,84.2,83.7,83,82.2,81.3,80,78.7,77,75.2,72.8,70.2,66.7,61.8,null,null,null,null,null,null]},
+  '🐸': {t:[null,null,null,null,null,null,62.3,55.2,51.8,49.3,57.7,53.3,50.5,48.3,46.5,45,40.2,39.5,38.8,38.3,38,37.7,37.3,37.2,37,37,37,37.2,37.3,37.7,38,38.3,39,39.5,40.2,45,46.7,48.5,50.7,53.7,58.2,49.5,52,55.5,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,39.3,32.3,27.8,24.3,21.7,19.3,17.5,15.8,14.7,13.7,13,12.3,12.2,12,12.2,12.5,13,13.8,14.8,16,17.7,19.5,21.8,24.7,28.2,32.8,40.3,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,60.5,67.5,72,75.5,78.2,80.5,82.3,84,85.2,86.2,86.8,87.5,87.7,87.8,87.7,87.3,86.8,86,85,83.8,82.2,80.3,78,75.2,71.7,67,59.5,null,null,null,null,null]},
+  '🐵': {t:[null,null,null,null,null,null,null,null,55.8,47,42.8,39.7,50,44.7,41.2,38.5,36.2,34.3,32.8,28,27.3,26.8,26.5,26.2,26,26,26,26.2,26.5,27,27.5,28.2,32.8,34.5,36.3,38.7,41.5,45,50.7,40,43.2,47.5,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,47.8,38,33.3,30,27.3,25.2,23.3,21.8,20.5,19.3,18.5,17.7,17,16.7,16.3,16,16,16.2,16.3,16.7,17.2,17.7,18.5,19.5,20.7,22,23.5,25.3,27.7,30.3,33.7,38.3,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,52,61.8,66.5,69.8,72.5,74.7,76.5,78,79.3,80.5,81.3,82.2,82.8,83.2,83.5,83.8,83.8,83.7,83.5,83.2,82.7,82.2,81.3,80.3,79.2,77.8,76.3,74.5,72.2,69.5,66.2,61.5,null,null,null,null,null,null]},
+  '🐔': {t:[null,null,null,null,null,null,null,null,null,53.7,47.5,43.7,40.8,50.2,45.3,42.2,39.7,37.5,35.8,34.3,30,29.3,29,28.7,28.5,28.5,28.5,28.7,29,29.5,30,34.3,35.8,37.7,39.8,42.5,45.7,50.5,41,44,47.8,54.5,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,39.7,34.7,31.3,28.7,26.5,24.7,23.2,21.8,20.7,19.8,19.2,18.5,18,17.7,17.5,17.3,17.5,17.7,18,18.5,19.2,19.8,20.8,22,23.3,24.8,26.7,29,31.7,35.2,40.2,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,60.2,65.2,68.5,71.2,73.3,75.2,76.7,78,79.2,80,80.7,81.3,81.8,82.2,82.3,82.5,82.3,82.2,81.8,81.3,80.7,80,79,77.8,76.5,75,73.2,70.8,68.2,64.7,59.7,null,null,null,null,null]},
+  '🐧': {t:[null,null,null,null,null,null,null,null,50.7,45,41.2,38.3,47.3,43,39.7,37.2,35.2,33.3,31.8,27.2,26.5,26,25.7,25.5,25.3,25.2,25.3,25.5,25.7,26.2,26.7,27.3,31.8,33.5,35.3,37.3,40,43.3,47.8,38.7,41.5,45.3,51.3,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,42,35.7,31.7,28.7,26.2,24.2,22.3,20.8,19.5,18.5,17.7,16.8,16.2,15.8,15.5,15.3,15.2,15.3,15.5,15.8,16.3,16.8,17.7,18.5,19.7,21,22.5,24.3,26.3,28.8,32,36.2,42.8,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,57.8,64.2,68.2,71.2,73.7,75.7,77.5,79,80.3,81.3,82.2,83,83.7,84,84.3,84.5,84.7,84.5,84.3,84,83.5,83,82.2,81.3,80.2,78.8,77.3,75.5,73.5,71,67.8,63.7,57,null,null,null,null,null]},
+  '🦄': {t:[null,null,null,null,null,null,null,null,null,52.2,47,43.5,58,49.2,45.2,42.2,39.7,37.7,36,31.2,30.5,29.8,29.5,29.2,29,29,29,29.3,29.5,30,30.5,31.2,36.2,37.8,39.8,42.3,45.3,49.7,41,43.8,47.3,52.8,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,41.3,35.7,31.8,29,26.7,24.7,23.2,21.7,20.5,19.5,18.7,18.2,17.7,17.3,17,17,17.2,17.3,17.7,18.2,18.8,19.7,20.7,21.8,23.2,24.8,26.8,29.2,32.2,36,42.2,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,58.5,64.2,68,70.8,73.2,75.2,76.7,78.2,79.3,80.3,81.2,81.7,82.2,82.5,82.8,82.8,82.7,82.5,82.2,81.7,81,80.2,79.2,78,76.7,75,73,70.7,67.7,63.8,57.7,null,null,null,null,null]},
+  '🐺': {t:[null,null,null,null,null,null,null,null,58,49.7,45.8,42.8,52.5,47.5,44.2,41.7,39.7,37.8,36.3,31.8,31.3,30.8,30.5,30.2,30,30,30,30.2,30.5,30.8,31.3,32,36.5,38,39.8,41.8,44.5,47.8,53.2,43.2,46,50.2,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,47.8,37.7,32.8,29.5,26.8,24.7,22.7,21.2,19.8,18.8,17.8,17.2,16.7,16.3,16,16,16.2,16.3,16.7,17.3,18,18.8,20,21.3,22.8,24.7,27,29.7,33.2,38.2,40.8,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,52,62.2,67,70.3,73,75.2,77.2,78.7,80,81,81.8,82.7,83.2,83.5,83.8,83.8,83.7,83.5,83.2,82.5,81.8,81,79.8,78.5,77,75,72.8,70.2,66.7,61.7,59,null,null,null,null,null]},
+  '🐲': {t:[null,null,null,null,null,null,null,null,58,49.3,45.3,42.3,52.2,47.2,43.7,41,39,37.2,35.5,31,30.3,29.8,29.5,29.2,29,29,29,29.2,29.5,29.8,30.3,31,35.7,37.2,39,41.3,44,47.5,52.8,42.5,45.7,49.8,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,41,35.3,31.3,28.3,26,24,22.3,20.8,19.7,18.7,17.8,17.2,16.7,16.3,16,16,16.2,16.3,16.7,17.2,17.8,18.7,19.7,21,22.3,24.2,26.2,28.7,31.7,35.7,41.8,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,58.8,64.5,68.5,71.5,73.8,75.8,77.5,79,80.2,81.2,82,82.7,83.2,83.5,83.8,83.8,83.7,83.5,83.2,82.7,82,81.2,80.2,78.8,77.5,75.7,73.7,71.2,68.2,64.2,58,null,null,null,null,null]},
+  '🦡': {t:[null,null,null,null,null,null,null,null,55.8,47,42.8,39.7,50,44.7,41.2,38.5,36.2,34.3,32.8,28,27.3,26.8,26.5,26.2,26,26,26,26.2,26.5,27,27.5,28.2,32.8,34.5,36.3,38.7,41.5,45,50.7,40,43.2,47.5,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,47.8,38,33.3,30,27.3,25.2,23.3,21.8,20.5,19.3,18.5,17.7,17,16.7,16.3,16,16,16.2,16.3,16.7,17.2,17.7,18.5,19.5,20.7,22,23.5,25.3,27.7,30.3,33.7,38.3,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,52,61.8,66.5,69.8,72.5,74.7,76.5,78,79.3,80.5,81.3,82.2,82.8,83.2,83.5,83.8,83.8,83.7,83.5,83.2,82.7,82.2,81.3,80.3,79.2,77.8,76.3,74.5,72.2,69.5,66.2,61.5,null,null,null,null,null,null]},
+  '🦔': {t:[null,61.7,49.7,49.5,38.7,49.8,49.7,49.5,40,40,40,40,33,33.5,33.5,33.5,33.5,28.7,30.3,30.3,30.3,30.3,26.3,25.8,27.8,27.8,27.8,26.2,26.2,30.2,30.2,30.2,30.2,28.5,33.7,33.7,33.7,33.7,33,40,40,40,40,49.5,49.7,49.8,38.5,49.7,49.7,61.7,null],l:[null,null,null,null,null,null,null,null,49.7,37.2,37,25.7,26,26.3,26.7,16,17,18,18.8,19.8,9,10.7,12.5,14.2,15.8,3.2,6.2,9.2,12.2,12.5,6.7,1.2,7.2,13,17.7,18.3,19,20,21.2,22.5,24.2,26.2,28.7,31.7,35.5,41.8,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,50.2,62.7,62.8,74.2,73.8,73.5,73.2,83.8,82.8,81.8,81,80,90.8,89.2,87.3,85.7,84,96.7,93.7,90.7,87.7,87.3,93.2,98.7,92.7,86.8,82.2,81.5,80.8,79.8,78.7,77.3,75.7,73.7,71.2,68.2,64.3,58,null,null,null,null,null]},
+  '🐘': {t:[null,null,null,null,null,null,null,null,null,null,null,46.2,41,37.7,52.3,43.3,39.2,36.3,34,32,30.5,26.2,25.7,25.3,25.2,25,25.2,25.3,25.7,26.2,30.7,32.2,34.2,36.5,39.5,43.7,35.2,37.8,41.3,47,null,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,42.2,37,33.7,31,29,27.2,25.8,24.5,23.5,22.8,22.2,21.7,21.3,21.2,21,21.2,21.3,21.7,22.2,22.8,23.7,24.7,25.8,27.3,29.2,29.8,29.3,29,29,29,29.3,30,30.7,32.7,44.5,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,57.7,62.8,66.2,68.8,70.8,72.7,74,75.3,76.3,77,77.7,78.2,78.5,78.7,78.8,78.7,78.5,78.2,77.7,77,76.2,75.2,74,72.5,70.7,70,70.5,70.8,70.8,70.8,70.5,69.8,69.2,67.2,55.3,null,null,null]},
+  '⛄': {t:[null,null,null,null,null,null,null,null,49.3,43.7,39.8,55.7,46.2,41.7,38.3,35.7,33.5,31.5,30,25.2,24.5,23.8,23.5,23.2,23,23,23,23.2,23.5,24,24.5,25.2,30,31.7,33.7,35.8,38.5,41.8,46.7,37.2,40.2,44,50,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,41.3,35.7,31.8,28.8,26.5,24.5,22.7,21.2,20,18.8,17.8,17.2,16.5,15.8,15.5,15.2,15,15,15,15.2,15.5,16,16.5,17.2,18,18.8,20,21.3,22.8,20,20.5,21,21.5,22.3,28.7,38,61.2,60.3,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,58.5,64.2,68,71,73.3,75.3,77.2,78.7,79.8,81,82,82.7,83.3,84,84.3,84.7,84.8,84.8,84.8,84.7,84.3,83.8,83.3,82.7,81.8,80.8,79.8,78.5,77,79.8,79.3,78.8,78.3,77.7,71.2,66.8,68,69.3,null]},
+  '🦒': {t:[null,null,null,null,null,null,null,null,null,null,58.2,48.7,44.5,41.3,51.8,46.3,42.7,40,37.8,36,34.3,30,29.7,29.3,29,29,29.2,29.3,29.7,30.2,34.5,36,38,40.2,43,46.7,52.3,41.5,44.7,49.2,null,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,42,37,33.5,30.8,28.8,27,25.5,24.3,23.2,22.3,21.5,21,20.5,20.3,20.2,20,20.2,20.3,20.7,21,21.7,22.3,23.3,24.3,25.7,27.2,29,31.2,33.8,37.3,42.8,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,57.8,62.8,66.3,69,71,72.8,74.3,75.5,76.7,77.5,78.2,78.8,79.3,79.5,79.7,79.8,79.7,79.5,79.2,78.8,78.2,77.5,76.5,75.5,74.2,72.7,70.8,68.7,66,62.5,57,null,null,null,null,null]},
+  '🦓': {t:[null,null,null,null,null,null,null,null,null,null,49.7,45,41.7,53.2,47,43.3,40.3,38.2,36.2,34.5,29.8,28.2,31,30.3,29,25,29.2,30.3,31,28.3,30,34.7,36.3,38.3,40.7,43.5,47.3,53.8,42,45.3,50.2,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,45.3,42.2,33.7,32.5,31.8,29.2,27.2,25.3,23.8,22.5,21.5,20.7,20,19.3,18.8,18.5,18.3,18.3,18.3,18.7,18.8,19.3,20,20.7,21.7,22.7,24,25.5,27.3,29.3,32,35.3,40.2,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,54.5,57.7,66.2,67.3,68,70.7,72.7,74.5,76,77.3,78.3,79.2,79.8,80.5,81,81.3,81.5,81.5,81.5,81.2,81,80.5,79.8,79.2,78.2,77.2,75.8,74.3,72.5,70.5,67.8,64.5,59.7,null,null,null,null,null]},
+  '🦛': {t:[null,null,null,null,null,null,null,null,50.5,45.7,42.5,56.2,47.8,44,41.2,38.8,37,35.3,30.5,29.8,29.2,28.8,28.5,28.2,28,28,28,28.2,28.5,28.8,29.3,29.8,30.5,35.5,37.2,39,41.3,44.2,48.2,40.2,42.7,46,51.2,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,47.7,37.2,32.3,28.8,26.2,23.8,22,20.3,19,17.8,17,16.2,15.7,15.3,15.2,15,15.2,15.3,15.7,16.3,17,18,19.2,20.5,21.2,21.8,22.8,24.2,26,28.5,32,37.2,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,52.2,62.7,67.5,71,73.7,76,77.8,79.5,80.8,82,82.8,83.7,84.2,84.5,84.7,84.8,84.7,84.5,84.2,83.5,82.8,81.8,80.7,79.3,78.7,78,77,75.7,73.8,71.3,67.8,62.7,null,null,null,null,null]},
+  '🦏': {t:[null,null,null,null,null,null,null,null,58,49.7,45.8,42.8,52.5,47.5,44.2,41.7,39.7,37.8,36.3,31.8,31.3,30.8,30.5,30.2,30,30,30,30.2,30.5,30.8,31.3,32,36.5,38,39.8,41.8,44.5,47.8,53.2,43.2,46,50.2,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,47.8,37.7,32.8,29.5,26.8,24.7,22.7,21.2,19.8,18.8,17.8,17.2,16.7,16.3,16,16,16.2,16.3,16.7,17.3,18,18.8,20,21.3,22.8,24.7,27,29.7,33.2,38.2,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,52,62.2,67,70.3,73,75.2,77.2,78.7,80,81,81.8,82.7,83.2,83.5,83.8,83.8,83.7,83.5,83.2,82.5,81.8,81,79.8,78.5,77,75,72.8,70.2,66.7,61.7,null,null,null,null,null,null]},
+  '🐑': {t:[null,null,null,null,null,45.3,41.5,27.3,23.5,43,40.2,25,22.2,17.5,17.3,15.5,17.5,17.3,17,14.2,9.5,9.3,9.5,9.8,10.7,11.7,10.5,9.8,9.5,9.3,9.5,14.3,17.3,17.3,17.7,15.7,17.3,17.5,22.3,25.3,40.3,43.3,23.7,27.8,41.7,45.8,null,null,null,null,null],l:[null,null,null,null,null,37.3,33.5,31.2,29.7,23.3,19.5,17.2,15.7,14.5,13.8,13.5,13.3,13.5,13.8,14.7,13.2,11.7,10.5,9.8,9.5,9.3,9.5,9.8,10.7,11.7,13.3,15.3,13.8,13,12.5,12.3,12.5,13,14,15.5,18,34,35.8,38.3,41.7,null,null,null,null,null,null],r:[null,null,null,null,null,62.5,66.3,68.7,70.2,76.5,80.3,82.7,84.2,85.3,86,86.3,86.5,86.3,86,85.2,86.7,88.2,89.3,90,90.3,90.5,90.3,90,89.2,88.2,86.5,84.5,86,86.8,87.3,87.5,87.3,86.8,85.8,84.3,81.8,65.8,64,61.5,58.2,null,null,null,null,null,null]},
+  '🐐': {t:[null,null,null,null,null,null,null,null,null,null,null,56.3,46.7,42.5,39.3,49.8,44.3,40.8,38.2,36,34.2,29.2,28.7,28.3,28.2,28,28.2,28.3,28.7,29.3,34.3,36.2,38.3,41,44.7,50.5,39.7,42.8,47.2,null,null,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,48.2,39.8,36,33.2,31,29.2,27.5,26.3,25.2,24.3,23.7,23,22.5,22.3,22.2,22,22.2,22.3,22.7,23,23.7,24.3,25.3,26.3,27.7,29.3,31.2,33.3,36.2,40.2,45.2,46.7,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,51.7,60,63.8,66.7,68.8,70.7,72.2,73.5,74.7,75.5,76.2,76.8,77.3,77.5,77.7,77.8,77.7,77.5,77.2,76.8,76.2,75.5,74.5,73.5,72.2,70.5,68.7,66.5,63.7,59.7,54.7,53.2,null,null,null,null,null]},
+  '🐴': {t:[null,null,null,null,null,null,null,null,null,null,null,null,49.3,43.7,40,56,46,41.7,38.3,35.8,33.8,32.2,27.8,27.3,27.2,27,27.2,27.3,27.8,32.3,34,36,38.7,42,46.5,37.3,40.2,44,50.2,null,null,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,42.8,38.3,35.2,32.8,30.8,29.3,28,26.8,25.8,25,24.5,24,23.5,23.2,23,23,23.2,23.3,23.5,24,24.5,25.2,26,27,28.2,29.5,31,33,35,37.2,40.7,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,57,61.5,64.7,67,69,70.5,71.8,73,74,74.8,75.3,75.8,76.3,76.7,76.8,76.8,76.7,76.5,76.3,75.8,75.3,74.7,73.8,72.8,71.7,70.3,68.8,66.8,64.8,62.7,59.2,null,null,null,null,null,null]},
+  '🫏': {t:[null,null,null,null,null,null,null,null,null,null,null,55.2,50,46.7,61.3,52.3,48.2,45.3,43,41,39.5,35.2,34.7,34.3,34.2,34,34.2,34.3,34.7,35.2,39.7,41.2,43.2,45.5,48.5,52.7,44.2,46.8,50.3,56,null,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,48.2,39.3,35.2,32.3,30,28,26.5,25.2,24,23.2,22.5,21.8,21.5,21.2,21,21,21.2,21.5,21.8,22.5,23.2,24.2,25.2,26.7,28.2,30.2,32.5,35.5,39.7,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,51.7,60.5,64.7,67.5,69.8,71.8,73.3,74.7,75.8,76.7,77.3,78,78.3,78.7,78.8,78.8,78.7,78.3,77.8,77.3,76.7,75.7,74.5,73.2,71.7,69.7,67.3,64.3,60.2,null,null,null,null,null]},
+  '🦆': {t:[null,null,null,null,null,null,null,null,null,56,47.3,43.3,40.5,50.3,45.2,41.8,39.2,37,35.3,33.8,29.5,29,28.5,28.2,29.2,28.8,29.2,29.8,28.5,29,29.5,33.8,35.5,37.2,39.3,42,45.5,50.8,40.7,43.7,47.8,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,52.2,48.8,47.2,46.5,46.3,46.5,47,47.8,38.3,33.8,30.7,28.2,26.2,24.3,22.8,21.7,20.7,19.8,19.2,18.7,18.3,18,18,18.2,18.3,18.7,19.2,19.8,20.7,21.7,23,24.5,26.2,28.3,31,34.2,38.8,null,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,55,54.8,50.8,49.3,49.2,49.3,50,51.8,61.5,66,69.2,71.7,73.7,75.5,77,78.2,79.2,80,80.7,81.2,81.5,81.8,81.8,81.7,81.5,81.2,80.7,80,79.2,78.2,76.8,75.3,73.7,71.5,68.8,65.7,61,null,null,null,null,null,null,null]},
+  '🦉': {t:[null,null,null,null,null,null,null,null,55.8,47,42.8,39.7,50,44.7,41.2,38.5,36.2,34.3,32.8,28,27.3,26.8,26.5,26.2,26,26,26,26.2,26.5,27,27.5,28.2,32.8,34.5,36.3,38.7,41.5,45,50.7,40,43.2,47.5,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,47.8,38,33.3,30,27.3,25.2,23.3,21.8,20.5,19.3,18.5,17.7,17,16.7,16.3,16,16,16.2,16.3,16.7,17.2,17.7,18.5,19.5,20.7,22,23.5,25.3,27.7,29,30.3,38.3,44.8,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,52,61.8,66.5,69.8,72.5,74.7,76.5,78,79.3,80.5,81.3,82.2,82.8,83.2,83.5,83.8,83.8,83.7,83.5,83.2,82.7,82.2,81.3,80.3,79.2,77.8,76.3,74.5,72.2,70.8,69.5,61.5,55,null,null,null,null,null]},
+  '🦇': {t:[null,null,null,null,null,null,null,null,null,null,null,58.2,49.5,45.5,42.7,52.3,47.3,44,41.5,39.3,37.7,33.2,32.7,32.3,32.2,32,32.2,32.3,32.7,33.2,37.8,39.5,41.7,44.2,47.7,53,42.8,45.8,49.8,null,null,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,48.2,39.3,35.5,32.7,30.3,28.5,27,25.7,24.7,23.8,23.2,22.7,22.3,22.2,22,22.2,22.3,22.7,23.2,23.8,24.8,25.8,27.2,28.7,30.5,32.8,35.8,39.8,null,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,51.7,60.5,64.3,67.2,69.5,71.3,72.8,74.2,75.2,76,76.7,77.2,77.5,77.7,77.8,77.7,77.5,77.2,76.7,76,75,74,72.7,71.2,69.3,67,64,60,null,null,null,null,null,null,null]},
+  '🐬': {t:[null,null,null,null,null,null,null,null,56,47.7,43.8,40.8,50.5,45.5,42.2,39.7,37.7,35.8,34.3,29.8,29.3,28.8,28.5,28.2,28,28,28,28.2,28.5,28.8,29.3,30,34.5,36,37.8,39.8,42.5,45.8,51.2,41.2,44,48.2,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,47.8,37.7,32.8,29.5,26.8,24.7,22.7,21.2,19.8,18.8,17.8,17.2,16.7,16.3,16,16,16.2,16.3,16.7,17.3,18,18.8,20,21.3,22.8,24.7,27,29.7,33,37.7,null,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,52,62.2,67,70.3,73,75.2,77.2,78.7,80,81,81.8,82.7,83.2,83.5,83.8,83.8,83.7,83.5,83.2,82.5,81.8,81,79.8,78.5,77,75,72.8,70.2,66.8,62.2,null,null,null,null,null,null,null]},
+  '🐳': {t:[null,null,null,null,null,null,55,50.3,47.2,60.2,52.3,48.7,46,43.7,41.8,40.3,35.3,34.7,34,33.5,33,32.7,32.3,32.2,32,32,32,32.2,32.3,32.7,33,33.5,34,34.7,35.5,40.5,42,43.8,46.2,48.8,52.7,45,47.5,50.7,55.7,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,47.5,35.8,30.3,26.5,23.3,20.8,18.7,17,15.5,14.2,13.2,12.3,11.8,11.3,11.2,11,11.2,11.3,11.8,12.5,13.3,14.3,15.5,17.2,18.8,21,23,25.5,29.2,35,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,52.3,64,69.5,73.3,76.5,79,81.2,82.8,84.3,85.7,86.7,87.5,88,88.5,88.7,88.8,88.7,88.5,88,87.3,86.5,85.5,84.3,82.7,81,78.8,76.8,74.3,70.7,64.8,null,null,null,null,null]},
+  '🐟': {t:[null,null,null,null,null,null,null,null,58.2,50,46.2,43.5,52.8,48,44.7,42.3,40.3,38.5,37.2,32.8,32.3,31.8,31.5,31.2,31,31,31,31.2,31.5,31.8,32.3,32.8,37.3,38.7,40.5,42.5,45,48.3,53.3,43.7,46.5,50.5,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,40.7,34.8,30.8,27.7,25.3,23.3,21.5,20.2,19,18,17.3,16.7,16.3,16.2,16,16.2,16.3,16.8,17.3,18.2,19.2,20.3,21.7,23.5,25.5,28,31,35.2,41.5,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,59.2,65,69,72.2,74.5,76.5,78.3,79.7,80.8,81.8,82.5,83.2,83.5,83.7,83.8,83.7,83.5,83,82.5,81.7,80.7,79.5,78.2,76.3,74.3,71.8,68.8,64.7,58.3,null,null,null,null,null,null]},
+  '🐙': {t:[null,null,null,null,null,null,null,null,null,42.2,37,33.5,48,39.2,35.2,32.2,29.7,27.7,26,21.2,20.5,19.8,19.5,19.2,19,19,19,19.3,19.5,20,20.5,21.2,26.2,27.8,29.8,32.3,35.3,39.7,31,33.8,37.3,42.8,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,41.3,35.7,31.8,29,26.7,24.7,23.2,21.7,20.5,19.5,18.7,18.2,17.7,17.3,17,17,17.2,17.3,17.7,18.2,18.8,19.7,20.7,21.8,23.2,24.8,26.8,28,28.3,29.3,31,33.8,38.2,null,null,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,58.5,64.2,68,70.8,73.2,75.2,76.7,78.2,79.3,80.3,81.2,81.7,82.2,82.5,82.8,82.8,82.7,82.5,82.2,81.7,81,80.2,79.2,78,76.7,75,73,71.8,71.5,70.5,68.8,66,61.7,null,null,null,null,null,null,null,null]},
+  '🦀': {t:[null,null,null,null,null,null,null,null,59.7,55.3,52.5,64.3,57.2,53.8,51.3,49.3,47.8,42.8,42.2,41.5,41,40.7,40.3,40.2,40,40,40,40.2,40.5,40.7,41.2,41.7,42.2,46.5,47.8,49.5,51.5,54,57.5,50.5,52.7,55.7,60.2,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,47.7,36.3,31.2,27.5,24.7,22.3,20.5,18.8,17.7,16.7,16,15.3,15.2,15,15.2,15.5,16,16.7,17.7,19,20.5,22.5,24.8,27.8,31.7,36.7,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,52.2,63.5,68.7,72.3,75.2,77.5,79.3,81,82.2,83.2,83.8,84.5,84.7,84.8,84.7,84.3,83.8,83.2,82.2,80.8,79.2,77.3,75,72,68.2,63.2,null,null,null,null,null]},
+  '🐢': {t:[null,null,null,null,null,null,null,null,null,null,null,null,null,60.5,55.5,52.3,66.2,57.7,53.8,51,48.8,47.2,42.8,42.3,42.2,42,42.2,42.3,42.8,47.3,49,51.2,54,58,50.2,52.5,55.8,61.2,null,null,null,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,48.3,40.2,36.5,34,32,30.3,28.8,27.8,26.8,26.2,25.7,25.3,25.2,25,25.2,25.3,25.7,26.3,27,27.8,29,30.3,32,34.2,36.8,40.5,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,51.5,59.7,63.3,65.8,67.8,69.5,71,72,73,73.7,74.2,74.5,74.7,74.8,74.7,74.5,74.2,73.5,72.8,72,70.8,69.5,67.8,65.7,63,59.3,null,null,null,null]},
+  '🐍': {t:[null,null,null,null,null,null,null,null,null,null,60.5,52.2,48.3,45.8,54.8,50.2,47,44.7,42.7,41,36.5,36,35.5,35.3,35,35,35.2,35.3,35.5,36,36.7,41.2,42.8,44.8,47.2,50.3,55.3,46,48.7,52.5,null,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,41.5,36,32.5,29.8,27.7,25.8,24.3,23.2,22.2,21.3,20.7,20.3,20.2,20,20.2,20.3,20.8,21.3,22.2,23.2,24.3,26,27.8,30,32.8,36.5,42.3,48.2,46.2,44.2,42.8,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,58.3,63.8,67.3,70,72.2,74,75.5,76.7,77.7,78.5,79.2,79.5,79.7,79.8,79.7,79.5,79,78.5,77.7,76.7,75.5,73.8,72,69.8,67,63.3,57.5,51.7,53.7,55.7,57,null,null]},
+  '🐊': {t:[null,null,null,null,null,null,null,null,null,54.2,46.8,43.3,40.8,49.3,44.8,42,39.7,37.8,36.3,31.8,31.3,30.8,30.5,30.2,30,30,30.2,30.2,30.5,30.8,31.3,31.8,36.5,38,39.8,42.2,45.2,49.8,41,43.5,47.2,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,48,37.5,32.8,29.5,26.8,24.7,23,21.5,20.3,19.5,18.8,18.3,18.2,18,18.2,18.3,18.8,19.7,20.5,21.7,23.2,23.2,23,23.2,23.8,24.8,26.3,28.3,31,34.8,41.3,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,51.8,62.3,67,70.3,73,75.2,76.8,78.3,79.5,80.3,81,81.5,81.7,81.8,81.7,81.5,81,80.2,79.3,78.2,76.7,76.7,76.8,76.7,76,75,73.5,71.5,70.7,64.8,61.3,null,null,null,null,null]},
+  '🦋': {t:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,57.5,47.7,43.2,40,51,45.2,41.3,38.7,36.5,32.2,32,32.2,36.7,38.8,41.7,45.5,51.7,40.2,43.5,48.2,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,48.7,42.5,39.7,37.5,36,34.7,33.5,32.7,32,31.3,30.8,30.5,30.2,30,30,30,30.2,30.5,30.8,31.3,32,32.7,33.7,34.8,36.2,37.7,39.8,42.8,null,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,51.2,57.3,60.2,62.3,63.8,65.2,66.3,67.2,67.8,68.5,69,69.3,69.7,69.8,69.8,69.8,69.7,69.3,69,68.5,67.8,67.2,66.2,65,63.7,62.2,60,57,null,null,null,null,null,null,null]},
+  '🐝': {t:[null,null,null,null,null,null,null,null,null,58,49.3,45.3,42.5,52.3,47.2,43.8,41.2,39,37.3,35.8,31.5,31,30.5,30.2,30,30,30.2,30.3,30.5,31,31.5,35.8,37.5,39.2,41.3,44,47.5,52.8,42.7,45.7,49.8,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,48,38.3,33.8,30.7,28.2,26.2,24.3,22.8,21.7,20.7,19.8,19.2,18.7,18.3,18,18,18.2,18.3,18.7,19.2,19.7,19.5,19.2,22.7,24.5,26.2,27.3,28.7,30.2,36.2,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,51.8,61.5,66,69.2,71.7,73.7,75.5,77,78.2,79.2,80,80.7,81.2,81.5,81.8,81.8,81.7,81.5,81.2,80.7,80.2,80.3,80.7,77.2,75.3,73.7,72.5,71.2,69.7,63.7,null,null,null,null,null,null]},
+  '🐞': {t:[null,null,null,null,null,null,null,null,58,49.3,45.3,42.3,52.2,47.2,43.7,41,39,37.2,35.5,31,30.3,29.8,29.5,29.2,29,29,29,29.2,29.5,29.8,30.3,31,35.7,37.2,39,41.3,44,47.5,52.8,42.5,45.7,49.8,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,41,35.3,31.3,28.3,26,24,22.3,20.8,19.7,18.7,17.8,17.2,16.7,16.3,16,16,16.2,16.3,16.7,17.2,17.8,18.7,19.7,21,22.3,24.2,26.2,28.7,31.7,35.7,41.8,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,58.8,64.5,68.5,71.5,73.8,75.8,77.5,79,80.2,81.2,82,82.7,83.2,83.5,83.8,83.8,83.7,83.5,83.2,82.7,82,81.2,80.2,78.8,77.5,75.7,73.7,71.2,68.2,64.2,58,null,null,null,null,null]},
+  '🐌': {t:[null,null,null,null,null,null,null,null,null,66.5,38.3,29,70.5,64.3,32,26.8,23.3,20.7,18.5,16.7,11.7,11.2,10.7,10.3,10,10,10.2,10.3,10.7,11.2,11.8,16.8,18.7,20.8,23.5,27.2,32.7,64.7,25.2,29.5,63,66.8,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,48,39,34.8,31.8,29.5,27.5,26,24.7,23.5,22.5,21.7,21,20.7,20.3,20.2,20,20.2,20.3,20.7,21.2,21.8,22.5,23.5,24.7,24.5,22.3,20.5,19.2,18.2,17.5,17.2,17,17.2,17.7,18.3,19.3,20.7,22.5,24.7,27.5,31.3,36.7,null,null,null,null],r:[null,null,null,null,null,51.8,60.8,64.8,68,70.3,72.3,73.8,75.2,76.3,77.3,78.2,78.8,79.2,79.5,79.7,79.8,79.7,79.5,79.2,78.7,78,77.3,76.3,75.2,75.3,77.5,79.3,80.7,81.7,82.3,82.7,82.8,82.7,82.2,81.5,80.5,79.2,77.3,75.2,72.3,68.5,63.2,null,null,null,null]},
+  '🕷️': {t:[null,null,null,null,null,null,null,null,null,null,58.3,49.8,46,43.2,52.7,47.7,44.5,42,40,38.3,33.7,33,32.5,32.3,32,32,32.2,32.3,32.7,33,33.7,38.3,40.2,42.2,44.7,48,53.2,43.3,46.2,50.2,null,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,48,38.7,34.5,31.3,29,27,25.3,24,22.8,22,21.2,20.7,20.3,20.2,20,20.2,20.3,20.7,21.3,22,23,24.2,25.5,27.2,29.2,31.7,34.7,39.2,null,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,51.8,61.2,65.3,68.5,70.8,72.8,74.5,75.8,77,77.8,78.7,79.2,79.5,79.7,79.8,79.7,79.5,79.2,78.5,77.8,76.8,75.7,74.3,72.7,70.7,68.2,65.2,60.7,null,null,null,null,null,null,null]},
+  '🐿️': {t:[null,null,null,null,null,null,null,null,null,null,58.3,49.5,45.3,42.5,52.3,47.2,43.8,41.3,39.2,37.5,32.7,32,31.5,31.3,31,31,31.2,31.3,31.7,32,32.7,37.7,39.3,41.5,44.2,47.5,52.8,42.8,45.7,49.8,null,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,41.8,36.5,33,30.3,28.2,26.5,25,23.7,22.7,21.8,21.2,20.7,20.3,20.2,20,20.2,20.3,20.7,21.2,21.8,22.7,23.8,25,26.5,28.3,30.7,33.3,36.8,42.5,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,58,63.3,66.8,69.5,71.7,73.3,74.8,76.2,77.2,78,78.7,79.2,79.5,79.7,79.8,79.7,79.5,79.2,78.7,78,77.2,76,74.8,73.3,71.5,69.2,66.5,63,57.3,null,null,null,null,null,null]},
+  '🐫': {t:[null,null,null,null,null,null,null,null,null,null,null,null,53.7,48.2,44.5,60.2,50.5,46.2,43,40.7,38.7,37,32.8,32.3,32.2,32,32.2,32.3,32.8,37.2,38.8,40.8,43.3,46.5,51,42,44.8,48.5,54.3,null,null,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,48.2,40.2,36.5,33.7,31.7,29.8,28.3,27.2,26.2,25.2,24.5,24,23.5,23.3,23.2,23,23.2,23.3,23.5,24,24.7,25.3,26.2,27.2,28.5,30,31.8,34,36.7,40.5,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,51.7,59.7,63.3,66.2,68.2,70,71.5,72.7,73.7,74.7,75.3,75.8,76.3,76.5,76.7,76.8,76.7,76.5,76.3,75.8,75.2,74.5,73.7,72.7,71.3,69.8,68,65.8,63.2,59.3,null,null,null,null,null]},
+  '🦙': {t:[null,null,null,null,null,null,null,null,null,null,null,null,null,60,50.7,46.3,43.5,53.7,48.3,44.8,42.2,40,34.8,34.3,34.2,34,34.2,34.5,35,40.2,42.3,45.2,48.7,54.5,43.7,46.7,51.2,null,null,null,null,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,48.5,41,37.5,35,33.2,31.5,30.3,29.2,28.3,27.7,27,26.5,26.3,26,26,26.2,26.3,26.5,27,27.7,28.3,29.3,30.3,31.7,33.3,35.3,37.8,41.3,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,51.3,58.8,62.3,64.8,66.7,68.3,69.5,70.7,71.5,72.2,72.8,73.3,73.5,73.8,73.8,73.7,73.5,73.3,72.8,72.2,71.5,70.5,69.5,68.2,66.5,64.5,62,58.5,null,null,null,null,null,null]},
+  '🦌': {t:[null,null,null,null,null,null,null,null,null,null,null,null,53.7,48.2,44.5,60.2,50.5,46.2,43,40.7,38.7,37,32.8,32.3,32.2,32,32.2,32.3,32.8,37.2,38.8,40.8,43.3,46.5,51,42,44.8,48.5,54.3,null,null,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,48.2,40.2,36.5,33.7,31.7,29.8,28.3,27.2,26.2,25.2,24.5,24,23.5,23.3,23.2,23,23.2,23.3,23.5,24,24.7,25.3,26.2,27.2,28.5,30,31.8,34,36.7,40.5,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,51.7,59.7,63.3,66.2,68.2,70,71.5,72.7,73.7,74.7,75.3,75.8,76.3,76.5,76.7,76.8,76.7,76.5,76.3,75.8,75.2,74.5,73.7,72.7,71.3,69.8,68,65.8,63.2,59.3,null,null,null,null,null]},
+  '🦝': {t:[null,null,null,null,null,null,null,null,56,47.7,43.8,40.8,50,45.5,42.2,39.7,37.7,35.8,34.3,29.8,29.3,28.8,28.5,28.2,28,28,28,28.2,28.5,28.8,29.3,30,34.5,36,37.8,39.8,42.5,45.8,51.2,41.2,44,48.2,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,47.8,37.7,32.8,29.5,26.8,24.7,22.7,21.2,19.8,18.8,17.8,17,16.7,16.3,16,16,16.2,16.3,16.7,17.3,18,18.8,20,21.3,22.8,24.7,27,29.7,33.2,38.2,null,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,52,62.2,67,70.3,73,75.2,77.2,78.7,80,81,81.8,82.8,83.2,83.5,83.8,83.8,83.7,83.5,83.2,82.5,81.8,81,79.8,78.5,77,75,72.8,70.2,66.7,61.7,null,null,null,null,null,null,null]},
+  '🦨': {t:[null,null,null,null,null,null,null,null,null,null,58.3,49,44.8,41.8,52,46.8,43.3,40.7,38.5,36.7,31.7,31.2,30.7,30.3,31.3,30.8,31.3,30.3,30.7,31.2,35.3,36.8,38.7,40.8,43.5,47.2,52.7,42.2,45.2,49.5,null,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,49.5,47.3,46.3,39,34.8,31.8,29.5,27.5,26,24.7,23.5,22.5,21.7,21,20.7,20.3,20.2,20,20.2,20.3,20.7,21.2,21.8,22.5,23.5,24.7,26,27.7,29.7,32.2,35.2,39.5,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,50.3,52.5,53.5,60.8,64.8,68,70.3,72.3,73.8,75.2,76.3,77.3,78.2,78.8,79.2,79.5,79.7,79.8,79.7,79.5,79.2,78.7,78,77.3,76.3,75.2,73.8,72.2,70.2,67.7,64.7,60.3,null,null,null,null,null,null]},
+  '🦥': {t:[null,null,null,null,null,null,null,null,null,50.3,45.3,42,56,47.5,43.5,40.7,38.3,36.5,34.8,30,29.3,28.8,28.5,28.2,28,28,28,28.2,28.5,29,29.5,30.2,34.8,36.5,38.5,40.8,43.8,48,39.7,42.3,45.7,51,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,47.8,38,33.3,30,27.5,25.3,23.5,22,20.8,19.7,18.8,18.2,17.7,17.3,17,17,17.2,17.3,17.7,18.2,19,19.8,20.8,22.2,23.7,25.5,27.7,30.3,33.7,38.5,null,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,52,61.8,66.5,69.8,72.3,74.5,76.3,77.8,79,80.2,81,81.7,82.2,82.5,82.8,82.8,82.7,82.5,82.2,81.7,80.8,80,79,77.7,76.2,74.3,72.2,69.5,66.2,61.3,null,null,null,null,null,null,null]},
+  '🦦': {t:[null,null,null,null,null,null,null,null,null,52.7,47.8,44.5,58,49.8,46,43.2,41,39.2,37.5,33,32.3,31.8,31.5,31.2,31,31,31,31.2,31.5,31.8,32.3,33,37.7,39.3,41.2,43.5,46.3,50.3,42.3,44.8,48.2,53.3,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,41,35.2,31.3,28.3,26,24,22.3,21,20,19,18.3,17.7,17.3,17,17,17.2,17.3,17.7,18.3,19,20,21.2,22.5,24.2,26.2,28.7,31.7,35.5,41.8,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,58.8,64.7,68.5,71.5,73.8,75.8,77.5,78.8,79.8,80.8,81.5,82.2,82.5,82.8,82.8,82.7,82.5,82.2,81.5,80.8,79.8,78.7,77.3,75.7,73.7,71.2,68.2,64.3,58,null,null,null,null,null,null]},
+  '🦘': {t:[null,null,null,null,null,null,null,null,null,null,null,null,null,53.5,48,44.5,60,50.5,46.2,43.2,40.7,38.8,33.8,33.3,33.2,33,33.2,33.3,33.8,38.8,40.8,43.3,46.5,50.8,42,44.8,48.3,54.3,null,null,null,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,43.3,38.8,35.8,33.7,31.8,30.3,29.2,28,27.2,26.5,26,25.5,25.3,25,25,25.2,25.3,25.5,26,26.7,27.3,28.2,29.2,30.5,32,33.8,36,39.2,43.8,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,56.5,61,64,66.2,68,69.5,70.7,71.8,72.7,73.3,73.8,74.3,74.5,74.8,74.8,74.7,74.5,74.3,73.8,73.2,72.5,71.7,70.7,69.3,67.8,66,63.8,60.7,56,null,null,null,null,null]},
+  '🦩': {t:[null,null,null,null,null,null,null,null,null,null,null,58.2,49.5,45.5,42.7,52.3,47.3,44,41.5,39.3,37.7,33.2,32.7,32.3,32.2,32,32.2,32.3,32.7,33.2,37.8,39.5,41.7,44.2,47.7,53,42.8,45.8,49.8,null,null,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,48.2,39.3,35.5,32.7,30.3,28.5,27,25.7,24.7,23.8,23.2,22.7,22.3,22.2,22,22.2,22.3,22.7,23.2,23.8,24.8,25.8,27.2,28.7,30.5,32.8,35.8,39.8,null,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,51.7,60.5,64.3,67.2,69.5,71.3,72.8,74.2,75.2,76,76.7,77.2,77.5,77.7,77.8,77.7,77.5,77.2,76.7,76,75,74,72.7,71.2,69.3,67,64,60,null,null,null,null,null,null,null]},
+  '🦚': {t:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,58.5,53.5,50.3,64.2,55.7,51.8,49.2,47.2,42.5,42.2,42,42.2,42.5,47.2,49.3,52.2,56,48.2,50.7,53.8,59,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,48.7,41.5,38.3,36,34.3,33,31.8,30.8,30.2,29.7,29.3,29.2,29,29.2,29.3,29.7,30.3,31,31.8,33,34.5,36.2,38.5,41.8,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,51.2,58.3,61.5,63.8,65.5,66.8,68,69,69.7,70.2,70.5,70.7,70.8,70.7,70.5,70.2,69.5,68.8,68,66.8,65.3,63.7,61.3,58,null,null,null,null,null,null]},
+  '🦜': {t:[null,null,null,null,null,null,null,null,null,55.8,47,42.8,39.8,50,44.7,41.3,38.5,36.3,34.5,33,28.5,28,27.5,27.3,27,27,27,27.3,27.5,28,28.5,33.2,34.7,36.5,38.8,41.5,45.2,50.7,40,43.2,47.5,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,41.5,36.2,32.5,29.7,27.3,25.5,23.8,22.5,21.5,20.5,19.7,19,18.7,18.3,18,18,18,18.3,18.7,19.2,19.8,20.5,21.5,22.7,24,25.7,27.5,29.8,32.7,36.5,42.3,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,58.3,63.7,67.3,70.2,72.5,74.3,76,77.3,78.3,79.3,80.2,80.8,81.2,81.5,81.8,81.8,81.7,81.5,81.2,80.7,80,79.3,78.3,77.2,75.8,74.2,72.3,70,67.2,63.3,57.5,null,null,null,null,null,null]},
+  '🦢': {t:[null,null,null,null,null,null,null,null,null,null,null,52.8,47,43.3,40.7,49.5,45,42,39.5,37.5,35.8,31.3,30.8,30.5,31.7,31.2,31.8,32.5,31,31.5,36,37.7,39.7,42.2,45.3,50,40.8,43.7,47.3,53.5,null,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,51,49,47.8,47.3,47.2,47.3,47.8,40,35.8,32.8,30.5,28.7,27,25.7,24.5,23.7,22.8,22.2,21.8,21.5,21.3,21.2,21.3,21.5,21.8,22.3,23,23.7,24.7,25.8,27.2,28.7,30.7,33,36.2,40.5,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,55.3,53.2,51.2,50.2,50,50.2,50.7,59.8,64,67,69.3,71.2,72.8,74.2,75.3,76.2,77,77.5,78,78.3,78.5,78.7,78.5,78.3,78,77.5,76.8,76.2,75.2,74,72.7,71.2,69.2,66.8,63.7,59.3,null,null,null,null,null,null]},
+  '🦈': {t:[null,null,null,null,null,null,null,51.2,56.2,48,44.2,41.5,50.8,46,42.7,40.3,38.3,36.5,35.2,30.8,30.3,29.8,29.5,29.2,29,29,29,29.2,29.5,29.8,30.3,30.8,35.3,36.7,38.5,40.5,43,46.3,51.3,41.7,44.5,48.5,null,51.2,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,40.7,34.8,30.8,27.7,25.3,23.3,21.5,20.2,19,18,17.3,13.2,13.2,13.2,13.2,13.2,16.3,16.8,17.3,18.2,19.2,20.3,21.7,23.5,25.2,26.7,28.8,32,37,null,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,59.2,65,69,72.2,74.5,76.5,78.3,79.7,80.8,81.8,82.5,86.7,86.7,86.7,86.7,86.7,83.5,83,82.5,81.7,80.7,79.5,78.2,76.3,74.7,73.2,71,67.8,62.8,null,null,null,null,null,null,null]},
+  '🦭': {t:[null,null,null,null,null,null,null,null,null,52.3,47.3,44,58,49.5,45.5,42.7,40.3,38.5,36.8,32,31.3,30.8,30.5,30.2,30,30,30,30.2,30.5,31,31.5,32.2,36.8,38.5,40.5,42.8,45.8,50,41.7,44.3,47.7,53,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,47.8,38,33.3,30,27.5,25.3,23.5,22,20.8,19.7,18.8,18.2,17.7,17.3,17,17,17.2,17.3,17.7,18.2,19,19.8,20.8,22.2,23.3,25.5,27.7,30.3,33.7,38.5,null,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,52,61.8,66.5,69.8,72.3,74.5,76.3,77.8,79,80.2,81,81.7,82.2,82.5,82.8,82.8,82.7,82.5,82.2,81.7,80.8,80,79,77.7,76.5,74.3,72.2,69.5,66.2,61.3,null,null,null,null,null,null]},
+  '🐻‍❄️': {t:[null,null,null,null,null,null,null,null,47.2,42.7,39.5,50.5,44.7,41,38,35.7,33.7,32,30.5,26.2,25.5,25,24.7,24.5,24.3,24.2,24.3,24.5,24.7,25.2,25.7,26.2,30.7,32.2,33.8,35.8,38.3,41.2,45.2,51.3,39.7,43,47.7,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,38.3,33.3,29.8,27,24.7,22.8,21,19.7,18.5,17.3,16.5,15.8,15.2,14.8,14.5,14.3,14.2,14.3,14.5,14.8,15.2,15.8,16.5,17.5,18.5,19.8,21.2,22.8,24.8,27.2,30,33.7,38.8,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,61.5,66.5,70,72.8,75.2,77,78.8,80.2,81.3,82.5,83.3,84,84.7,85,85.3,85.5,85.7,85.5,85.3,85,84.7,84,83.3,82.3,81.3,80,78.7,77,75,72.7,69.8,66.2,61,null,null,null,null,null]},
+  '🦃': {t:[null,null,null,null,null,null,null,null,null,null,null,null,null,62,53.5,49.5,46.8,56.3,51.3,48,45.5,43.7,38.8,38.3,38.2,38,38.2,38.3,38.8,43.8,45.8,48.3,51.5,57,47,49.8,53.8,null,null,null,null,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,48.5,40.5,37.2,34.7,32.7,31,29.7,28.7,27.8,27.2,26.7,26.3,26,26,26.2,26.3,26.7,27.2,27.8,28.8,29.8,31.2,32.8,34.8,37.3,40.8,45.8,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,51.3,59.3,62.7,65.2,67.2,68.8,70.2,71.2,72,72.7,73.2,73.5,73.7,73.8,73.7,73.5,73.2,72.7,72,71,70,68.7,67,65,62.5,59,54,null,null,null,null,null]},
+  '🦍': {t:[null,null,null,null,null,null,null,null,55.8,46.3,41.8,38.7,49.5,43.8,40.2,37.2,34.8,32.8,31.2,28.5,26.2,21.8,21.5,21.2,21,21,21,21.2,21.5,22,26.3,28.7,31.3,33,35,37.5,40.5,44.3,50.2,38.8,42.2,46.8,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,41.3,36.2,33.2,31.3,30.3,28,25.8,24,22.5,21.2,20,19,18.2,17.5,17,16.5,16.2,16,16,16,16.3,16.5,17,17.5,18.2,19,20,21.2,22.5,24.2,26,28.2,30.8,34.2,38.8,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,58.5,63.7,66.7,68.5,69.5,71.8,74,75.8,77.3,78.7,79.8,80.8,81.7,82.3,82.8,83.3,83.7,83.8,83.8,83.8,83.5,83.3,82.8,82.3,81.7,80.8,79.8,78.7,77.2,75.7,73.8,71.7,69,65.7,61.2,null,null,null,null,null]},
+  '🦣': {t:[null,null,null,null,null,null,null,null,null,null,82.8,46.2,41,28.8,52.3,43.3,39.2,25.5,20,20.2,20.8,18.3,20.8,20.8,19.5,15,19.8,20.8,20.8,18.5,20.8,20.2,20,25.8,39.5,43.7,79.2,37.8,41.3,47,84,null,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,45.3,42.3,34.8,29.8,28,26.8,26.2,26,26.2,26.8,27.2,25.8,24.5,23.5,22.8,22.2,21.7,21.3,21.2,21,21.2,21.3,21.7,22.2,22.8,23.7,24.7,25.8,24.3,23,22,21.3,20.7,20.2,19.8,19.7,19.5,19.5,20.3,21.7,24.2,null,null],r:[null,null,null,null,null,null,null,null,54.5,57.5,65,70,71.8,73,73.7,73.8,73.7,73,72.7,74,75.3,76.3,77,77.7,78.2,78.5,78.7,78.8,78.7,78.5,78.2,77.7,77,76.2,75.2,74,75.5,76.8,77.8,78.5,79.2,79.7,80,80.2,80.3,80.3,79.5,78.2,75.7,null,null]},
+  '🦖': {t:[null,null,null,null,null,null,null,null,null,50.7,45.8,42.5,56,47.8,44,41.2,39,37.2,35.5,31,30.3,29.8,29.5,29.2,29,29,29,29.2,29.5,29.8,30.3,31,35.7,37.3,39.2,41.5,44.3,48.3,40.3,42.8,46.2,51.3,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,41,35.2,31.3,28.3,26,24,22.3,21,20,19,18.3,17.7,17.3,17,17,17.2,17.3,17.7,18.3,19,20,21.2,22.5,24.2,26,27.2,26.8,30.5,35.2,41.3,49.3,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,58.8,64.7,68.5,71.5,73.8,75.8,77.5,78.8,79.8,80.8,81.5,82.2,82.5,82.8,82.8,82.7,82.5,82.2,81.5,80.8,79.8,78.7,77.3,75.7,73.8,72.7,73,69.3,64.7,58.5,50.3,null,null,null,null,null]},
+  '🤖': {t:[null,null,null,null,null,null,null,null,44.5,38.3,35.7,34,40.3,36.8,34.8,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,34.8,37.2,40.8,34,35.8,38.7,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,25.3,21.8,19.8,18.3,17.2,16.5,16.2,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16.2,16.5,17.3,18.3,19.8,22.2,25.8,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,74.5,78,80,81.5,82.7,83.3,83.7,83.8,83.8,83.8,83.8,83.8,83.8,83.8,83.8,83.8,83.8,83.8,83.8,83.8,83.8,83.8,83.8,83.7,83.3,82.5,81.5,80,77.7,74,null,null,null,null,null]},
+  '👻': {t:[null,null,null,null,null,null,null,null,null,41.2,35,31.3,49,37.7,33,29.8,27.5,25.7,21,20.3,19.8,19.5,19.3,19.2,19,19,19,19.2,19.3,19.5,20,20.3,21,25.8,27.7,30,33.3,38.2,28.8,31.5,35.3,42,null,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,39.2,33,29.3,26.7,24.5,22.8,21.5,20.5,19.7,19,18.3,17.8,17.5,17.3,17.2,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,36.7,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,60.7,66.8,70.5,73.2,75.3,77,78.2,79.3,80.2,80.8,81.5,82,82.3,82.5,82.7,82.8,82.8,82.8,82.8,82.8,82.8,82.8,82.8,82.8,82.8,82.8,82.8,82.8,82.8,82.8,82.8,82.8,82.8,82.8,82.8,82.8,82.8,63.2,null,null,null]},
+  '👽': {t:[null,null,null,null,null,null,null,null,41.5,35.5,31.8,49.2,38,33.5,30.3,28,26.2,21.3,20.7,20.2,19.8,19.5,19.3,19.2,19,19,19,19.2,19.3,19.5,19.8,20.2,20.7,21.3,26.3,28.2,30.5,33.7,38.5,29.3,32,35.8,42.3,null,null,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,38.5,32,28,25.2,23,21.3,19.8,18.7,17.8,17,16.5,16,15.7,15.3,15.2,15,15,15,15.2,15.3,15.7,16,16.5,17,17.7,18.3,19.3,20.3,21.5,22.8,24.3,26,28,30,32.5,35.2,38.2,43.3,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,61.3,67.8,71.8,74.7,76.8,78.5,80,81.2,82,82.8,83.3,83.8,84.2,84.5,84.7,84.8,84.8,84.8,84.7,84.5,84.2,83.8,83.3,82.8,82.2,81.5,80.5,79.5,78.3,77,75.5,73.8,71.8,69.8,67.3,64.7,61.7,56.5,null,null,null]},
+  '🎃': {t:[null,null,null,null,null,58,49.8,46,43,52.7,47.7,44.3,41.8,39.7,36.2,33.2,29.3,30.3,30,29.5,29,28.7,28.3,28.2,28,28,28,28.2,28.3,28.7,29,29.5,30,30.2,29.3,33.3,36.5,39.8,42,44.7,48,53.2,43.3,46.2,50.2,null,null,null,null,null,null],l:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,47.3,26.3,24,22.3,21.2,20.2,18.7,16.8,15.3,14,12.8,12,11.2,10.7,10.3,10,10,10.2,10.3,10.7,11.3,12,13,14.2,15.5,17,18.8,20.2,21.2,22.5,24.2,26.7,null,null,null,null,null],r:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,52.5,73.5,75.8,77.5,78.7,79.7,81.2,83,84.5,85.8,87,87.8,88.7,89.2,89.5,89.8,89.8,89.7,89.5,89.2,88.5,87.8,86.8,85.7,84.3,82.8,81,79.7,78.7,77.3,75.7,73.2,null,null,null,null,null]}
+};
+
+const KOP_LAAG_ACHTER = ['🦁', '🐑', '🦔', '🐌'];   // bij deze dieren is de manen/wol/stekels/schelp de bovenkant van het hoofd
+// Bij deze dieren is de kop zelf smaller dan het profiel (manen/wol/stekels): hoeden iets kleiner
+const KOP_SCHAAL = { '🦁': 0.74, '🐑': 0.72, '🦔': 0.75, '🐌': 0.8, '🐸': 0.56, '🐊': 0.58, '🦀': 0.66, '🦚': 1.35 };
+// Dieren met de ogen bovenop de kop (de ogen worden NA de hoed getekend, dus de hoed zit erachter):
+// hier gaat de hoed-passing uit van deze "gezichtslijn" in plaats van de ogen, en de hoed wordt kleiner
+const KOP_HOED_OGEN = { '🐸': 56, '🐊': 52, '🦀': 54 };
+const KOP_HOED_VOOR = ['🐸', '🐊'];     // hier staat de hoed vóór de uitpuilende ogen, tussen de ogen in
+const KOP_HANDMATIG = [];
+
+function kopWaarde(rij, pos) {                         // rij met punten om de 2 eenheden, lineair ertussen
+  const i = Math.max(0, Math.min(rij.length - 1.001, pos / 2));
+  const a = Math.floor(i), f = i - a;
+  const y0 = rij[a], y1 = rij[a + 1];
+  if (y0 == null && y1 == null) return null;
+  if (y0 == null) return y1;
+  if (y1 == null) return y0;
+  return y0 + (y1 - y0) * f;
+}
+
+// Vorm van de kop van een dier (met de afgeleide maten), of null als we hem niet kennen
+const KOP_CACHE = {};
+function kopVan(dier, tekening) {
+  if (KOP_CACHE[dier]) return KOP_CACHE[dier];
+  let p = KOP_PROFIEL[dier];
+  if (!p && AANGEPASTE_POPPETJES[dier]) {          // zelfgemaakt poppetje: ronde kop (ellips 50,60 / 32x31)
+    const t = [], l = [], r = [];
+    for (let i = 0; i <= 50; i++) {
+      const dxx = (i * 2 - 50) / 32, v = 1 - dxx * dxx;
+      t.push(v > 0 ? Math.round((60 - 31 * Math.sqrt(v)) * 10) / 10 : null);
+      const dyy = (i * 2 - 60) / 31, w = 1 - dyy * dyy;
+      l.push(w > 0 ? Math.round((50 - 32 * Math.sqrt(w)) * 10) / 10 : null);
+      r.push(w > 0 ? Math.round((50 + 32 * Math.sqrt(w)) * 10) / 10 : null);
+    }
+    p = { t, l, r };
+  }
+  if (!p) return null;
+  const o = { y: KOP_HOED_OGEN[dier] || tekening.ogen.y };
+  const k = { t: p.t, l: p.l, r: p.r };
+  let topmin = 999;
+  k.t.forEach(v => { if (v != null && v < topmin) topmin = v; });
+  k.topmin = topmin;
+  const yl = kopWaarde(k.l, o.y), yr = kopWaarde(k.r, o.y);
+  k.W = (yl != null && yr != null) ? yr - yl : 70;                  // breedte van het hoofd op ooghoogte
+  k.links = yl != null ? yl : 15; k.rechts = yr != null ? yr : 85;
+  if (KOP_SCHAAL[dier]) k.W *= KOP_SCHAAL[dier];
+  KOP_CACHE[dier] = k;
+  return k;
+}
+const kopTop = (k, x) => { const v = kopWaarde(k.t, x); return v == null ? null : v; };
+// hoogte van de bovenkant van het hoofd op x; buiten het hoofd: de dichtstbijzijnde rand
+function kopTopOfRand(k, x, vang) {
+  const v = kopTop(k, x);
+  return v == null ? vang : v;
+}
+// hoek (graden) van de bovenrand van het hoofd op x
+function kopHoek(k, x) {
+  const a = kopTop(k, x - 3), b = kopTop(k, x + 3);
+  if (a == null || b == null) return 0;
+  return Math.atan2(b - a, 6) * 180 / Math.PI;
+}
+const rd = v => Math.round(v * 100) / 100;
+
+// ---------------------------------------------------------------------------
+// Hoeden die als één stuk op het hoofd gezet worden.
+//   w = breedte van de hoed (met rand), f = hoeveel van de kopbreedte die inneemt,
+//   c = halve breedte waar de hoed het hoofd raakt, d = hoe diep de onderkant zakt,
+//   u = hoeveel de onderkant (midden) onder de hoedlijn uitsteekt
+// ---------------------------------------------------------------------------
+const HOED_PAS = {
+  '🎩': { w: 104, f: 0.86, c: 34, d: 3, u: 5 , h: 78 },
+  '👑': { w: 100, f: 0.66, c: 41, d: 2, u: 1 , h: 66 },
+  '🎓': { w: 124, f: 1.0,  c: 30, d: 1, u: 5 , h: 56 },
+  '🧢': { w: 88,  f: 0.98, c: 42, d: 2, u: 6, dx: 4 , h: 55 },
+  '🤠': { w: 156, f: 1.22, c: 34, d: 3, u: 6 , h: 56 },
+  '👒': { w: 144, f: 1.15, c: 33, d: 3, u: 5 , h: 50 },
+  '🎅': { w: 104, f: 1.0,  c: 44, d: 2, u: 1, dx: 4 , h: 72 },
+  '🧙': { w: 112, f: 1.05, c: 33, d: 3, u: 6 , h: 104 },
+  '👷': { w: 108, f: 1.05, c: 42, d: 2, u: 1 , h: 52 },
+  '🥳': { w: 56,  f: 0.40, c: 26, d: 3, u: 4 , h: 86 },
+  '🍄': { w: 108, f: 1.04, c: 44, d: 2, u: 6 , h: 68 },
+  '🍦': { w: 56,  f: 0.42, c: 24, d: 3, u: 0 , h: 84 },
+  '👨‍🍳': { w: 88, f: 0.95, c: 34, d: 2, u: 0 , h: 84 },
+  '☠️': { w: 124, f: 1.14, c: 44, d: 2, u: 7 , h: 62 },
+  '🚒': { w: 112, f: 1.06, c: 44, d: 2, u: 2 , h: 66 }
+};
+const HOED_STANDAARD = { w: 100, f: 0.9, c: 36, d: 2, u: 4, h: 70 };   // voor hoeden die we (nog) niet kennen
+
+function hoedPlaats(spec, k, ogenY, schaal) {
+  let s = spec.f * k.W * (schaal || 1) / spec.w;
+  const halfTop = (kopWaarde(k.r, k.topmin + 10) - kopWaarde(k.l, k.topmin + 10)) / 2 || k.W / 2;
+  let y = k.topmin;
+  for (let i = 0; i < 60; i++) {
+    const xl = 50 - spec.c * s, xr = 50 + spec.c * s;
+    const yl = kopTopOfRand(k, xl, ogenY), yr = kopTopOfRand(k, xr, ogenY);
+    y = Math.max(yl, yr) + spec.d * s;
+    const vrij = ogenY - 5.5 - (y + spec.u * s);               // ruimte tussen hoed en ogen
+    const top = y - (spec.h || 70) * s;                        // bovenkant van de hoed moet in beeld blijven
+    if (vrij >= 0 && spec.c * s <= halfTop * 0.97 && top >= -22) break;
+    s *= 0.97;
+  }
+  y = Math.min(y, ogenY - 5.5 - spec.u * s);
+  return { x: 50 + (spec.dx || 0) * s, y, s };
+}
+
+// ---------------------------------------------------------------------------
+// Hoeden die meebuigen met de vorm van het hoofd
+// ---------------------------------------------------------------------------
+function kopLijn(k, xa, xb, op) {                      // lijn langs de bovenkant van het hoofd, "op" eenheden erboven
+  let d = '';
+  for (let x = xa; x <= xb + 0.01; x += 1.5) {
+    const y = kopTopOfRand(k, x, k.topmin + 20) - op;
+    d += (d ? ' L' : 'M') + rd(x) + ' ' + rd(y);
+  }
+  return d;
+}
+
+function hoedKoptelefoon(k, o) {
+  const W = k.W, ye = o.y - 1, cw = 0.15 * W, ch = 0.27 * W, band = 0.062 * W;
+  const xl = kopWaarde(k.l, ye), xr = kopWaarde(k.r, ye);
+  const cl = xl + cw * 0.05, cr = xr - cw * 0.05;
+  const boven = ye - ch / 2;
+  let d = 'M' + rd(cl) + ' ' + rd(boven + 2);
+  for (let x = cl + 1.5; x <= cr - 1.4; x += 1.5) {
+    const y = Math.min(kopTopOfRand(k, x, boven) - band * 0.5, boven + 1);
+    d += ' L' + rd(x) + ' ' + rd(y);
+  }
+  d += ' L' + rd(cr) + ' ' + rd(boven + 2);
+  const cup = x => `<rect x="${rd(x - cw / 2)}" y="${rd(ye - ch / 2)}" width="${rd(cw)}" height="${rd(ch)}" rx="${rd(cw / 2)}" fill="#ff5c9a" stroke="#c92a6d" stroke-width="${rd(band * 0.3)}"/>`;
+  return `<path d="${d}" fill="none" stroke="#1f1f2e" stroke-width="${rd(band + W * 0.03)}" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>` +
+    `<path d="${d}" fill="none" stroke="#5a5a78" stroke-width="${rd(band)}" stroke-linecap="round" stroke-linejoin="round"/>` + cup(cl) + cup(cr);
+}
+
+function hoedKattenoren(k, o) {
+  const W = k.W, e = 0.30 * W, bd = 0.05 * W;
+  let s = '';
+  const xa = 50 - 0.27 * W - e * 0.3, xb = 50 + 0.27 * W + e * 0.3;
+  s += `<path d="${kopLijn(k, xa, xb, bd * 0.5)}" fill="none" stroke="#3a3a4d" stroke-width="${rd(bd)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  [-1, 1].forEach(sg => {
+    const x = 50 + sg * 0.27 * W, y = kopTopOfRand(k, x, k.topmin + 6), hk = kopHoek(k, x) + sg * 4;
+    const buiten = (px, py) => rd(sg * px) + ' ' + rd(py);
+    const bb = e / 2;
+    const ear = (m) => `M${rd(sg * bb * m)} ${rd(0.12 * e)} L${rd(-sg * bb * m)} ${rd(0.12 * e)} L${rd(sg * 0.2 * e * m)} ${rd(-1.05 * e * m)} Z`;
+    s += `<g transform="translate(${rd(x)} ${rd(y + bd * 0.2)}) rotate(${rd(hk)})">` +
+         `<path d="${ear(1)}" fill="#3a3a4d" stroke="#3a3a4d" stroke-width="${rd(bd * 0.6)}" stroke-linejoin="round"/>` +
+         `<path d="M${rd(sg * bb * 0.5)} ${rd(0.02 * e)} L${rd(-sg * bb * 0.5)} ${rd(0.02 * e)} L${rd(sg * 0.17 * e)} ${rd(-0.7 * e)} Z" fill="#ff9db3"/></g>`;
+  });
+  return s;
+}
+
+function hoedHoorns(k, o) {
+  const W = k.W, bw = 0.18 * W, hh = 0.38 * W;
+  let s = '';
+  [-1, 1].forEach(sg => {
+    const x = 50 + sg * 0.25 * W, y = kopTopOfRand(k, x, k.topmin + 6), hk = kopHoek(k, x) + sg * 6;
+    const X = v => rd(sg * v);
+    s += `<g transform="translate(${rd(x)} ${rd(y + bw * 0.18)}) rotate(${rd(hk)})">` +
+         `<path d="M${X(bw * 0.5)} ${rd(bw * 0.15)} Q${X(bw * 1.15)} ${rd(-hh * 0.55)} ${X(bw * 0.6)} ${rd(-hh)} Q${X(-bw * 0.1)} ${rd(-hh * 0.5)} ${X(-bw * 0.5)} ${rd(bw * 0.05)} Z" ` +
+         `fill="#e5384b" stroke="#a81f30" stroke-width="${rd(W * 0.025)}" stroke-linejoin="round"/></g>`;
+  });
+  return s;
+}
+
+function hoedAntennes(k, o) {
+  const W = k.W, len = 0.40 * W, br = 0.062 * W;
+  let s = '';
+  [-1, 1].forEach(sg => {
+    const x = 50 + sg * 0.15 * W, y = kopTopOfRand(k, x, k.topmin + 4), hk = kopHoek(k, x) + sg * 9;
+    const X = v => rd(sg * v);
+    s += `<g transform="translate(${rd(x)} ${rd(y + 1.2)}) rotate(${rd(hk)})">` +
+         `<path d="M0 0 Q${X(len * 0.04)} ${rd(-len * 0.6)} ${X(len * 0.2)} ${rd(-len)}" fill="none" stroke="#5cbf5c" stroke-width="${rd(W * 0.05)}" stroke-linecap="round"/>` +
+         `<circle cx="${X(len * 0.2)}" cy="${rd(-len - br * 0.7)}" r="${rd(br)}" fill="#8be36e" stroke="#3a9a3f" stroke-width="${rd(W * 0.022)}"/></g>`;
+  });
+  return s;
+}
+
+function hoedKrans(k, o) {                              // zweeft boven het hoofd
+  const W = k.W, cy = k.topmin - 0.10 * W, rx = 0.27 * W, ry = 0.075 * W;
+  return `<ellipse cx="50" cy="${rd(cy)}" rx="${rd(rx)}" ry="${rd(ry)}" fill="none" stroke="#fff6b0" stroke-width="${rd(W * 0.095)}" opacity=".5"/>` +
+         `<ellipse cx="50" cy="${rd(cy)}" rx="${rd(rx)}" ry="${rd(ry)}" fill="none" stroke="#ffd23f" stroke-width="${rd(W * 0.05)}"/>`;
+}
+
+function hoedStrik(k, o, midden) {
+  const W = k.W, s = 0.40 * W / 76;
+  const x = midden ? 50 : 50 + 0.22 * W, y = kopTopOfRand(k, x, k.topmin + 6), hk = kopHoek(k, x) + (midden ? 0 : 6);
+  return `<g transform="translate(${rd(x)} ${rd(y + 4 * s)}) rotate(${rd(hk)}) scale(${rd(s)})">${ACCESSOIRES['🎀'].tekening(0)}</g>`.replace('translate(0 4) rotate(14)', 'translate(0 0) rotate(0)');
+}
+
+const HOED_BIJZONDER = {
+  '🎧': hoedKoptelefoon, '😺': hoedKattenoren, '😈': hoedHoorns, '👽': hoedAntennes, '👼': hoedKrans
+};
+
+// ---------------------------------------------------------------------------
+// Alles bij elkaar: het poppetje als SVG
+// ---------------------------------------------------------------------------
+let PAS_TELLER = 0;
+
+// Neus van elk dier: [hoogte, straal]. Daar komen de clownsneus en de neus van de grappige bril.
+const NEUS_PROFIEL = {'🐶': [64, 5.9], '🐱': [68, 3.2], '🐭': [65, 4.6], '🐹': [64, 4.0], '🐰': [68, 2.6], '🐻': [65, 5.2], '🐼': [67, 5.0], '🐨': [63, 9.7], '🐔': [68, 7.2], '🐧': [66, 6.3], '🦔': [74, 4.5], '🐑': [72, 4.7], '🐿️': [66, 3.6], '🦌': [72, 4.7], '🦝': [68, 4.2], '🦨': [70, 3.9], '🦥': [68, 4.4], '🦦': [67, 4.7], '🦘': [70, 4.2], '🦢': [65, 4.4], '🦭': [66, 5.1], '🐻‍❄️': [65, 5.2]};
+function neusVan(dier, o) {
+  const n = NEUS_PROFIEL[dier];
+  const y = n ? n[0] : o.y + 11;
+  const r = n ? Math.max(3.2, Math.min(7, n[1])) : 4.6;
+  return { ny: y - o.y, nr: r };
+}
+
+function hoedSvg(emoji, tekening, k, dier) {
+  const boven = ACCESSOIRES[emoji];
+  const oy = KOP_HOED_OGEN[dier] || tekening.ogen.y;
+  const kr = tekening.kruin;
+  if (!k) {                                             // dier zonder profiel (of ogen bovenop): kruin uit de tekening
+    if (boven.customEmoji) {
+      const kleur = boven.customKleur || '#f0c04d';
+      return `<g transform="translate(${kr.x} ${kr.y}) rotate(${kr.r || 0}) scale(${kr.b / 100})">` +
+        `<ellipse cx="0" cy="-8" rx="34" ry="13" fill="${kleur}" opacity=".95"/>` + maakEmojiTekst(boven.customEmoji, 0, -12, 44) + `</g>`;
+    }
+    const hoed = typeof boven.tekening === 'function' ? boven.tekening(kr.strik) : boven.tekening;
+    return `<g transform="translate(${kr.x} ${kr.y}) rotate(${kr.r || 0}) scale(${kr.b / 100})">${hoed}</g>`;
+  }
+  if (boven.customEmoji) {
+    const kleur = boven.customKleur || '#f0c04d';
+    const pl = hoedPlaats({ w: 68, f: 0.72, c: 28, d: 4, u: 5 }, k, oy);
+    return `<g transform="translate(${rd(pl.x)} ${rd(pl.y)}) scale(${rd(pl.s)})">` +
+      `<ellipse cx="0" cy="-8" rx="34" ry="13" fill="${kleur}" opacity=".95"/>` + maakEmojiTekst(boven.customEmoji, 0, -12, 44) + `</g>`;
+  }
+  if (HOED_BIJZONDER[emoji]) return HOED_BIJZONDER[emoji](k, { y: oy });
+  if (emoji === '🎀') return hoedStrik(k, { y: oy }, kr.strik === 0);
+  const spec = HOED_PAS[emoji] || HOED_STANDAARD;
+  const pl = hoedPlaats(spec, k, oy);
+  const hoed = typeof boven.tekening === 'function' ? boven.tekening(0) : boven.tekening;
+  return `<g transform="translate(${rd(pl.x)} ${rd(pl.y)}) scale(${rd(pl.s)})">${hoed}</g>`;
+}
+
+function brilSvg(emoji, tekening, k, dier) {
+  const o = tekening.ogen, bril = ACCESSOIRES[emoji];
+  const sc = o.s || o.dx / 28;
+  const ox = o.x || 50;
+  if (bril.customEmoji) {
+    return `<g transform="translate(${ox} ${o.y})"><ellipse cx="0" cy="0" rx="${o.dx + 20 * sc}" ry="${19 * sc}" fill="${bril.customKleur || '#f0c04d'}" opacity=".35"/>` +
+      maakEmojiTekst(bril.customEmoji, 0, 0, sc * 60) + `</g>`;
+  }
+  const nz = neusVan(dier, o);
+  let inhoud = bril.bril(o.dx, sc, nz.ny, nz.nr);
+  let clip = '', clipAttr = '';
+  if (k && !o.vrij) {                                    // pootjes van de bril eindigen bij de rand van het hoofd
+    const l = kopWaarde(k.l, o.y - 3), r = kopWaarde(k.r, o.y - 3);
+    if (l != null && r != null) {
+      const id = 'bp' + (PAS_TELLER++);
+      clip = `<clipPath id="${id}"><rect x="${rd(l - 0.8)}" y="-30" width="${rd(r - l + 1.6)}" height="160"/></clipPath>`;
+      clipAttr = ` clip-path="url(#${id})"`;
+    }
+  }
+  return clip + `<g${clipAttr}><g transform="translate(${ox} ${o.y})">${inhoud}</g></g>`;
+}
+
+function hoekSvg(emoji) {
+  const hoekAcc = ACCESSOIRES[emoji];
+  if (hoekAcc.customEmoji) {
+    return `<g transform="translate(77 -10) scale(1.2)">` +
+      `<circle cx="12" cy="12" r="12" fill="${hoekAcc.customKleur || '#f0c04d'}" opacity=".35"/>` +
+      maakEmojiTekst(hoekAcc.customEmoji, 12, 12, 24) + `</g>`;
+  }
+  return `<g transform="translate(77 -10) scale(1.2)">${hoekAcc.tekening}</g>`;
+}
+
 // Bouwt het hele poppetje als SVG-tekst: dier + accessoires, passend gemaakt.
 function poppetjeSvg(dier, accessoires) {
   let tekening = DIER_TEKENINGEN[dier];
@@ -1367,53 +1721,15 @@ function poppetjeSvg(dier, accessoires) {
   }
   if (!tekening) return '';
   const acc = geldigeAccessoires(accessoires);
+  const k = KOP_HANDMATIG.indexOf(dier) === -1 ? kopVan(dier, tekening) : null;
 
   let delen = tekening.achter + tekening.hoofd;
-
-  if (acc.boven) {
-    const k = tekening.kruin;
-    const boven = ACCESSOIRES[acc.boven];
-    if (boven.customEmoji) {
-      const kleur = boven.customKleur || '#f0c04d';
-      // De hoed zit met zijn onderkant (y = 0) vast op het hoofd: het rondje eronder
-      // zakt een stukje in de kop en het plaatje staat erboven, dus niets zweeft.
-      delen += `<g transform="translate(${k.x} ${k.y}) rotate(${k.r || 0}) scale(${k.b / 100})">` +
-        `<ellipse cx="0" cy="-8" rx="34" ry="13" fill="${kleur}" opacity=".95"/>` +
-        maakEmojiTekst(boven.customEmoji, 0, -12, 44) + `</g>`;
-    } else {
-      const hoed = boven.tekening;
-      const hoedTekening = typeof hoed === 'function' ? hoed(k.strik) : hoed;
-      delen += `<g transform="translate(${k.x} ${k.y}) rotate(${k.r || 0}) scale(${k.b / 100})">${hoedTekening}</g>`;
-    }
-  }
-
+  const hoedVoor = KOP_HOED_VOOR.indexOf(dier) !== -1;
+  if (acc.boven && !hoedVoor) delen += hoedSvg(acc.boven, tekening, k, dier);
   delen += tekening.voor;
-
-  if (acc.gezicht) {
-    const o = tekening.ogen;
-    // dx = afstand van het midden tot het midden van een oog; s = grootte van de lenzen
-    // (standaard passend bij dx; bij dieren met bijzondere ogen, zoals de kikker, apart ingesteld).
-    const bril = ACCESSOIRES[acc.gezicht];
-    if (bril.customEmoji) {
-      // Zelfgemaakte bril: het plaatje komt precies midden tussen de ogen, over beide ogen heen
-      const sc = o.s || o.dx / 28;
-      delen += `<g transform="translate(${o.x || 50} ${o.y})"><ellipse cx="0" cy="0" rx="${o.dx + 20 * sc}" ry="${19 * sc}" fill="${bril.customKleur || '#f0c04d'}" opacity=".35"/>` +
-        maakEmojiTekst(bril.customEmoji, 0, 0, sc * 60) + `</g>`;
-    } else {
-      delen += `<g transform="translate(${o.x || 50} ${o.y})">${bril.bril(o.dx, o.s || o.dx / 28)}</g>`;
-    }
-  }
-
-  if (acc.hoek) {
-    const hoekAcc = ACCESSOIRES[acc.hoek];
-    if (hoekAcc.customEmoji) {
-      delen += `<g transform="translate(77 -10) scale(1.2)">` +
-        `<circle cx="12" cy="12" r="12" fill="${hoekAcc.customKleur || '#f0c04d'}" opacity=".35"/>` +
-        maakEmojiTekst(hoekAcc.customEmoji, 12, 12, 24) + `</g>`;
-    } else {
-      delen += `<g transform="translate(77 -10) scale(1.2)">${hoekAcc.tekening}</g>`;
-    }
-  }
+  if (acc.boven && hoedVoor) delen += hoedSvg(acc.boven, tekening, k, dier);
+  if (acc.gezicht) delen += brilSvg(acc.gezicht, tekening, k, dier);
+  if (acc.hoek) delen += hoekSvg(acc.hoek);
 
   return `<svg class="poppetje-svg" viewBox="-10 -26 120 126" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${delen}</svg>`;
 }
