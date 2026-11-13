@@ -5734,9 +5734,9 @@ function werkChatBeheerBij() {
   const bezoek = !!bezoekUid();   // sitebeheer leest mee: alleen kijken
   const kanNamensSturen = bezoek && !!sitebeheerActief;   // sitebeheer mag tekstberichten sturen, duidelijk gemarkeerd
   melding.textContent = bezoek ? '👁 Je leest mee in het account van ' + (huidigeMakerNaam() || '') + '.' + (kanNamensSturen ? ' Berichten die je hier typt staan in de chat onder zijn/haar naam, met de melding "verstuurd door sitebeheer".' : ' Je kunt hier niets versturen.')
-    : (geblokkeerd ? '🚫 Je bent geblokkeerd. Je kunt geen berichten meer sturen.' : '⚠️Dit is alleen voor belangrijke dingen⚠️');
+    : (geblokkeerd ? '🚫 Je bent geblokkeerd. Je kunt geen berichten meer sturen.' : '');
   melding.classList.toggle('geblokkeerd', geblokkeerd || bezoek);
-  melding.hidden = !(bezoek || geblokkeerd || chatMetBeheerder());
+  melding.hidden = !(bezoek || geblokkeerd);
 
   // Blokkeerknop: alleen voor sitebeheer, en alleen bij gewone gebruikers
   let knop = document.getElementById('btn-chat-blokkeer');
